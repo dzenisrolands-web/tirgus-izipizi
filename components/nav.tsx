@@ -59,6 +59,9 @@ export function Nav() {
             <Link href="/lockers" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Pakomāti
             </Link>
+            <Link href="/kalendars" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
+              Kalendārs
+            </Link>
             <Link href="/sell" className="btn-primary text-sm">
               Pārdot
             </Link>
@@ -95,6 +98,13 @@ export function Nav() {
               onClick={() => setMobileOpen(false)}
             >
               Pakomātu vietas
+            </Link>
+            <Link
+              href="/kalendars"
+              className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setMobileOpen(false)}
+            >
+              Tirgu Kalendārs
             </Link>
             <Link
               href="/sell"
