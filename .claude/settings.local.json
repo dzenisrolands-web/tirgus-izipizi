@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.vinted.com)",
+      "WebFetch(domain:www.izipizi.lv)",
+      "Bash(npm --version)",
+      "PowerShell(npm *)",
+      "PowerShell(winget install *)",
+      "WebFetch(domain:static.wixstatic.com)",
+      "PowerShell(Set-ExecutionPolicy *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npm run *)",
+      "WebFetch(domain:localhost)",
+      "PowerShell(Start-Process \"http://localhost:3000\")",
+      "PowerShell(Start-Process \"http://localhost:3000/listing/l1\")",
+      "PowerShell(gh *)",
+      "PowerShell(git *)"
+    ]
+  }
+}
