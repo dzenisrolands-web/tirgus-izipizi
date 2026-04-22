@@ -56,6 +56,9 @@ export function Nav() {
             <Link href="/catalog" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Produkti
             </Link>
+            <Link href="/razotaji" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
+              Ražotāji
+            </Link>
             <Link href="/lockers" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Pakomāti
             </Link>
@@ -91,6 +94,13 @@ export function Nav() {
               onClick={() => setMobileOpen(false)}
             >
               Produkti
+            </Link>
+            <Link
+              href="/razotaji"
+              className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setMobileOpen(false)}
+            >
+              Ražotāji
             </Link>
             <Link
               href="/lockers"

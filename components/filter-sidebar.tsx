@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { categories, lockers } from "@/lib/mock-data";
+import { categories, lockers, sellers } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-type Filters = {
+export type Filters = {
   category: string;
   city: string;
   maxPrice: number;
+  seller: string;
 };
 
 type Props = {
@@ -16,13 +17,7 @@ type Props = {
   onChange: (filters: Filters) => void;
 };
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="border-b border-gray-100 py-4">
@@ -38,6 +33,8 @@ function Section({
   );
 }
 
+export const DEFAULT_FILTERS: Filters = { category: "Visi", city: "", maxPrice: 100, seller: "" };
+
 export function FilterSidebar({ filters, onChange }: Props) {
   const cities = Array.from(new Set(lockers.map((l) => l.city)));
 
@@ -47,7 +44,7 @@ export function FilterSidebar({ filters, onChange }: Props) {
         <p className="text-sm font-bold text-gray-900">Filtri</p>
         <button
           className="text-xs text-brand-600 hover:underline"
-          onClick={() => onChange({ category: "Visi", city: "", maxPrice: 50 })}
+          onClick={() => onChange(DEFAULT_FILTERS)}
         >
           Notīrīt
         </button>
@@ -67,6 +64,36 @@ export function FilterSidebar({ filters, onChange }: Props) {
               )}
             >
               {cat}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Ražotājs">
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={() => onChange({ ...filters, seller: "" })}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-left text-sm transition",
+              filters.seller === ""
+                ? "bg-brand-50 font-semibold text-brand-700"
+                : "text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            Visi ražotāji
+          </button>
+          {sellers.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => onChange({ ...filters, seller: s.id })}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm transition leading-snug",
+                filters.seller === s.id
+                  ? "bg-brand-50 font-semibold text-brand-700"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              {s.name}
             </button>
           ))}
         </div>
@@ -108,19 +135,15 @@ export function FilterSidebar({ filters, onChange }: Props) {
           <input
             type="range"
             min={0}
-            max={50}
+            max={100}
             step={1}
             value={filters.maxPrice}
-            onChange={(e) =>
-              onChange({ ...filters, maxPrice: Number(e.target.value) })
-            }
+            onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
             className="h-1.5 w-full cursor-pointer accent-brand-600"
           />
           <span className="text-xs text-gray-400">{filters.maxPrice}€</span>
         </div>
-        <p className="mt-1 text-center text-xs text-gray-500">
-          Līdz {filters.maxPrice}€
-        </p>
+        <p className="mt-1 text-center text-xs text-gray-500">Līdz {filters.maxPrice}€</p>
       </Section>
     </aside>
   );
