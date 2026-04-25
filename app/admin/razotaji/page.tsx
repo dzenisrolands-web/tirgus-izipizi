@@ -78,9 +78,19 @@ export default function AdminRazotajiPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Ražotāji</h1>
-        <p className="mt-0.5 text-sm text-gray-500">{sellers.length} kopā</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900">Ražotāji</h1>
+          <p className="mt-0.5 text-sm text-gray-500">{sellers.length} kopā</p>
+        </div>
+        {sellers.filter(s => s.status === "pending").length > 0 && (
+          <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5">
+            <AlertCircle size={16} className="text-amber-600" />
+            <span className="text-sm font-semibold text-amber-800">
+              {sellers.filter(s => s.status === "pending").length} gaida apstiprinājumu
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Filters */}

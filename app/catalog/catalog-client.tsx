@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { SlidersHorizontal, X } from "lucide-react";
-import { listings, sellers } from "@/lib/mock-data";
+import { sellers, type Listing } from "@/lib/mock-data";
 import { ListingCard } from "@/components/listing-card";
 import { FilterSidebar, DEFAULT_FILTERS, type Filters } from "@/components/filter-sidebar";
 import { cn, getStorageType } from "@/lib/utils";
@@ -15,7 +15,7 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
-export function CatalogClient() {
+export function CatalogClient({ listings }: { listings: Listing[] }) {
   const params = useSearchParams();
   const storageTypes = useStorageTypes();
 

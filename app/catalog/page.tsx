@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { CatalogClient } from "./catalog-client";
+import { fetchActiveListings } from "@/lib/db-listings";
+import { listings as mockListings } from "@/lib/mock-data";
 
 export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
@@ -13,10 +15,14 @@ export const metadata = {
   },
 };
 
-export default function CatalogPage() {
+export default async function CatalogPage() {
+  const dbListings = await fetchActiveListings();
+  // Real DB listings first, then mock demo listings
+  const allListings = [...dbListings, ...mockListings];
+
   return (
     <Suspense>
-      <CatalogClient />
+      <CatalogClient listings={allListings} />
     </Suspense>
   );
 }

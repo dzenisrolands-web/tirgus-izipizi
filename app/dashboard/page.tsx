@@ -117,17 +117,31 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <h2 className="mb-3 text-sm font-extrabold text-gray-700">Ātrās darbības</h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Link href="/dashboard/produkti/jauns"
-          className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#192635] text-white">
-            <Plus size={18} />
+        {status === "approved" ? (
+          <Link href="/dashboard/produkti/jauns"
+            className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition group">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#192635] text-white">
+              <Plus size={18} />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 group-hover:text-brand-600">Pievienot produktu</p>
+              <p className="text-xs text-gray-400">Jauns produkts katalogā</p>
+            </div>
+            <ArrowRight size={16} className="ml-auto text-gray-300 group-hover:text-brand-400" />
+          </Link>
+        ) : (
+          <div className="flex items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 opacity-60 cursor-not-allowed">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200">
+              <Plus size={18} className="text-gray-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-500">Pievienot produktu</p>
+              <p className="text-xs text-gray-400">
+                {status === "pending" ? "Gaida profila apstiprinājumu" : "Profils nav apstiprināts"}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-gray-900 group-hover:text-brand-600">Pievienot produktu</p>
-            <p className="text-xs text-gray-400">Jauns produkts katalogā</p>
-          </div>
-          <ArrowRight size={16} className="ml-auto text-gray-300 group-hover:text-brand-400" />
-        </Link>
+        )}
         <Link href="/dashboard/profils"
           className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition group">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
