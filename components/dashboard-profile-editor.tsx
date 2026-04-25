@@ -49,6 +49,18 @@ export function DashboardProfileEditor() {
   const [saveMsg, setSaveMsg] = useState("");
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(saved);
+  const [saveError, setSaveError] = useState("");
+
+  const REQUIRED = [
+    { key: "name",              label: "Vārds, uzvārds" },
+    { key: "location",          label: "Atrašanās vieta" },
+    { key: "short_desc",        label: "Īss apraksts (SEO)" },
+    { key: "description",       label: "Pilns apraksts" },
+    { key: "youtube_video_url", label: "YouTube video" },
+    { key: "avatar_url",        label: "Profila attēls" },
+  ];
+  const filledCount = REQUIRED.filter(f => !!(profile as Record<string, unknown>)[f.key]).length;
+  const missing = filledCount < REQUIRED.length;
 
   useEffect(() => {
     (async () => {
@@ -75,12 +87,15 @@ export function DashboardProfileEditor() {
 
   async function save() {
     setSaving(true);
+    setSaveError("");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     if (profile.id) {
-      await supabase.from("sellers").update({ ...profile, updated_at: new Date().toISOString() }).eq("id", profile.id);
+      const { error } = await supabase.from("sellers").update({ ...profile, updated_at: new Date().toISOString() }).eq("id", profile.id);
+      if (error) { setSaveError(error.message); setSaving(false); return; }
     } else {
-      const { data } = await supabase.from("sellers").insert({ ...profile, user_id: user.id, status: "draft" }).select().single();
+      const { data, error } = await supabase.from("sellers").insert({ ...profile, user_id: user.id, status: "draft" }).select().single();
+      if (error) { setSaveError(error.message); setSaving(false); return; }
       if (data) setProfile((p) => ({ ...p, id: data.id }));
     }
     setSaved({ ...profile });
@@ -111,42 +126,60 @@ export function DashboardProfileEditor() {
   );
 
   const videoId = profile.youtube_video_url?.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-  const missing = !profile.youtube_video_url || !profile.description || !profile.location;
 
   return (
     <div>
-      {/* ── ADMIN STATUS BAR ──────────────────────────────── */}
+      {/* ── STATUS BAR ──────────────────────────────── */}
       <div className="sticky top-16 z-40 border-b border-gray-200 bg-white/95 backdrop-blur-sm shadow-sm">
-        <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <StatusBadge status={profile.status} />
-            {missing && (
-              <span className="flex items-center gap-1 text-xs text-amber-600">
-                <AlertCircle size={13} /> Aizpildi visus obligātos laukus
-              </span>
-            )}
-            {saveMsg && <span className="text-xs font-medium text-brand-600">{saveMsg}</span>}
-          </div>
-          <div className="flex items-center gap-2">
-            {isDirty && (
-              <button onClick={save} disabled={saving}
-                className="flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <StatusBadge status={profile.status} />
+              {saveMsg && <span className="text-xs font-medium text-green-600">{saveMsg}</span>}
+              {saveError && <span className="text-xs font-medium text-red-600">{saveError}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={save} disabled={saving || !isDirty}
+                className="flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Saglabāt
               </button>
-            )}
-            {profile.status !== "approved" && !missing && (
-              <button onClick={submit} disabled={submitting || profile.status === "pending"}
-                className="btn-primary flex items-center gap-1.5 py-1.5 text-sm disabled:opacity-50">
-                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                {profile.status === "pending" ? "Gaida apstiprināšanu" : "Iesniegt"}
-              </button>
-            )}
-            {profile.status === "approved" && (
-              <span className="flex items-center gap-1 text-xs font-medium text-green-600">
-                <CheckCircle size={14} /> Profils ir aktīvs
-              </span>
-            )}
+              {profile.status !== "approved" && (
+                <button onClick={submit} disabled={submitting || missing || profile.status === "pending"}
+                  className="btn-primary flex items-center gap-1.5 py-1.5 text-sm disabled:opacity-40">
+                  {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {profile.status === "pending" ? "Gaida apstiprināšanu" : "Iesniegt apstiprināšanai"}
+                </button>
+              )}
+              {profile.status === "approved" && (
+                <span className="flex items-center gap-1 text-xs font-medium text-green-600">
+                  <CheckCircle size={14} /> Profils ir aktīvs
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-2.5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-500">Profila aizpildījums</span>
+              <span className="text-xs font-semibold text-gray-700">{filledCount}/{REQUIRED.length}</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-gray-100">
+              <div className="h-1.5 rounded-full bg-brand-500 transition-all duration-500"
+                style={{ width: `${(filledCount / REQUIRED.length) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {REQUIRED.map(f => {
+                const filled = !!(profile as Record<string, unknown>)[f.key];
+                return (
+                  <span key={f.key} className={cn("flex items-center gap-1 text-[11px]", filled ? "text-green-600" : "text-amber-600")}>
+                    {filled ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
+                    {f.label}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -442,7 +475,7 @@ function EditableSection({ id, children, editContent, label, editSection, setEdi
       <button onClick={() => setEditSection(isEditing ? null : id)}
         className={cn(
           "absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition shadow-sm",
-          isEditing ? "bg-gray-800 text-white" : "bg-white/90 text-gray-600 opacity-0 group-hover:opacity-100 border border-gray-200",
+          isEditing ? "bg-gray-800 text-white" : "bg-white/90 text-gray-600 border border-gray-200",
           required && !isEditing && "opacity-100 bg-amber-100 text-amber-700 border-amber-300"
         )}>
         {isEditing ? <><X size={11} /> Aizvērt</> : <><Pencil size={11} /> {required ? "Obligāts!" : "Rediģēt"}</>}
