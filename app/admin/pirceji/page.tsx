@@ -14,7 +14,7 @@ type Buyer = {
   lastOrder: string;
 };
 
-export default function AdminPircējiPage() {
+export default function AdminPircejIPage() {
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

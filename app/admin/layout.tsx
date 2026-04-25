@@ -15,7 +15,7 @@ const NAV = [
   { href: "/admin/razotaji",     label: "Ražotāji",      icon: Users },
   { href: "/admin/produkti",     label: "Produkti",      icon: Package },
   { href: "/admin/pasutijumi",   label: "Pasūtījumi",    icon: ShoppingBag },
-  { href: "/admin/pircēji",      label: "Pircēji",       icon: UserCheck },
+  { href: "/admin/pirceji",       label: "Pircēji",       icon: UserCheck },
 ];
 
 function SidebarContent({
