@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, CheckCircle, Clock, ShoppingCart, ArrowLeft } from "lucide-react";
+import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
 import { listings, reviews, sellerHomeLockers } from "@/lib/mock-data";
 import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSection } from "@/components/reviews-section";
+import { AddToCartButton } from "@/components/add-to-cart-button";
+import { VariantSelector } from "@/components/variant-selector";
 
 export async function generateStaticParams() {
   return listings.map((l) => ({ id: l.id }));
@@ -40,10 +42,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-col gap-5">
           <div>
             <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">{listing.title}</h1>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-gray-900 sm:text-3xl">{formatPrice(listing.price)}</span>
-              <span className="text-sm text-gray-400 sm:text-base">/ {listing.unit}</span>
-            </div>
+            {!listing.variants?.length && (
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gray-900 sm:text-3xl">{formatPrice(listing.price)}</span>
+                <span className="text-sm text-gray-400 sm:text-base">/ {listing.unit}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -74,9 +78,26 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
           <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} />
 
-          <button className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
-            <ShoppingCart size={18} /> Pievienot grozam
-          </button>
+          {listing.variants && listing.variants.length > 0 ? (
+            <VariantSelector
+              listingId={listing.id}
+              title={listing.title}
+              image={listing.image}
+              sellerName={listing.seller.farmName}
+              storageType={getStorageType(listing)}
+              variants={listing.variants}
+            />
+          ) : (
+            <AddToCartButton
+              id={listing.id}
+              title={listing.title}
+              price={listing.price}
+              unit={listing.unit}
+              image={listing.image}
+              sellerName={listing.seller.farmName}
+              storageType={getStorageType(listing)}
+            />
+          )}
 
           <div className="rounded-xl border border-gray-100 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pārdevējs</p>

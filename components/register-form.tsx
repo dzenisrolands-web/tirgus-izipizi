@@ -19,7 +19,7 @@ export function RegisterForm() {
     setGoogleLoading(true);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/` },
+      options: { redirectTo: `${location.origin}/dashboard/onboarding` },
     });
   }
 
@@ -45,7 +45,8 @@ export function RegisterForm() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-3xl">✉️</div>
         <h1 className="mt-4 text-xl font-extrabold text-gray-900">Pārbaudi e-pastu!</h1>
         <p className="mt-2 text-sm text-gray-500">
-          Nosūtījām apstiprinājuma saiti uz <strong>{email}</strong>
+          Nosūtījām apstiprinājuma saiti uz <strong>{email}</strong>.<br />
+          Pēc apstiprināšanas tiks izveidots tavs ražotāja profils.
         </p>
         <Link href="/login" className="btn-primary mt-6 inline-block">Pieslēgties</Link>
       </div>

@@ -95,7 +95,8 @@
       "Bash(npx vercel *)",
       "Bash(unzip -o \"app.izipiziapp.com.zip\" -d \"app-izipizi-old\")",
       "Bash(xargs grep *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ]
   }
 }
