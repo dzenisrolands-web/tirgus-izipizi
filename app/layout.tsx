@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { CartProvider } from "@/lib/cart-context";
+import { StorageTypesProvider } from "@/lib/storage-types-context";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -23,8 +25,12 @@ export default function RootLayout({
   return (
     <html lang="lv" className={inter.variable}>
       <body>
-        <Nav />
-        <main>{children}</main>
+        <CartProvider>
+          <StorageTypesProvider>
+            <Nav />
+            <main>{children}</main>
+          </StorageTypesProvider>
+        </CartProvider>
         <footer className="mt-20 border-t border-gray-100 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
@@ -39,12 +45,14 @@ export default function RootLayout({
                 <ul className="mt-3 space-y-2">
                   <li><a href="/catalog" className="text-sm text-gray-600 hover:text-brand-600">Skatīt produktus</a></li>
                   <li><a href="/lockers" className="text-sm text-gray-600 hover:text-brand-600">Pakomātu vietas</a></li>
+                  <li><a href="/receptes" className="text-sm text-gray-600 hover:text-brand-600">Receptes</a></li>
+                  <li><a href="/kalendars" className="text-sm text-gray-600 hover:text-brand-600">Tirgu kalendārs</a></li>
                 </ul>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pārdevējiem</p>
                 <ul className="mt-3 space-y-2">
-                  <li><a href="/sell" className="text-sm text-gray-600 hover:text-brand-600">Kļūt par pārdevēju</a></li>
+                  <li><a href="/sell" className="text-sm text-gray-600 hover:text-brand-600">Sākt pārdot</a></li>
                   <li><a href="/how-it-works" className="text-sm text-gray-600 hover:text-brand-600">Kā tas strādā</a></li>
                 </ul>
               </div>

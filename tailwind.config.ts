@@ -9,21 +9,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // izipizi brand: dark charcoal + teal/cyan
+        // izipizi brand colors (from BrandBook 2023)
         brand: {
-          50: "#effefb",
-          100: "#c8fff7",
-          200: "#92feef",
-          300: "#55f5e6",
-          400: "#20e2d4",
-          500: "#00c4b8",
-          600: "#009e96",
-          700: "#007d78",
-          800: "#00635f",
-          900: "#00514e",
-          950: "#1b2a2a",
+          50:  "#f0fef7",
+          100: "#d0fce8",
+          200: "#a3f8d3",
+          300: "#69f5b8",
+          400: "#53f3a4",  // izipizi green #53F3A4
+          500: "#0dd171",
+          600: "#00a652",
+          700: "#008542",
+          800: "#006b35",
+          900: "#00582d",
+          950: "#192635",  // izipizi dark navy #192635
         },
-        dark: "#1a1f2e",
+        // izipizi secondary purple #AD47FF
+        purple: {
+          50:  "#faf0ff",
+          100: "#f2d9ff",
+          200: "#e5b3ff",
+          300: "#d47dff",
+          400: "#ad47ff",  // izipizi purple #AD47FF
+          500: "#9020f0",
+          600: "#7a0fd4",
+          700: "#6409ad",
+          800: "#510689",
+          900: "#420570",
+        },
+        dark: "#192635",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

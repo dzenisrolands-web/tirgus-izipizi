@@ -79,7 +79,7 @@ export default function SellPage() {
         <ol className="mt-8 space-y-5">
           {steps.map((step) => (
             <li key={step.num} className="flex gap-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">
                 {step.num}
               </span>
               <div>
@@ -92,13 +92,13 @@ export default function SellPage() {
       </div>
 
       {/* CTA */}
-      <div className="mt-12 rounded-2xl bg-brand-600 px-8 py-10 text-center text-white">
+      <div className="mt-12 rounded-2xl bg-[#192635] px-8 py-10 text-center text-white">
         <h2 className="text-xl font-bold">Gatavs sākt?</h2>
-        <p className="mt-2 text-brand-100">Reģistrācija ir bezmaksas. Komisija tikai no pārdošanas.</p>
+        <p className="mt-2 text-gray-300">Reģistrācija ir bezmaksas. Komisija tikai no pārdošanas.</p>
         <Link href="/register?role=seller" className="btn-primary mt-5 bg-white text-brand-700 hover:bg-brand-50">
           Pieteikties tagad <ArrowRight size={16} className="ml-2" />
         </Link>
-        <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-brand-100">
+        <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-300">
           {["Bezmaksas reģistrācija", "Apstiprināšana 24h", "Latvijas zemnieki"].map((f) => (
             <li key={f} className="flex items-center gap-1.5">
               <CheckCircle size={13} /> {f}

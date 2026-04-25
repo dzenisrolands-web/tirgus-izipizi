@@ -130,7 +130,7 @@ export function KalendarsClient() {
           <SlidersHorizontal size={15} />
           Filtri
           {activeFilterCount > 0 && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] text-white">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-700 text-[10px] text-white">
               {activeFilterCount}
             </span>
           )}

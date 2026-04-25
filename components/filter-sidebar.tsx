@@ -10,6 +10,7 @@ export type Filters = {
   city: string;
   maxPrice: number;
   seller: string;
+  storageType: "all" | "frozen" | "chilled" | "ambient";
 };
 
 type Props = {
@@ -33,7 +34,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export const DEFAULT_FILTERS: Filters = { category: "Visi", city: "", maxPrice: 100, seller: "" };
+export const DEFAULT_FILTERS: Filters = { category: "Visi", city: "", maxPrice: 100, seller: "", storageType: "all" };
 
 export function FilterSidebar({ filters, onChange }: Props) {
   const cities = Array.from(new Set(lockers.map((l) => l.city)));
@@ -49,6 +50,28 @@ export function FilterSidebar({ filters, onChange }: Props) {
           Notīrīt
         </button>
       </div>
+
+      <Section title="Temperatūras režīms">
+        <div className="flex flex-col gap-1">
+          {([
+            { value: "all",     label: "Visi produkti" },
+            { value: "frozen",  label: "❄ Saldēti  -18°C" },
+            { value: "chilled", label: "🌡 Dzesēti  +2°C – +6°C" },
+            { value: "ambient", label: "📦 Istabas temperatūra" },
+          ] as const).map((opt) => (
+            <button key={opt.value}
+              onClick={() => onChange({ ...filters, storageType: opt.value })}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm transition",
+                filters.storageType === opt.value
+                  ? "bg-brand-50 font-semibold text-brand-700"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       <Section title="Kategorija">
         <div className="flex flex-col gap-1">

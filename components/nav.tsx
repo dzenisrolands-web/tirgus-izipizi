@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Search, Menu, X, ShoppingBag } from "lucide-react";
+import { Search, Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/lib/cart-context";
 
 export function Nav() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { count } = useCart();
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
@@ -15,11 +17,17 @@ export function Nav() {
         <div className="flex h-16 items-center gap-4">
           {/* Logo */}
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <span className="text-brand-600">
+            <span style={{ color: "#53F3A4" }}>
               <ShoppingBag size={22} strokeWidth={2.5} />
             </span>
             <span className="hidden text-sm font-bold text-gray-900 sm:block">
-              tirgus<span className="text-brand-600">.izipizi.lv</span>
+              tirgus
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}
+              >
+                .izipizi.lv
+              </span>
             </span>
           </Link>
 
@@ -62,11 +70,16 @@ export function Nav() {
             <Link href="/lockers" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Pakomāti
             </Link>
-            <Link href="/kalendars" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
-              Kalendārs
+            <Link href="/piegade" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
+              Piegāde
             </Link>
-            <Link href="/sell" className="btn-primary text-sm">
-              Pārdot
+            <Link href="/cart" className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100">
+              <ShoppingCart size={20} />
+              {count > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white" style={{ backgroundColor: "#53F3A4", color: "#192635" }}>
+                  {count > 9 ? "9+" : count}
+                </span>
+              )}
             </Link>
             <Link href="/login" className="btn-outline text-sm">
               Pieslēgties
@@ -110,18 +123,11 @@ export function Nav() {
               Pakomātu vietas
             </Link>
             <Link
-              href="/kalendars"
+              href="/piegade"
               className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
             >
-              Tirgu Kalendārs
-            </Link>
-            <Link
-              href="/sell"
-              className="mt-2 btn-primary text-center text-sm"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pārdot
+              Piegāde
             </Link>
             <Link
               href="/login"

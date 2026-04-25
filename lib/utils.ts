@@ -20,6 +20,21 @@ export function formatDate(dateString: string): string {
   }).format(new Date(dateString));
 }
 
+export function getStorageType(listing: { storageType?: string; category: string }): "frozen" | "chilled" | "ambient" {
+  if (listing.storageType === "frozen" || listing.storageType === "chilled" || listing.storageType === "ambient") {
+    return listing.storageType;
+  }
+  if (listing.category === "Saldēta pārtika") return "frozen";
+  if (listing.category === "Garšaugi" || listing.category === "Konservi" || listing.category === "Eļļas" || listing.category === "Uztura bagātinātāji") return "ambient";
+  return "chilled";
+}
+
+export const storageConfig = {
+  frozen:  { label: "-18°C",        icon: "", cls: "bg-blue-50 text-blue-700 border border-blue-200" },
+  chilled: { label: "+2°C – +6°C",  icon: "", cls: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
+  ambient: { label: "Istabas t°",   icon: "", cls: "bg-gray-50 text-gray-600 border border-gray-200" },
+};
+
 export function daysUntil(dateString: string): number {
   const today = new Date();
   const target = new Date(dateString);

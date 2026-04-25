@@ -1,0 +1,219 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Loader2, ImageIcon } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { lockers, categories } from "@/lib/mock-data";
+
+const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
+const CATS = categories.filter(c => c !== "Visi");
+
+export type ProductData = {
+  title: string;
+  description: string;
+  price: string;
+  unit: string;
+  category: string;
+  image_url: string;
+  locker_id: string;
+  quantity: string;
+  status: "active" | "paused";
+};
+
+const EMPTY: ProductData = {
+  title: "", description: "", price: "", unit: "gab.",
+  category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
+  quantity: "1", status: "active",
+};
+
+export function ProductForm({
+  initial,
+  productId,
+}: {
+  initial?: Partial<ProductData>;
+  productId?: string;
+}) {
+  const router = useRouter();
+  const [form, setForm] = useState<ProductData>({ ...EMPTY, ...initial });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function set(k: keyof ProductData, v: string) {
+    setForm(f => ({ ...f, [k]: v }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (!form.title.trim()) return setError("Nosaukums ir obligāts");
+    if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
+      return setError("Ievadi derīgu cenu");
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nav pieslēdzies");
+
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      const payload = {
+        user_id: user.id,
+        seller_id: seller?.id ?? null,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        price: Number(form.price),
+        unit: form.unit,
+        category: form.category,
+        image_url: form.image_url.trim(),
+        locker_id: form.locker_id,
+        quantity: Number(form.quantity) || 1,
+        status: form.status,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (productId) {
+        const { error } = await supabase.from("listings").update(payload).eq("id", productId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("listings").insert(payload);
+        if (error) throw error;
+      }
+
+      router.push("/dashboard/produkti");
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Kļūda saglabājot");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-6 py-10 space-y-8">
+      <div>
+        <h1 className="text-2xl font-extrabold text-gray-900">
+          {productId ? "Rediģēt produktu" : "Jauns produkts"}
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          {productId ? "Mainīt produkta informāciju" : "Pievieno jaunu produktu savam katalogam"}
+        </p>
+      </div>
+
+      {error && (
+        <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
+
+      {/* Basic info */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-extrabold text-gray-700">Pamatinformācija</h2>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Nosaukums *</label>
+          <input value={form.title} onChange={e => set("title", e.target.value)}
+            className="input mt-1 w-full" placeholder="Piemēram: Brieža gaļas pelmeņi 400g" required />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Apraksts</label>
+          <textarea value={form.description} onChange={e => set("description", e.target.value)}
+            rows={4} className="input mt-1 w-full resize-y"
+            placeholder="Sastāvdaļas, ražošanas veids, uzglabāšana..." />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Cena (€) *</label>
+            <input type="number" step="0.01" min="0" value={form.price} onChange={e => set("price", e.target.value)}
+              className="input mt-1 w-full" placeholder="4.99" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Vienība</label>
+            <select value={form.unit} onChange={e => set("unit", e.target.value)} className="input mt-1 w-full">
+              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Kategorija</label>
+            <select value={form.category} onChange={e => set("category", e.target.value)} className="input mt-1 w-full">
+              {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Daudzums (gab.)</label>
+            <input type="number" min="0" value={form.quantity} onChange={e => set("quantity", e.target.value)}
+              className="input mt-1 w-full" placeholder="10" />
+          </div>
+        </div>
+      </section>
+
+      {/* Image */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-extrabold text-gray-700">Bilde</h2>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Bildes URL</label>
+          <input value={form.image_url} onChange={e => set("image_url", e.target.value)}
+            className="input mt-1 w-full" placeholder="https://..." />
+        </div>
+        {form.image_url ? (
+          <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gray-100">
+            <Image src={form.image_url} alt="Priekšskatījums" fill className="object-cover"
+              onError={() => set("image_url", "")} />
+          </div>
+        ) : (
+          <div className="flex h-32 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50">
+            <div className="text-center">
+              <ImageIcon size={24} className="mx-auto text-gray-300" />
+              <p className="mt-1 text-xs text-gray-400">Ieliec URL augstāk</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Locker + status */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-extrabold text-gray-700">Pakomāts un statuss</h2>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Pakomāts</label>
+          <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
+            {lockers.map(l => (
+              <option key={l.id} value={l.id}>{l.city} — {l.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Statuss</label>
+          <select value={form.status} onChange={e => set("status", e.target.value as ProductData["status"])}
+            className="input mt-1 w-full">
+            <option value="active">Aktīvs — redzams katalogā</option>
+            <option value="paused">Pauzēts — slēpts no kataloga</option>
+          </select>
+        </div>
+      </section>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={saving}
+          className="btn-primary flex items-center gap-2 disabled:opacity-50">
+          {saving && <Loader2 size={15} className="animate-spin" />}
+          {productId ? "Saglabāt izmaiņas" : "Pievienot produktu"}
+        </button>
+        <button type="button" onClick={() => router.back()}
+          className="btn-outline">
+          Atcelt
+        </button>
+      </div>
+    </form>
+  );
+}
