@@ -170,7 +170,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
               {galleryImages.length > 0 && (
                 <div>
                   <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">Foto galerija</h2>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {galleryImages.map((img, i) => (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img key={i} src={img.src} alt={img.title}

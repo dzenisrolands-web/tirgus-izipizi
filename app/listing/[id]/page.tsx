@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, CheckCircle, Clock, ShoppingCart, ArrowLeft } from "lucide-react";
-import { listings, reviews } from "@/lib/mock-data";
+import { listings, reviews, sellerHomeLockers } from "@/lib/mock-data";
 import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
@@ -19,6 +19,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
+  const isHomeLocker = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
   const listingReviews = reviews.filter((r) => r.listingId === id);
   const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
 
@@ -28,7 +29,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
       </Link>
 
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid gap-6 lg:gap-10 lg:grid-cols-2">
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-gray-100">
           <Image src={listing.image} alt={listing.title} fill className="object-cover" priority />
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-gray-700 backdrop-blur-sm">
@@ -38,14 +39,14 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">{listing.title}</h1>
+            <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">{listing.title}</h1>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-gray-900">{formatPrice(listing.price)}</span>
-              <span className="text-base text-gray-400">/ {listing.unit}</span>
+              <span className="text-2xl font-bold text-gray-900 sm:text-3xl">{formatPrice(listing.price)}</span>
+              <span className="text-sm text-gray-400 sm:text-base">/ {listing.unit}</span>
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <div className="flex flex-1 items-center gap-2 rounded-xl bg-amber-50 px-4 py-3">
               <Clock size={16} className="shrink-0 text-amber-600" />
               <div>
@@ -71,10 +72,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <span>{listing.quantity} {listing.unit}</span>
           </div>
 
-          <DeliveryChoice locker={listing.locker} price={listing.price} />
+          <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} />
 
-          <button className="btn-primary w-full py-3 text-base">
-            <ShoppingCart size={18} className="mr-2" /> Pievienot grozam
+          <button className="btn-primary flex w-full items-center justify-center gap-2 py-3 text-base">
+            <ShoppingCart size={18} /> Pievienot grozam
           </button>
 
           <div className="rounded-xl border border-gray-100 p-4">

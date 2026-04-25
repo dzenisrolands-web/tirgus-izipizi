@@ -6,6 +6,7 @@ export type Locker = {
 export type Seller = {
   id: string; name: string; farmName: string; avatar: string;
   verified: boolean; rating: number; reviewCount: number; location: string;
+  homeLockerIds?: string[];
 };
 export type StorageType = "frozen" | "chilled" | "ambient";
 
@@ -66,67 +67,17 @@ export const lockers: Locker[] = [
 ];
 
 export const sellers: Seller[] = [
-  {
-    "id": "s7",
-    "name": "Bujums",
-    "farmName": "Bujums",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/2424703logo-white-webp.webp",
-    "verified": true,
-    "rating": 4.9,
-    "reviewCount": 84,
-    "location": "Rīga"
-  },
-  {
-    "id": "s8",
-    "name": "WILD’N’FREE",
-    "farmName": "WILD’N’FREE",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/6775821Artboard-1-png.png",
-    "verified": true,
-    "rating": 4.8,
-    "reviewCount": 61,
-    "location": "Vidzemes novads"
-  },
-  {
-    "id": "s9",
-    "name": "Oranžās Bumbas",
-    "farmName": "Oranžās Bumbas",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/8252295WhatsApp-Image-2025-12-15-at-12-56-39-jpeg.jpeg",
-    "verified": true,
-    "rating": 5,
-    "reviewCount": 38,
-    "location": "Rīga"
-  },
-  {
-    "id": "s12",
-    "name": "Cake Break",
-    "farmName": "Cake Break",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/2132015Logo-CB-3-png.png",
-    "verified": true,
-    "rating": 4.9,
-    "reviewCount": 112,
-    "location": "Suntaži"
-  },
-  {
-    "id": "s13",
-    "name": "K/S \"Ekoloģisks.lv\"",
-    "farmName": "K/S \"Ekoloģisks.lv\"",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/956832Log-mini-png.png",
-    "verified": true,
-    "rating": 4.7,
-    "reviewCount": 55,
-    "location": "Pierīgas novads"
-  },
-  {
-    "id": "s14",
-    "name": "austeru bārs BURŽUJS",
-    "farmName": "austeru bārs BURŽUJS",
-    "avatar": "https://business.izipizi.lv/images/marketplace/logos/3294566Burzujs-logo-reverse-jpg.jpg",
-    "verified": true,
-    "rating": 4.9,
-    "reviewCount": 47,
-    "location": "Rīga"
-  }
+  { "id": "s7",  "name": "Bujums",               "farmName": "Bujums",               "avatar": "https://business.izipizi.lv/images/marketplace/logos/2424703logo-white-webp.webp",                                     "verified": true,  "rating": 4.9, "reviewCount": 84,  "location": "Rīga",             "homeLockerIds": ["brivibas", "agenskalna"] },
+  { "id": "s8",  "name": "WILD’N’FREE",           "farmName": "WILD’N’FREE",           "avatar": "https://business.izipizi.lv/images/marketplace/logos/6775821Artboard-1-png.png",                                          "verified": true,  "rating": 4.8, "reviewCount": 61,  "location": "Vidzemes novads",  "homeLockerIds": ["salaspils"] },
+  { "id": "s9",  "name": "Oranžās Bumbas",        "farmName": "Oranžās Bumbas",        "avatar": "https://business.izipizi.lv/images/marketplace/logos/8252295WhatsApp-Image-2025-12-15-at-12-56-39-jpeg.jpeg",              "verified": true,  "rating": 5,   "reviewCount": 38,  "location": "Rīga",             "homeLockerIds": ["agenskalna"] },
+  { "id": "s12", "name": "Cake Break",             "farmName": "Cake Break",             "avatar": "https://business.izipizi.lv/images/marketplace/logos/2132015Logo-CB-3-png.png",                                          "verified": true,  "rating": 4.9, "reviewCount": 112, "location": "Suntaži",          "homeLockerIds": ["ikskile", "salaspils"] },
+  { "id": "s13", "name": "K/S \"Ekoloģisks.lv\"", "farmName": "K/S \"Ekoloģisks.lv\"", "avatar": "https://business.izipizi.lv/images/marketplace/logos/956832Log-mini-png.png",                                            "verified": true,  "rating": 4.7, "reviewCount": 55,  "location": "Pierīgas novads",  "homeLockerIds": ["ikskile"] },
+  { "id": "s14", "name": "austeru bārs BURŽUJS",   "farmName": "austeru bārs BURŽUJS",   "avatar": "https://business.izipizi.lv/images/marketplace/logos/3294566Burzujs-logo-reverse-jpg.jpg",                               "verified": true,  "rating": 4.9, "reviewCount": 47,  "location": "Rīga",             "homeLockerIds": ["brivibas"] }
 ];
+
+export const sellerHomeLockers: Record<string, string[]> = Object.fromEntries(
+  sellers.map(s => [s.id, s.homeLockerIds ?? []])
+);
 
 export const listings: Listing[] = [
   {"id":"l1","title":"Pelmeņi vegānie","description":"Pelmeņi vegānie Burkāns meklē savu brāli, ne jau cāli, un ne kāli, skaistu, spīdīgu kā mānu, piemīlīgo baklažānu. BUJUMS abus kopā veda, jaunu maju brāļiem deva, ja pie galda esi sēdis, kļūsti lepns viņus ēdis. Saldēti izmantojot šoku, iepakojums kastīte 400g. Viens iepakojums 400g. Cena norādīta par vienu iepakojumu. Sastāvdaļas: Mīkla 45%, pildījums 55%. Mīkla: KVIEŠU milti, ūdens, rapšu eļļa, sāls, cukurs). Pildījums: 58% zirņi, 13% kāposti, 13% sīpoli, dilles, sāls, melnie pipari. Enerģētiskā vērtība: kJ 1007.3 / kcal 237.9 Uzturvērtība uz 100g: Tauki 2.27 g, t.sk. piesātinātās taukskābes 50.31g, ogļhidrāti 41.9g, t.sk. cukuri 1.82g, šķiedrvielas 2.16g, olbaltumvielas 11.39g, sāls 1.0g. Pagatavošana: Ielieciet pelmeņus verdošā sālītā ūdenī, pievienojiet garšvielas. Kad pelmeņi uzpeldējuši, vāriet vēl 5-7 minūtes. Uzglabāšanas temperatūra: Ne zemāka kā -180 C Pelmeņi vegānie - 4.00&euro; X Pievienot grozam X","price":4,"unit":"gab.","category":"Saldēta pārtika","image":"https://business.izipizi.lv/images/marketplace/products/4998684Pelmeni-veganie-webp.webp","sellerId":"s7","lockerId":"brivibas","freshnessDate":"2026-09-30","quantity":10,"createdAt":"2026-04-22","seller":{"id":"s7","name":"Bujums","farmName":"Bujums","avatar":"https://business.izipizi.lv/images/marketplace/logos/2424703logo-white-webp.webp","verified":true,"rating":4.9,"reviewCount":84,"location":"Rīga"},"locker":{"id":"brivibas","name":"Brīvības iela 253","address":"Brīvības iela 253 / NESTE","city":"Rīga","hours":"24/7"}},

@@ -71,7 +71,7 @@ export default function HowItWorksPage() {
       <div className="text-center">
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Kā tas strādā?</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-500">
-          tirgus.izipizi.lv savieno Latvijas zemnieku produktus ar klientiem caur IziPizi pakomātu tīklu.
+          tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar klientiem caur IziPizi pakomātu tīklu.
           Ērti abiem — pārdevējam un pircējam.
         </p>
       </div>

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { listings, lockers } from "@/lib/mock-data";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getStorageType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const DELIVERY_FEE = 1.5;
@@ -92,7 +92,7 @@ export function CartPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Steps */}
-      <div className="mb-8 flex items-center gap-2 text-sm">
+      <div className="mb-8 flex flex-wrap items-center gap-2 text-sm">
         {(["cart", "delivery", "confirm"] as Step[]).map((s, i) => {
           const labels = ["Grozs", "Piegāde", "Apmaksa"];
           const active = s === step;
@@ -293,7 +293,7 @@ export function CartPage() {
 
         {/* RIGHT — sticky summary */}
         <div className="lg:col-span-1">
-          <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
+          <div className="lg:sticky lg:top-24 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
             <h3 className="font-extrabold text-gray-900">Pasūtījuma kopsavilkums</h3>
 
             <div className="space-y-2 text-sm">
@@ -380,8 +380,8 @@ function CartItemRow({
   removeItem: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-4 p-4">
-      <Link href={`/listing/${item.id}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+    <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+      <Link href={`/listing/${item.id}`} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-16 sm:w-16">
         <Image src={item.image} alt={item.title} fill className="object-cover" />
       </Link>
       <div className="flex-1 min-w-0">
@@ -437,6 +437,7 @@ function UpsellSection({ title, items }: { title: string; items: ReturnType<type
       unit: item.unit,
       image: item.image,
       sellerName: item.seller.farmName,
+      storageType: getStorageType(item),
     });
     setAdded((prev) => ({ ...prev, [item.id]: true }));
     setTimeout(() => setAdded((prev) => ({ ...prev, [item.id]: false })), 1500);

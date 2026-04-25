@@ -99,7 +99,7 @@ export default function SellPage() {
           Pieteikties tagad <ArrowRight size={16} className="ml-2" />
         </Link>
         <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-300">
-          {["Bezmaksas reģistrācija", "Apstiprināšana 24h", "Latvijas zemnieki"].map((f) => (
+          {["Bezmaksas reģistrācija", "Apstiprināšana 24h", "Latvijas ražotāji"].map((f) => (
             <li key={f} className="flex items-center gap-1.5">
               <CheckCircle size={13} /> {f}
             </li>

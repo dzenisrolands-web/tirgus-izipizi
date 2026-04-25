@@ -35,6 +35,10 @@ export const storageConfig = {
   ambient: { label: "Istabas t°",   icon: "", cls: "bg-gray-50 text-gray-600 border border-gray-200" },
 };
 
+export const HOME_LOCKER_FEE = 1.50;
+export const TRANSFER_FEE = 3.00;
+export const COURIER_BASE_FEE = 4.50;
+
 export function daysUntil(dateString: string): number {
   const today = new Date();
   const target = new Date(dateString);

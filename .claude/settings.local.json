@@ -88,7 +88,10 @@
       "Bash(node -e ' *)",
       "Bash(grep -oP 'href=[\"'\"'\"'`]\\\\K[^\"'\"'\"'`]+\\(?=[\"'\"'\"'`]\\)')",
       "Bash(grep -oP 'router\\\\.push\\\\\\([\"'\"'\"'`]\\\\K[^\"'\"'\"'`}]+\\(?=[\"'\"'\"'`\\\\}]\\)')",
-      "Bash(npx tsx -e ' *)"
+      "Bash(npx tsx -e ' *)",
+      "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" remote -v)",
+      "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" log --oneline -5)",
+      "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" status --short)"
     ]
   }
 }

@@ -98,7 +98,7 @@ export default function AdminProduktisPage() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">Visi produkti</h1>
         <p className="mt-0.5 text-sm text-gray-500">{items.length} kopā</p>
@@ -162,7 +162,7 @@ export default function AdminProduktisPage() {
                       setItems(p => p.map(i => i.id === item.id ? { ...i, storage_type: val } : i));
                     }}
                     className={cn(
-                      "hidden sm:inline-block cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold shrink-0 border outline-none",
+                      "cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold shrink-0 border outline-none",
                       item.storage_type === "frozen"  ? "bg-blue-50 text-blue-700 border-blue-300" :
                       item.storage_type === "ambient" ? "bg-gray-100 text-gray-600 border-gray-300" :
                                                         "bg-cyan-50 text-cyan-700 border-cyan-300"
@@ -172,10 +172,10 @@ export default function AdminProduktisPage() {
                     <option value="chilled">🌡 +2°C – +6°C</option>
                     <option value="ambient">📦 Istabas t°</option>
                   </select>
-                  <span className="hidden sm:block text-sm font-bold text-gray-900 shrink-0">
+                  <span className="hidden md:block text-sm font-bold text-gray-900 shrink-0">
                     {formatPrice(item.price)}
                   </span>
-                  <span className={cn("hidden sm:inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0", st.cls)}>
+                  <span className={cn("hidden md:inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0", st.cls)}>
                     {st.label}
                   </span>
                   <div className="flex items-center gap-1 shrink-0">

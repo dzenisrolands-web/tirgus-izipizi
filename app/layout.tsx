@@ -13,8 +13,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "tirgus.izipizi.lv — Vietējie produkti pie tevis tuvāk",
   description:
-    "Iegādājies svaigus produktus no Latvijas zemniekiem un saņem tos izipizi pakomates savā tuvumā.",
-  keywords: ["tirgus", "svaiga pārtika", "zemnieki", "pakomāts", "izipizi", "vietējie produkti"],
+    "Iegādājies svaigus produktus no Latvijas ražotājiem un saņem tos izipizi pakomates savā tuvumā.",
+  keywords: ["tirgus", "svaiga pārtika", "ražotāji", "pakomāts", "izipizi", "vietējie produkti"],
 };
 
 export default function RootLayout({
@@ -37,7 +37,7 @@ export default function RootLayout({
               <div>
                 <p className="text-sm font-semibold text-brand-700">tirgus.izipizi.lv</p>
                 <p className="mt-2 text-xs text-gray-500">
-                  Latvijas zemnieku un ražotāju tirgus vieta.
+                  Latvijas ražotāju tirgus vieta.
                 </p>
               </div>
               <div>
@@ -46,6 +46,8 @@ export default function RootLayout({
                   <li><a href="/catalog" className="text-sm text-gray-600 hover:text-brand-600">Skatīt produktus</a></li>
                   <li><a href="/lockers" className="text-sm text-gray-600 hover:text-brand-600">Pakomātu vietas</a></li>
                   <li><a href="/receptes" className="text-sm text-gray-600 hover:text-brand-600">Receptes</a></li>
+                  <li><a href="/piegade" className="text-sm text-gray-600 hover:text-brand-600">Piegāde</a></li>
+                  <li><a href="/eksprespiegade" className="text-sm font-medium text-yellow-700 hover:text-yellow-800">⚡ Eksprespiegāde</a></li>
                   <li><a href="/kalendars" className="text-sm text-gray-600 hover:text-brand-600">Tirgu kalendārs</a></li>
                 </ul>
               </div>

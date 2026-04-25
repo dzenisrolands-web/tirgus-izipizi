@@ -2,25 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Package, Truck, MapPin, Clock, Thermometer, Tag, ChevronRight } from "lucide-react";
+import { Package, Truck, MapPin, Clock, Thermometer, ChevronRight, Home, ArrowRight } from "lucide-react";
 import { type Locker } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import { cn, HOME_LOCKER_FEE, TRANSFER_FEE, COURIER_BASE_FEE } from "@/lib/utils";
 
 type Props = {
   locker: Locker;
   price: number;
+  isHomeLocker: boolean;
 };
 
-const COURIER_FEE = 4.50;
-const LOCKER_FEE = 3.00;
-
-export function DeliveryChoice({ locker }: Props) {
+export function DeliveryChoice({ locker, isHomeLocker }: Props) {
   const [selected, setSelected] = useState<"locker" | "courier">("locker");
   const [address, setAddress] = useState("");
 
+  const lockerFee = isHomeLocker ? HOME_LOCKER_FEE : TRANSFER_FEE;
+
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
         Piegādes veids
       </p>
 
@@ -35,19 +35,32 @@ export function DeliveryChoice({ locker }: Props) {
               : "border-gray-200 hover:border-gray-300"
           )}
         >
-          <Package size={18} className={selected === "locker" ? "text-brand-700" : "text-gray-400"} />
+          <div className="flex items-center gap-1.5">
+            <Package size={16} className={selected === "locker" ? "text-brand-700" : "text-gray-400"} />
+            {isHomeLocker && (
+              <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700">
+                MĀJAS
+              </span>
+            )}
+          </div>
           <p className={cn("mt-1.5 text-xs font-bold", selected === "locker" ? "text-brand-700" : "text-gray-700")}>
             Pakomāts
           </p>
           <p className="text-xs text-gray-500">24/7 piekļuve</p>
           <div className="mt-2 flex items-center gap-1">
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold text-[#192635]"
-              style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}
-            >
-              Akcija
-            </span>
-            <span className="text-xs font-bold text-gray-900">{LOCKER_FEE.toFixed(2)} €</span>
+            {isHomeLocker ? (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold text-[#192635]"
+                style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}
+              >
+                Lētākā
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                Starppakomāts
+              </span>
+            )}
+            <span className="text-xs font-bold text-gray-900">{lockerFee.toFixed(2)} €</span>
           </div>
         </button>
 
@@ -61,43 +74,69 @@ export function DeliveryChoice({ locker }: Props) {
               : "border-gray-200 hover:border-gray-300"
           )}
         >
-          <Truck size={18} className={selected === "courier" ? "text-gray-800" : "text-gray-400"} />
+          <Truck size={16} className={selected === "courier" ? "text-gray-800" : "text-gray-400"} />
           <p className={cn("mt-1.5 text-xs font-bold", selected === "courier" ? "text-gray-800" : "text-gray-700")}>
             Kurjers
           </p>
           <p className="text-xs text-gray-500">Uz mājas adresi</p>
-          <p className="mt-2 text-xs font-bold text-gray-900">no {COURIER_FEE.toFixed(2)} €</p>
+          <p className="mt-2 text-xs font-bold text-gray-900">no {COURIER_BASE_FEE.toFixed(2)} €</p>
         </button>
       </div>
 
       {/* Locker detail */}
       {selected === "locker" && (
-        <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+        <div className="mt-3 space-y-2 rounded-xl border border-gray-100 bg-gray-50 p-3">
           <div className="flex items-start gap-2">
-            <MapPin size={15} className="mt-0.5 shrink-0 text-brand-600" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{locker.name}</p>
-              <p className="text-xs text-gray-500">{locker.address}</p>
+            <div className={cn(
+              "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+              isHomeLocker ? "bg-brand-100" : "bg-gray-200"
+            )}>
+              {isHomeLocker
+                ? <Home size={12} className="text-brand-700" />
+                : <MapPin size={12} className="text-gray-500" />
+              }
             </div>
-            <span className="flex items-center gap-0.5 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-              <Clock size={9} />
-              {locker.hours}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-gray-900">{locker.name}</p>
+                {isHomeLocker && (
+                  <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700">
+                    Mājas pakomāts
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">{locker.address} · {locker.city}</p>
+            </div>
+            <span className="flex items-center gap-0.5 shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+              <Clock size={9} /> {locker.hours}
             </span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-400">
+
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
             <Thermometer size={11} />
             +2°C līdz +6°C · saldēts −18°C
           </div>
-          <div className="mt-2 flex items-center gap-1 text-xs text-brand-600">
-            <Tag size={10} />
-            <span>Piegāde uz pakomātu — <strong>3.00 €</strong> (akcijas cena)</span>
-          </div>
+
+          {isHomeLocker ? (
+            <div className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
+              <strong>Lētākā opcija</strong> — ražotājs pats ievieto sūtījumu šajā pakomātā.
+              Piegādes maksa: <strong>{HOME_LOCKER_FEE.toFixed(2)} €</strong>
+            </div>
+          ) : (
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <strong>Starppakomāts</strong> — sūtījums tiek pārvietots no ražotāja mājas pakomāta.
+              Piegādes maksa: <strong>{TRANSFER_FEE.toFixed(2)} €</strong>
+              <Link href="/piegade" className="ml-1.5 inline-flex items-center gap-0.5 underline">
+                Uzzināt vairāk <ArrowRight size={10} />
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
       {/* Courier detail */}
       {selected === "courier" && (
-        <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3 space-y-3">
+        <div className="mt-3 space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
           <div>
             <label className="text-xs font-semibold text-gray-700">Piegādes adrese</label>
             <input
@@ -108,18 +147,14 @@ export function DeliveryChoice({ locker }: Props) {
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </div>
-          <div className="rounded-lg bg-white border border-gray-100 p-2.5 text-xs text-gray-600 space-y-1">
+          <div className="rounded-lg border border-gray-100 bg-white p-2.5 text-xs text-gray-600 space-y-1">
             <p className="font-semibold text-gray-700">Orientējošās cenas (+PVN):</p>
             <p>Rīga (Zona 0) — no <strong>4.50 €</strong></p>
             <p>Pierīga / Jūrmala (Zona 1) — no <strong>5.50 €</strong></p>
             <p>Pārējā Latvija (Zona 2) — no <strong>7.50 €</strong></p>
           </div>
-          <Link
-            href="/piegade"
-            className="flex items-center gap-1 text-xs text-brand-600 hover:underline"
-          >
-            Detalizēta cenu tabula
-            <ChevronRight size={12} />
+          <Link href="/piegade" className="flex items-center gap-1 text-xs text-brand-600 hover:underline">
+            Detalizēta cenu tabula <ChevronRight size={12} />
           </Link>
         </div>
       )}

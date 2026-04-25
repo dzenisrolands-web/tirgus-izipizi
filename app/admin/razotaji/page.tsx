@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Clock, AlertCircle, Search } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Seller = {
@@ -11,6 +11,7 @@ type Seller = {
   location: string | null;
   status: "draft" | "pending" | "approved" | "rejected";
   created_at: string;
+  home_locker_ids: string[] | null;
 };
 
 const statusMap = {
@@ -20,16 +21,26 @@ const statusMap = {
   rejected: { label: "Noraidīts",  cls: "bg-red-100 text-red-600" },
 };
 
+const LOCKERS = [
+  { id: "brivibas",  label: "Brīvības 253, Rīga" },
+  { id: "agenskalna", label: "Āgenskalna tirgus, Rīga" },
+  { id: "salaspils", label: "Salaspils" },
+  { id: "ikskile",   label: "Ikšķile" },
+  { id: "tukums",    label: "Tukuma tirgus" },
+  { id: "dundaga",   label: "Dundagas tirgus" },
+];
+
 export default function AdminRazotajiPage() {
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [search, setSearch] = useState("");
+  const [expandedLocker, setExpandedLocker] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
       .from("sellers")
-      .select("id,name,description,location,status,created_at")
+      .select("id,name,description,location,status,created_at,home_locker_ids")
       .order("created_at", { ascending: false });
     setSellers(data ?? []);
     setLoading(false);
@@ -40,6 +51,17 @@ export default function AdminRazotajiPage() {
   async function updateStatus(id: string, status: "approved" | "rejected") {
     await supabase.from("sellers").update({ status }).eq("id", id);
     setSellers(p => p.map(s => s.id === id ? { ...s, status } : s));
+  }
+
+  async function toggleHomeLocker(sellerId: string, lockerId: string) {
+    const seller = sellers.find(s => s.id === sellerId);
+    if (!seller) return;
+    const current = seller.home_locker_ids ?? [];
+    const updated = current.includes(lockerId)
+      ? current.filter(id => id !== lockerId)
+      : [...current, lockerId];
+    await supabase.from("sellers").update({ home_locker_ids: updated }).eq("id", sellerId);
+    setSellers(p => p.map(s => s.id === sellerId ? { ...s, home_locker_ids: updated } : s));
   }
 
   const visible = sellers.filter(s => {
@@ -55,7 +77,7 @@ export default function AdminRazotajiPage() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">Ražotāji</h1>
         <p className="mt-0.5 text-sm text-gray-500">{sellers.length} kopā</p>
@@ -93,55 +115,105 @@ export default function AdminRazotajiPage() {
           <div className="divide-y divide-gray-50">
             {visible.map(seller => {
               const st = statusMap[seller.status];
+              const homeLockers = seller.home_locker_ids ?? [];
+              const isExpanded = expandedLocker === seller.id;
               return (
-                <div key={seller.id} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50 transition">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                      seller.status === "pending" ? "bg-amber-100 text-amber-700" :
-                      seller.status === "approved" ? "bg-green-100 text-green-700" :
-                      "bg-gray-100 text-gray-500"
-                    }`}>
-                      {seller.status === "pending" ? <AlertCircle size={15} /> :
-                       seller.status === "approved" ? <CheckCircle size={15} /> :
-                       <Clock size={15} />}
+                <div key={seller.id} className="px-5 py-4 hover:bg-gray-50 transition">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        seller.status === "pending" ? "bg-amber-100 text-amber-700" :
+                        seller.status === "approved" ? "bg-green-100 text-green-700" :
+                        "bg-gray-100 text-gray-500"
+                      }`}>
+                        {seller.status === "pending" ? <AlertCircle size={15} /> :
+                         seller.status === "approved" ? <CheckCircle size={15} /> :
+                         <Clock size={15} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">{seller.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {seller.location ?? "—"} · {new Date(seller.created_at).toLocaleDateString("lv-LV")}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{seller.name}</p>
-                      <p className="text-xs text-gray-400">
-                        {seller.location ?? "—"} · {new Date(seller.created_at).toLocaleDateString("lv-LV")}
-                      </p>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.cls}`}>
+                        {st.label}
+                      </span>
+                      {/* Home locker toggle */}
+                      <button
+                        onClick={() => setExpandedLocker(isExpanded ? null : seller.id)}
+                        className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                          homeLockers.length > 0
+                            ? "bg-brand-50 text-brand-700 hover:bg-brand-100"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        }`}
+                        title="Mājas pakomāti"
+                      >
+                        <Home size={12} />
+                        {homeLockers.length > 0 ? homeLockers.length : <Plus size={11} />}
+                      </button>
+                      {seller.status === "pending" && (
+                        <>
+                          <button onClick={() => updateStatus(seller.id, "approved")}
+                            className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
+                            <CheckCircle size={12} /> Apstiprināt
+                          </button>
+                          <button onClick={() => updateStatus(seller.id, "rejected")}
+                            className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
+                            <XCircle size={12} /> Noraidīt
+                          </button>
+                        </>
+                      )}
+                      {seller.status === "approved" && (
+                        <button onClick={() => updateStatus(seller.id, "rejected")}
+                          className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
+                          Noraidīt
+                        </button>
+                      )}
+                      {seller.status === "rejected" && (
+                        <button onClick={() => updateStatus(seller.id, "approved")}
+                          className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
+                          Apstiprināt
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.cls}`}>
-                      {st.label}
-                    </span>
-                    {seller.status === "pending" && (
-                      <>
-                        <button onClick={() => updateStatus(seller.id, "approved")}
-                          className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
-                          <CheckCircle size={12} /> Apstiprināt
-                        </button>
-                        <button onClick={() => updateStatus(seller.id, "rejected")}
-                          className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
-                          <XCircle size={12} /> Noraidīt
-                        </button>
-                      </>
-                    )}
-                    {seller.status === "approved" && (
-                      <button onClick={() => updateStatus(seller.id, "rejected")}
-                        className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
-                        Noraidīt
-                      </button>
-                    )}
-                    {seller.status === "rejected" && (
-                      <button onClick={() => updateStatus(seller.id, "approved")}
-                        className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
-                        Apstiprināt
-                      </button>
-                    )}
-                  </div>
+                  {/* Home locker expanded panel */}
+                  {isExpanded && (
+                    <div className="mt-3 ml-12 rounded-xl border border-gray-100 bg-white p-3">
+                      <p className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Mājas pakomāti
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {LOCKERS.map(locker => {
+                          const active = homeLockers.includes(locker.id);
+                          return (
+                            <button
+                              key={locker.id}
+                              onClick={() => toggleHomeLocker(seller.id, locker.id)}
+                              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+                                active
+                                  ? "bg-brand-100 text-brand-700 hover:bg-brand-200"
+                                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                              }`}
+                            >
+                              {active ? <X size={10} /> : <Plus size={10} />}
+                              {locker.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {homeLockers.length > 0 && (
+                        <p className="mt-2 text-[11px] text-brand-600">
+                          Aktīvi: {homeLockers.map(id => LOCKERS.find(l => l.id === id)?.label ?? id).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

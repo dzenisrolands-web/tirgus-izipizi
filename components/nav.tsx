@@ -5,11 +5,13 @@ import { useState } from "react";
 import { Search, Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
+import { useRouter } from "next/navigation";
 
 export function Nav() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const { count } = useCart();
+  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
@@ -37,7 +39,7 @@ export function Nav() {
             onSubmit={(e) => {
               e.preventDefault();
               if (searchQuery.trim()) {
-                window.location.href = `/catalog?q=${encodeURIComponent(searchQuery)}`;
+                router.push(`/catalog?q=${encodeURIComponent(searchQuery)}`);
               }
             }}
           >
@@ -73,6 +75,9 @@ export function Nav() {
             <Link href="/piegade" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Piegāde
             </Link>
+            <Link href="/eksprespiegade" className="flex items-center gap-1 rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-100">
+              ⚡ Ekspres
+            </Link>
             <Link href="/cart" className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100">
               <ShoppingCart size={20} />
               {count > 0 && (
@@ -86,9 +91,19 @@ export function Nav() {
             </Link>
           </nav>
 
+          {/* Mobile cart */}
+          <Link href="/cart" className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden">
+            <ShoppingCart size={20} />
+            {count > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold" style={{ backgroundColor: "#53F3A4", color: "#192635" }}>
+                {count > 9 ? "9+" : count}
+              </span>
+            )}
+          </Link>
+
           {/* Mobile toggle */}
           <button
-            className="ml-2 rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 md:hidden"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Navigācija"
           >
@@ -128,6 +143,13 @@ export function Nav() {
               onClick={() => setMobileOpen(false)}
             >
               Piegāde
+            </Link>
+            <Link
+              href="/eksprespiegade"
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50"
+              onClick={() => setMobileOpen(false)}
+            >
+              ⚡ Eksprespiegāde
             </Link>
             <Link
               href="/login"
