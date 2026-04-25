@@ -64,7 +64,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     brand: { "@type": "Brand", name: listing.seller.farmName },
     aggregateRating: listingReviews.length > 0 ? {
       "@type": "AggregateRating",
-      ratingValue: (listingReviews.reduce((s, r) => s + r.rating, 0) / listingReviews.length).toFixed(1),
+      ratingValue: (listingReviews.reduce((s, r) => s + r.stars, 0) / listingReviews.length).toFixed(1),
       reviewCount: listingReviews.length,
     } : undefined,
   };
