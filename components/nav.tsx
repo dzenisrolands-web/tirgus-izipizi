@@ -1,17 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export function Nav() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const { count } = useCart();
   const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setAuthed(!!s));
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
@@ -86,9 +94,15 @@ export function Nav() {
                 </span>
               )}
             </Link>
-            <Link href="/login" className="btn-outline text-sm">
-              Pieslēgties
-            </Link>
+            {authed ? (
+              <Link href="/dashboard" className="btn-outline text-sm">
+                Konts
+              </Link>
+            ) : (
+              <Link href="/login" className="btn-outline text-sm">
+                Pieslēgties
+              </Link>
+            )}
           </nav>
 
           {/* Mobile cart */}
@@ -151,13 +165,17 @@ export function Nav() {
             >
               ⚡ Eksprespiegāde
             </Link>
-            <Link
-              href="/login"
-              className="mt-2 btn-outline text-center text-sm"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pieslēgties
-            </Link>
+            {authed ? (
+              <Link href="/dashboard" className="mt-2 btn-outline text-center text-sm"
+                onClick={() => setMobileOpen(false)}>
+                Konts
+              </Link>
+            ) : (
+              <Link href="/login" className="mt-2 btn-outline text-center text-sm"
+                onClick={() => setMobileOpen(false)}>
+                Pieslēgties
+              </Link>
+            )}
           </nav>
         </div>
       )}

@@ -13,11 +13,11 @@ export function StorageTypesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase
       .from("listings")
-      .select("slug, storage_type")
+      .select("id, storage_type")
       .then(({ data }) => {
         const m: StorageMap = {};
         for (const row of data ?? []) {
-          if (row.slug && row.storage_type) m[row.slug] = row.storage_type;
+          if (row.id && row.storage_type) m[row.id] = row.storage_type;
         }
         setMap(m);
       });

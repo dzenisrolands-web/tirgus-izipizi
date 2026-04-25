@@ -8,9 +8,13 @@ import { listings, sellers } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
 import { recipes } from "@/lib/recipes-data";
+import { fetchActiveListings } from "@/lib/db-listings";
 
-export default function HomePage() {
-  const featured = listings.slice(0, 8);
+export default async function HomePage() {
+  const dbListings = await fetchActiveListings();
+  const allListings = [...dbListings, ...listings];
+  const featured = allListings.slice(0, 8);
+  const totalListings = allListings.length;
 
   const coverImages = [
     sellersMeta.s7.cover,
@@ -89,7 +93,7 @@ export default function HomePage() {
                   <p className="text-sm text-gray-400">Ražotāji</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-brand-400">{listings.length}+</p>
+                  <p className="text-2xl font-bold text-brand-400">{totalListings}+</p>
                   <p className="text-sm text-gray-400">Produkti</p>
                 </div>
                 <div>

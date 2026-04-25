@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -17,9 +19,12 @@ export function LoginForm() {
 
   async function handleGoogle() {
     setGoogleLoading(true);
+    const callbackUrl = next
+      ? `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${location.origin}/auth/callback`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${location.origin}/` },
+      options: { redirectTo: callbackUrl },
     });
   }
 
@@ -30,6 +35,7 @@ export function LoginForm() {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      if (next) { router.push(next); router.refresh(); return; }
       const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
       const role = profile?.role ?? "buyer";
       if (role === "super_admin") router.push("/admin");
@@ -37,7 +43,10 @@ export function LoginForm() {
       else router.push("/");
       router.refresh();
     } catch (err: unknown) {
-      setError("Nepareizs e-pasts vai parole");
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Invalid login credentials")) setError("Nepareizs e-pasts vai parole");
+      else if (msg.includes("Email not confirmed")) setError("E-pasts nav apstiprināts — pārbaudi savas iesūtni");
+      else setError(msg);
     } finally {
       setLoading(false);
     }

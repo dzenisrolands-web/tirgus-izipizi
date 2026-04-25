@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Package, Search, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Package, Search, Trash2, Loader2, Eye, EyeOff, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ export default function AdminProduktisPage() {
   const [search, setSearch] = useState("");
   const [tempFilter, setTempFilter] = useState<TempFilter>("all");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -77,11 +78,11 @@ export default function AdminProduktisPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Dzēst šo produktu?")) return;
     setDeleting(id);
     await supabase.from("listings").delete().eq("id", id);
     setItems(p => p.filter(i => i.id !== id));
     setDeleting(null);
+    setConfirmDelete(null);
   }
 
   const visible = items.filter(i => {
@@ -183,10 +184,24 @@ export default function AdminProduktisPage() {
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
                       {item.status === "active" ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
-                    <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition disabled:opacity-40">
-                      {deleting === item.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
+                    {confirmDelete === item.id ? (
+                      <div className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 py-1">
+                        <span className="text-xs font-medium text-red-700 mr-1">Dzēst?</span>
+                        <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-40">
+                          {deleting === item.id ? <Loader2 size={11} className="animate-spin" /> : <span className="text-xs font-bold">Jā</span>}
+                        </button>
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 transition">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDelete(item.id)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

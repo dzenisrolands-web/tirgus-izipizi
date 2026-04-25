@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, Plus, ArrowRight, Clock, CheckCircle, AlertCircle, User } from "lucide-react";
+import { Package, Plus, ArrowRight, Clock, CheckCircle, AlertCircle, User, X, PartyPopper } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type SellerStatus = "draft" | "pending" | "approved" | "rejected";
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [sellerName, setSellerName] = useState("");
   const [productCount, setProductCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showApprovedBanner, setShowApprovedBanner] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -32,16 +33,21 @@ export default function DashboardPage() {
         .single();
 
       if (seller) {
-        setStatus((seller.status as SellerStatus) ?? "draft");
+        const newStatus = (seller.status as SellerStatus) ?? "draft";
+        setStatus(newStatus);
         setSellerName(seller.farm_name || seller.name || "");
+        // Show banner only once when first seeing "approved"
+        const seenKey = `approved_banner_${user.id}`;
+        if (newStatus === "approved" && !sessionStorage.getItem(seenKey)) {
+          setShowApprovedBanner(true);
+        }
+
+        const { count } = await supabase
+          .from("listings")
+          .select("id", { count: "exact", head: true })
+          .eq("seller_id", user.id);
+        setProductCount(count ?? 0);
       }
-
-      const { count } = await supabase
-        .from("listings")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      setProductCount(count ?? 0);
       setLoading(false);
     }
     load();
@@ -59,6 +65,23 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
+      {/* Approval banner */}
+      {showApprovedBanner && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
+          <PartyPopper size={20} className="mt-0.5 shrink-0 text-green-600" />
+          <div className="flex-1">
+            <p className="font-semibold text-green-900">Apsveicam! Tavs profils ir apstiprināts 🎉</p>
+            <p className="mt-0.5 text-sm text-green-700">Tagad vari pievienot produktus un sākt pārdot platformā.</p>
+            <Link href="/dashboard/produkti/jauns" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-green-800 hover:underline">
+              Pievienot pirmo produktu <ArrowRight size={13} />
+            </Link>
+          </div>
+          <button onClick={() => setShowApprovedBanner(false)}
+            className="rounded-lg p-1 text-green-500 hover:bg-green-100">
+            <X size={16} />
+          </button>
+        </div>
+      )}
       {/* Greeting */}
       <div className="mb-8">
         <h1 className="text-2xl font-extrabold text-gray-900">

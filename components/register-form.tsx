@@ -29,7 +29,11 @@ export function RegisterForm() {
     if (password.length < 8) { setError("Parolei jābūt vismaz 8 rakstzīmes"); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { role: "seller" } },
+      });
       if (error) throw error;
       setDone(true);
     } catch (err: unknown) {

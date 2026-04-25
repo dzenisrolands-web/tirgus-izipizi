@@ -26,6 +26,7 @@ export function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+  const [payError, setPayError] = useState("");
 
   const deliveryFee = total >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const grandTotal = total + deliveryFee;
@@ -65,6 +66,7 @@ export function CartPage() {
 
   async function handlePay() {
     setSubmitting(true);
+    setPayError("");
     try {
       const locker = lockers.find((l) => l.id === lockerId)!;
       const uniqueSellerIds = [...new Set(
@@ -92,7 +94,7 @@ export function CartPage() {
       setDone(true);
     } catch (err) {
       console.error(err);
-      alert("Kļūda saglabājot pasūtījumu. Mēģini vēlreiz.");
+      setPayError("Kļūda saglabājot pasūtījumu. Mēģini vēlreiz.");
     } finally {
       setSubmitting(false);
     }
@@ -166,7 +168,7 @@ export function CartPage() {
           <Link href="/catalog" className="btn-primary flex-1 py-3 text-center">
             Turpināt iepirkties
           </Link>
-          <Link href="/login" className="flex-1 rounded-2xl border border-gray-200 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          <Link href="/dashboard/pasutijumi" className="flex-1 rounded-2xl border border-gray-200 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50">
             Skatīt pasūtījumus
           </Link>
         </div>
@@ -427,6 +429,9 @@ export function CartPage() {
 
             {step === "confirm" && (
               <div className="space-y-2">
+                {payError && (
+                  <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{payError}</div>
+                )}
                 <button
                   onClick={handlePay}
                   disabled={submitting}

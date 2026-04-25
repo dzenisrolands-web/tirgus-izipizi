@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Users, Package, ShoppingBag,
+  LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
   Menu, X, LogOut, ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -15,12 +15,13 @@ const NAV = [
   { href: "/admin/razotaji",     label: "Ražotāji",      icon: Users },
   { href: "/admin/produkti",     label: "Produkti",      icon: Package },
   { href: "/admin/pasutijumi",   label: "Pasūtījumi",    icon: ShoppingBag },
+  { href: "/admin/pircēji",      label: "Pircēji",       icon: UserCheck },
 ];
 
 function SidebarContent({
-  pathname, email, onClose, onLogout,
+  pathname, email, pendingCount, onClose, onLogout,
 }: {
-  pathname: string; email: string;
+  pathname: string; email: string; pendingCount: number;
   onClose: () => void; onLogout: () => void;
 }) {
   return (
@@ -42,6 +43,7 @@ function SidebarContent({
       <nav className="flex-1 space-y-0.5 px-3">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
+          const showBadge = href === "/admin/razotaji" && pendingCount > 0;
           return (
             <Link key={href} href={href} onClick={onClose}
               className={cn(
@@ -53,7 +55,12 @@ function SidebarContent({
             >
               <Icon size={16} />
               {label}
-              {active && <ChevronRight size={14} className="ml-auto opacity-60" />}
+              {showBadge && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                  {pendingCount}
+                </span>
+              )}
+              {active && !showBadge && <ChevronRight size={14} className="ml-auto opacity-60" />}
             </Link>
           );
         })}
@@ -79,6 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -91,6 +99,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (profile?.role !== "super_admin") { router.push("/"); return; }
       setEmail(data.user.email ?? "");
     });
+    // Poll pending count every 30s
+    async function fetchPending() {
+      const { count } = await supabase
+        .from("sellers").select("*", { count: "exact", head: true }).eq("status", "pending");
+      setPendingCount(count ?? 0);
+    }
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000);
+    return () => clearInterval(interval);
   }, [router]);
 
   async function handleLogout() {
@@ -101,14 +118,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col z-30">
-        <SidebarContent pathname={pathname} email={email} onClose={() => {}} onLogout={handleLogout} />
+        <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} onClose={() => {}} onLogout={handleLogout} />
       </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-64">
-            <SidebarContent pathname={pathname} email={email} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+            <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
           </aside>
         </div>
       )}

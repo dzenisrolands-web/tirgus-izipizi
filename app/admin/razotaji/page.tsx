@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type Seller = {
   id: string;
+  user_id: string;
   name: string;
   description: string | null;
   location: string | null;
@@ -40,7 +41,7 @@ export default function AdminRazotajiPage() {
   async function load() {
     const { data } = await supabase
       .from("sellers")
-      .select("id,name,description,location,status,created_at,home_locker_ids")
+      .select("id,user_id,name,description,location,status,created_at,home_locker_ids")
       .order("created_at", { ascending: false });
     setSellers(data ?? []);
     setLoading(false);
@@ -50,6 +51,12 @@ export default function AdminRazotajiPage() {
 
   async function updateStatus(id: string, status: "approved" | "rejected") {
     await supabase.from("sellers").update({ status }).eq("id", id);
+    const seller = sellers.find(s => s.id === id);
+    if (seller?.user_id) {
+      await supabase.from("profiles")
+        .update({ role: status === "approved" ? "seller" : "buyer" })
+        .eq("id", seller.user_id);
+    }
     setSellers(p => p.map(s => s.id === id ? { ...s, status } : s));
   }
 
