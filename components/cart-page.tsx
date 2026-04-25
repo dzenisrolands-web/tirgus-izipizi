@@ -11,6 +11,7 @@ import { useCart } from "@/lib/cart-context";
 import { listings, lockers } from "@/lib/mock-data";
 import { formatPrice, getStorageType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 const DELIVERY_FEE = 1.5;
 const FREE_DELIVERY_THRESHOLD = 25;
@@ -24,6 +25,7 @@ export function CartPage() {
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [orderNumber, setOrderNumber] = useState("");
 
   const deliveryFee = total >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const grandTotal = total + deliveryFee;
@@ -63,10 +65,37 @@ export function CartPage() {
 
   async function handlePay() {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setSubmitting(false);
-    setDone(true);
-    clear();
+    try {
+      const locker = lockers.find((l) => l.id === lockerId)!;
+      const uniqueSellerIds = [...new Set(
+        items.map((i) => listings.find((l) => l.id === i.id)?.sellerId).filter(Boolean) as string[]
+      )];
+      const date = new Date();
+      const num = `TRG-${date.getFullYear()}${String(date.getMonth()+1).padStart(2,"0")}${String(date.getDate()).padStart(2,"0")}-${Math.floor(1000+Math.random()*9000)}`;
+
+      const { error } = await supabase.from("orders").insert({
+        order_number: num,
+        status: "pending",
+        buyer_name: form.name,
+        buyer_email: form.email,
+        buyer_phone: form.phone,
+        delivery_type: "locker",
+        delivery_info: { locker_id: locker.id, locker_name: locker.name, locker_address: locker.address, locker_city: locker.city },
+        items: items.map((i) => ({ id: i.id, title: i.title, price: i.price, quantity: i.quantity, unit: i.unit, sellerName: i.sellerName })),
+        total_cents: Math.round(grandTotal * 100),
+        seller_ids: uniqueSellerIds,
+      });
+
+      if (error) throw error;
+      setOrderNumber(num);
+      clear();
+      setDone(true);
+    } catch (err) {
+      console.error(err);
+      alert("Kļūda saglabājot pasūtījumu. Mēģini vēlreiz.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (done) {
@@ -78,9 +107,12 @@ export function CartPage() {
           </div>
           <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Pasūtījums saņemts!</h1>
           <p className="mt-2 text-sm text-gray-500">
-            Apstiprinājums nosūtīts uz <strong>{form.email}</strong>.<br />
-            Saņemšanas kods tiks nosūtīts, kad paka būs pakomates.
+            Pasūtījuma numurs: <strong className="text-gray-900">{orderNumber}</strong><br />
+            Apstiprinājums tiks nosūtīts uz <strong>{form.email}</strong>.
           </p>
+          <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+            Apmaksa ar Paysera — drīzumā tiks aktivizēta. Šobrīd pasūtījums reģistrēts kā <strong>neapmaksāts</strong>.
+          </div>
           <Link href="/catalog" className="btn-primary mt-6 inline-block">
             Turpināt iepirkties
           </Link>

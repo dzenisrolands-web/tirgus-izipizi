@@ -91,7 +91,11 @@
       "Bash(npx tsx -e ' *)",
       "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" remote -v)",
       "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" log --oneline -5)",
-      "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" status --short)"
+      "Bash(git -C \"/c/Users/dzeni/OneDrive/Desktop/AI kods/Marketplace\" status --short)",
+      "Bash(npx vercel *)",
+      "Bash(unzip -o \"app.izipiziapp.com.zip\" -d \"app-izipizi-old\")",
+      "Bash(xargs grep *)",
+      "Bash(grep *)"
     ]
   }
 }
