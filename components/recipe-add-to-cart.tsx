@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { getStorageType } from "@/lib/utils";
 import type { Listing } from "@/lib/mock-data";
 
 export function RecipeAddToCart({ product, compact = false }: { product: Listing; compact?: boolean }) {
@@ -17,6 +18,7 @@ export function RecipeAddToCart({ product, compact = false }: { product: Listing
       unit: product.unit,
       image: product.image,
       sellerName: product.seller.farmName,
+      storageType: getStorageType(product),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
