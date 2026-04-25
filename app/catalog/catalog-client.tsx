@@ -24,17 +24,30 @@ export function CatalogClient() {
     seller: params.get("seller") ?? "",
     category: params.get("category") ?? "Visi",
   }));
+  const [query, setQuery] = useState(params.get("q") ?? "");
   const [sort, setSort] = useState("newest");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const s = params.get("seller") ?? "";
     const c = params.get("category") ?? "Visi";
+    const q = params.get("q") ?? "";
     setFilters((prev) => ({ ...prev, seller: s, category: c }));
+    setQuery(q);
   }, [params]);
 
   const filtered = useMemo(() => {
     let result = [...listings];
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      result = result.filter((l) =>
+        l.title.toLowerCase().includes(q) ||
+        l.description.toLowerCase().includes(q) ||
+        l.category.toLowerCase().includes(q) ||
+        l.seller.farmName.toLowerCase().includes(q) ||
+        l.seller.name.toLowerCase().includes(q)
+      );
+    }
     if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
     if (filters.city) result = result.filter((l) => l.locker.city === filters.city);
     if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
@@ -44,7 +57,7 @@ export function CatalogClient() {
     else if (sort === "price_desc") result.sort((a, b) => b.price - a.price);
     else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return result;
-  }, [filters, sort, storageTypes]);
+  }, [filters, query, sort, storageTypes]);
 
   const activeFilterCount = [
     filters.category !== "Visi",
@@ -52,6 +65,7 @@ export function CatalogClient() {
     filters.maxPrice < 100,
     filters.seller !== "",
     filters.storageType !== "all",
+    query.trim() !== "",
   ].filter(Boolean).length;
 
   const activeSeller = filters.seller ? sellers.find((s) => s.id === filters.seller) : null;
@@ -90,12 +104,20 @@ export function CatalogClient() {
         </div>
       </div>
 
-      {activeSeller && (
-        <div className="mt-3 flex items-center gap-2">
-          <span className="flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm text-brand-700">
-            {activeSeller.name}
-            <button onClick={() => setFilters((f) => ({ ...f, seller: "" }))}><X size={14} /></button>
-          </span>
+      {(activeSeller || query.trim()) && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {query.trim() && (
+            <span className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-sm text-gray-700">
+              Meklēts: <strong>{query}</strong>
+              <button onClick={() => setQuery("")}><X size={14} /></button>
+            </span>
+          )}
+          {activeSeller && (
+            <span className="flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm text-brand-700">
+              {activeSeller.name}
+              <button onClick={() => setFilters((f) => ({ ...f, seller: "" }))}><X size={14} /></button>
+            </span>
+          )}
         </div>
       )}
 
@@ -148,7 +170,7 @@ export function CatalogClient() {
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-lg font-semibold text-gray-500">Nav atrasts neviens produkts</p>
               <p className="mt-1 text-sm text-gray-400">Mēģini mainīt filtrus</p>
-              <button className="btn-outline mt-4" onClick={() => setFilters(DEFAULT_FILTERS)}>Notīrīt filtrus</button>
+              <button className="btn-outline mt-4" onClick={() => { setFilters(DEFAULT_FILTERS); setQuery(""); }}>Notīrīt filtrus</button>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">

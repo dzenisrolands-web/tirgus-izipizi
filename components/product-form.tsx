@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, ImageIcon } from "lucide-react";
+import { Loader2, ImageIcon, Upload, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 
@@ -38,7 +38,34 @@ export function ProductForm({
   const router = useRouter();
   const [form, setForm] = useState<ProductData>({ ...EMPTY, ...initial });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Lūdzu izvēlies attēla failu"); return; }
+    if (file.size > 5 * 1024 * 1024) { setError("Attēls nedrīkst pārsniegt 5 MB"); return; }
+
+    setUploading(true);
+    setError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nav pieslēdzies");
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      set("image_url", data.publicUrl);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Kļūda augšupielādējot attēlu");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   function set(k: keyof ProductData, v: string) {
     setForm(f => ({ ...f, [k]: v }));
@@ -159,23 +186,34 @@ export function ProductForm({
       {/* Image */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-extrabold text-gray-700">Bilde</h2>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Bildes URL</label>
-          <input value={form.image_url} onChange={e => set("image_url", e.target.value)}
-            className="input mt-1 w-full" placeholder="https://..." />
-        </div>
+
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
         {form.image_url ? (
-          <div className="relative h-48 w-full overflow-hidden rounded-xl bg-gray-100">
+          <div className="relative h-56 w-full overflow-hidden rounded-xl bg-gray-100">
             <Image src={form.image_url} alt="Priekšskatījums" fill className="object-cover"
               onError={() => set("image_url", "")} />
+            <button type="button" onClick={() => set("image_url", "")}
+              className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white">
+              <X size={14} className="text-gray-600" />
+            </button>
           </div>
         ) : (
-          <div className="flex h-32 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50">
-            <div className="text-center">
-              <ImageIcon size={24} className="mx-auto text-gray-300" />
-              <p className="mt-1 text-xs text-gray-400">Ieliec URL augstāk</p>
-            </div>
-          </div>
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-100 transition disabled:opacity-60">
+            {uploading
+              ? <><Loader2 size={24} className="animate-spin text-gray-400" /><span>Augšupielādē...</span></>
+              : <><Upload size={24} className="text-gray-300" /><span className="font-medium">Spied šeit, lai augšupielādētu attēlu</span><span className="text-xs text-gray-400">JPG, PNG, WebP · maks. 5 MB</span></>
+            }
+          </button>
+        )}
+
+        {form.image_url && (
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline disabled:opacity-50">
+            <Upload size={13} />
+            Nomainīt attēlu
+          </button>
         )}
       </section>
 

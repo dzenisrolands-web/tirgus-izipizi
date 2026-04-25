@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
@@ -14,6 +15,28 @@ export async function generateStaticParams() {
   return listings.map((l) => ({ id: l.id }));
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const listing = listings.find((l) => l.id === id);
+  if (!listing) return {};
+  const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
+  const description = listing.description
+    ? `${listing.description.slice(0, 140)}…`
+    : `${listing.title} no ${listing.seller.farmName}. ${formatPrice(listing.price)} / ${listing.unit}. Saņem izipizi pakomātā.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [{ url: listing.image, alt: listing.title }],
+      type: "website",
+      siteName: "tirgus.izipizi.lv",
+    },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const listing = listings.find((l) => l.id === id);
@@ -25,7 +48,30 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const listingReviews = reviews.filter((r) => r.listingId === id);
   const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description,
+    image: listing.image,
+    offers: {
+      "@type": "Offer",
+      price: listing.price,
+      priceCurrency: "EUR",
+      availability: listing.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      seller: { "@type": "Organization", name: listing.seller.farmName },
+    },
+    brand: { "@type": "Brand", name: listing.seller.farmName },
+    aggregateRating: listingReviews.length > 0 ? {
+      "@type": "AggregateRating",
+      ratingValue: (listingReviews.reduce((s, r) => s + r.rating, 0) / listingReviews.length).toFixed(1),
+      reviewCount: listingReviews.length,
+    } : undefined,
+  };
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link href="/catalog" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
@@ -133,5 +179,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </section>
       )}
     </div>
+    </>
   );
 }
