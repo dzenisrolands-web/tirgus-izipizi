@@ -8,7 +8,10 @@ import {
 } from "lucide-react";
 import { sellers, listings } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
+import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
+
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   return sellers.map((s) => ({ id: s.id }));
@@ -16,9 +19,10 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const seller = sellers.find((s) => s.id === id);
+  const mockSeller = sellers.find((s) => s.id === id);
+  const seller = mockSeller ?? (await fetchDbSellerProfile(id))?.seller;
   if (!seller) return {};
-  const meta = sellersMeta[id];
+  const meta = sellersMeta[id] ?? (await fetchDbSellerProfile(id))?.meta;
   const title = `${seller.name} | tirgus.izipizi.lv`;
   const description = meta?.shortDesc ?? `${seller.name} produkti IziPizi tirgū.`;
   return {
@@ -31,11 +35,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function SellerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const seller = sellers.find((s) => s.id === id);
-  if (!seller) notFound();
+  const mockSeller = sellers.find((s) => s.id === id);
 
-  const meta = sellersMeta[id];
-  const sellerListings = listings.filter((l) => l.sellerId === id);
+  let seller, meta, sellerListings;
+  if (mockSeller) {
+    seller = mockSeller;
+    meta = sellersMeta[id];
+    sellerListings = listings.filter((l) => l.sellerId === id);
+  } else {
+    const db = await fetchDbSellerProfile(id);
+    if (!db) notFound();
+    seller = db.seller;
+    meta = db.meta;
+    sellerListings = db.listings;
+  }
+
   const categories = Array.from(new Set(sellerListings.map((l) => l.category))).sort();
 
   const jsonLd = {

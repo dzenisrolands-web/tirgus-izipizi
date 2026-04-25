@@ -99,22 +99,75 @@ export function CartPage() {
   }
 
   if (done) {
+    const doneLocker = lockers.find((l) => l.id === lockerId);
     return (
-      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4">
-        <div className="max-w-sm text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle size={32} className="text-green-600" />
+      <div className="mx-auto max-w-lg px-4 py-12">
+        {/* Checkmark */}
+        <div className="flex flex-col items-center text-center">
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle size={40} className="text-green-500" />
+            <span className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-50" />
           </div>
-          <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Pasūtījums saņemts!</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Pasūtījuma numurs: <strong className="text-gray-900">{orderNumber}</strong><br />
-            Apstiprinājums tiks nosūtīts uz <strong>{form.email}</strong>.
+          <h1 className="mt-5 text-2xl font-extrabold text-gray-900">Pasūtījums pieņemts!</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Paldies, <strong>{form.name}</strong>! Apstiprinājums nosūtīts uz <strong>{form.email}</strong>.
           </p>
-          <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-            Apmaksa ar Paysera — drīzumā tiks aktivizēta. Šobrīd pasūtījums reģistrēts kā <strong>neapmaksāts</strong>.
+          <div className="mt-3 rounded-full bg-gray-100 px-4 py-1.5 text-sm font-mono font-semibold text-gray-700">
+            {orderNumber}
           </div>
-          <Link href="/catalog" className="btn-primary mt-6 inline-block">
+        </div>
+
+        {/* Details card */}
+        <div className="mt-8 rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
+          {doneLocker && (
+            <div className="flex items-start gap-3 p-4">
+              <MapPin size={18} className="mt-0.5 shrink-0 text-brand-600" />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Saņemšanas vieta</p>
+                <p className="mt-0.5 font-semibold text-gray-900">{doneLocker.city} — {doneLocker.name}</p>
+                <p className="text-sm text-gray-500">{doneLocker.address}</p>
+              </div>
+            </div>
+          )}
+          <div className="flex items-start gap-3 p-4">
+            <CheckCircle size={18} className="mt-0.5 shrink-0 text-gray-400" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Samaksas statuss</p>
+              <p className="mt-0.5 font-semibold text-amber-700">Gaida apmaksu</p>
+              <p className="text-xs text-gray-400">Paysera integrācija tiek aktivizēta — ražotājs apstiprinās pasūtījumu.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Next steps */}
+        <div className="mt-6 rounded-2xl bg-gray-50 p-5">
+          <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-400">Kas notiek tālāk?</p>
+          <div className="space-y-4">
+            {[
+              { n: 1, title: "Ražotājs apstiprina", desc: "1–2 darba dienu laikā saņemsi apstiprinājumu." },
+              { n: 2, title: "Produkts tiek ievietots pakomātā", desc: `Tavs produkts tiks nogādāts uz ${doneLocker?.city ?? ""} pakomātu.` },
+              { n: 3, title: "Tu saņem paziņojumu", desc: "Kad produkts būs gatavs izņemšanai, saņemsi e-pastu ar PIN kodu." },
+            ].map(({ n, title, desc }) => (
+              <div key={n} className="flex gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, #53F3A4, #AD47FF)", color: "#192635" }}>
+                  {n}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{title}</p>
+                  <p className="text-xs text-gray-500">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link href="/catalog" className="btn-primary flex-1 py-3 text-center">
             Turpināt iepirkties
+          </Link>
+          <Link href="/login" className="flex-1 rounded-2xl border border-gray-200 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            Skatīt pasūtījumus
           </Link>
         </div>
       </div>

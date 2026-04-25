@@ -31,3 +31,12 @@
     @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20;
   }
 }
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}

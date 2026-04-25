@@ -3,13 +3,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
-import { listings, reviews, sellerHomeLockers } from "@/lib/mock-data";
+import { listings, sellerHomeLockers } from "@/lib/mock-data";
+import { fetchListingById } from "@/lib/db-listings";
 import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
-import { ReviewsSection } from "@/components/reviews-section";
+import { ReviewsSectionDb } from "@/components/reviews-section-db";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { VariantSelector } from "@/components/variant-selector";
+
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   return listings.map((l) => ({ id: l.id }));
@@ -17,7 +20,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const listing = listings.find((l) => l.id === id);
+  const listing = listings.find((l) => l.id === id) ?? await fetchListingById(id);
   if (!listing) return {};
   const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
   const description = listing.description
@@ -39,13 +42,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const listing = listings.find((l) => l.id === id);
+  const listing = listings.find((l) => l.id === id) ?? await fetchListingById(id);
   if (!listing) notFound();
 
   const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
   const isHomeLocker = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
-  const listingReviews = reviews.filter((r) => r.listingId === id);
   const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
 
   const jsonLd = {
@@ -62,11 +64,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       seller: { "@type": "Organization", name: listing.seller.farmName },
     },
     brand: { "@type": "Brand", name: listing.seller.farmName },
-    aggregateRating: listingReviews.length > 0 ? {
-      "@type": "AggregateRating",
-      ratingValue: (listingReviews.reduce((s, r) => s + r.stars, 0) / listingReviews.length).toFixed(1),
-      reviewCount: listingReviews.length,
-    } : undefined,
+    aggregateRating: undefined,
   };
 
   return (
@@ -168,7 +166,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <section className="mt-14"><ReviewsSection reviews={listingReviews} /></section>
+      <section className="mt-14"><ReviewsSectionDb listingId={id} /></section>
 
       {otherListings.length > 0 && (
         <section className="mt-16">

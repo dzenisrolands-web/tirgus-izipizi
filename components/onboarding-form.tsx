@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2 } from "lucide-react";
+import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,31 @@ export function OnboardingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+
+  async function uploadImage(file: File, field: "avatar_url" | "cover_url", setUploading: (v: boolean) => void) {
+    if (!file.type.startsWith("image/")) { setError("Lūdzu izvēlies attēla failu"); return; }
+    if (file.size > 5 * 1024 * 1024) { setError("Attēls nedrīkst pārsniegt 5 MB"); return; }
+    setUploading(true); setError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Nav pieslēdzies");
+      const ext = file.name.split(".").pop();
+      const prefix = field === "avatar_url" ? "avatar" : "cover";
+      const path = `${user.id}/${prefix}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      set(field, data.publicUrl);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Kļūda augšupielādējot");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const [form, setForm] = useState({
     name: "",
@@ -139,8 +164,60 @@ export function OnboardingForm() {
               <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
                 className="input mt-1 min-h-[120px] resize-y" placeholder="Pastāsti par sevi, saimniecību, ražošanas procesu..." />
             </div>
-            <Field label="Profila foto URL (avatārs)" value={form.avatar_url} onChange={(v) => set("avatar_url", v)} placeholder="https://..." />
-            <Field label="Cover attēla URL" value={form.cover_url} onChange={(v) => set("cover_url", v)} placeholder="https://..." />
+            {/* Avatar upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Profila foto (avatārs)</label>
+              <input ref={avatarRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f, "avatar_url", setUploadingAvatar); }} />
+              {form.avatar_url ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={form.avatar_url} alt="Avatar" className="h-14 w-14 rounded-full object-cover border border-gray-200" />
+                  <div className="flex flex-col gap-1">
+                    <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploadingAvatar}
+                      className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
+                      <Upload size={13} /> Nomainīt
+                    </button>
+                    <button type="button" onClick={() => set("avatar_url", "")} className="text-xs text-gray-400 hover:text-red-500">
+                      <X size={11} className="inline mr-1" />Noņemt
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploadingAvatar}
+                  className="mt-2 flex items-center gap-2 rounded-xl border-2 border-dashed border-gray-200 px-4 py-3 text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 transition disabled:opacity-50 w-full">
+                  {uploadingAvatar ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} className="text-gray-400" />}
+                  {uploadingAvatar ? "Augšupielādē..." : "Augšupielādēt profila foto"}
+                </button>
+              )}
+            </div>
+
+            {/* Cover upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cover attēls (fona bilde)</label>
+              <input ref={coverRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f, "cover_url", setUploadingCover); }} />
+              {form.cover_url ? (
+                <div className="mt-2 relative h-28 w-full overflow-hidden rounded-xl border border-gray-200">
+                  <img src={form.cover_url} alt="Cover" className="h-full w-full object-cover" />
+                  <div className="absolute right-2 top-2 flex gap-1.5">
+                    <button type="button" onClick={() => coverRef.current?.click()} disabled={uploadingCover}
+                      className="rounded-full bg-white/90 p-1.5 shadow hover:bg-white">
+                      <Upload size={13} className="text-gray-600" />
+                    </button>
+                    <button type="button" onClick={() => set("cover_url", "")}
+                      className="rounded-full bg-white/90 p-1.5 shadow hover:bg-white">
+                      <X size={13} className="text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={() => coverRef.current?.click()} disabled={uploadingCover}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-6 text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 transition disabled:opacity-50">
+                  {uploadingCover ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={18} className="text-gray-300" />}
+                  {uploadingCover ? "Augšupielādē..." : "Augšupielādēt fona bildi (1200×400 ieteicams)"}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { PageTransition } from "@/components/page-transition";
 import { CartProvider } from "@/lib/cart-context";
 import { StorageTypesProvider } from "@/lib/storage-types-context";
 
@@ -28,7 +30,10 @@ export default function RootLayout({
         <CartProvider>
           <StorageTypesProvider>
             <Nav />
-            <main>{children}</main>
+            <main className="pb-16 md:pb-0">
+              <PageTransition>{children}</PageTransition>
+            </main>
+            <MobileBottomNav />
           </StorageTypesProvider>
         </CartProvider>
         <footer className="mt-20 border-t border-gray-100 bg-gray-50">

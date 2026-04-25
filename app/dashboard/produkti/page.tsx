@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,9 @@ export default function ProduktisPage() {
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const LOW_STOCK = 3;
 
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -52,11 +55,17 @@ export default function ProduktisPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Dzēst šo produktu?")) return;
     setDeleting(id);
+    const item = items.find(i => i.id === id);
+    // Delete image from storage if it's a Supabase-hosted URL
+    if (item?.image_url?.includes("supabase")) {
+      const path = item.image_url.split("/product-images/")[1];
+      if (path) await supabase.storage.from("product-images").remove([path]);
+    }
     await supabase.from("listings").delete().eq("id", id);
     setItems(prev => prev.filter(i => i.id !== id));
     setDeleting(null);
+    setConfirmDelete(null);
   }
 
   if (loading) {
@@ -79,6 +88,18 @@ export default function ProduktisPage() {
           <Plus size={16} /> Pievienot
         </Link>
       </div>
+
+      {/* Low stock banner */}
+      {items.some(i => i.quantity <= LOW_STOCK && i.status === "active") && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="flex-1 text-sm text-amber-800">
+            <strong>Maz krājumu:</strong>{" "}
+            {items.filter(i => i.quantity <= LOW_STOCK && i.status === "active").map(i => i.title).join(", ")}
+            {" "}— papildini krājumus, lai nepazaudētu pārdošanas iespējas.
+          </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-16 text-center">
@@ -143,20 +164,43 @@ export default function ProduktisPage() {
                     {st.label}
                   </span>
 
+                  {/* Low stock badge */}
+                  {item.quantity <= LOW_STOCK && item.status === "active" && (
+                    <span className="hidden sm:flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <AlertTriangle size={10} /> Maz
+                    </span>
+                  )}
+
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-1 shrink-0">
-                    <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
-                      {item.status === "active" ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                    <Link href={`/dashboard/produkti/${item.id}`} title="Rediģēt"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
-                      <Pencil size={15} />
-                    </Link>
-                    <button onClick={() => handleDelete(item.id)} title="Dzēst" disabled={deleting === item.id}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition disabled:opacity-40">
-                      {deleting === item.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={15} />}
-                    </button>
+                    {confirmDelete === item.id ? (
+                      <div className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 py-1">
+                        <span className="text-xs font-medium text-red-700 mr-1">Dzēst?</span>
+                        <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-40">
+                          {deleting === item.id ? <Loader2 size={11} className="animate-spin" /> : <span className="text-xs font-bold">Jā</span>}
+                        </button>
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 transition">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                          {item.status === "active" ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                        <Link href={`/dashboard/produkti/${item.id}`} title="Rediģēt"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                          <Pencil size={15} />
+                        </Link>
+                        <button onClick={() => setConfirmDelete(item.id)} title="Dzēst"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition">
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );

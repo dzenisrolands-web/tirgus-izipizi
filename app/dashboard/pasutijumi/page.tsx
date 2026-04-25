@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Package } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -32,6 +32,20 @@ export default function DashboardPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const NEXT_STATUS: Record<string, { label: string; next: string }> = {
+    paid:       { label: "Apstiprināt pasūtījumu", next: "processing" },
+    processing: { label: "Atzīmēt kā nosūtītu",   next: "shipped" },
+    shipped:    { label: "Atzīmēt kā saņemtu",     next: "delivered" },
+  };
+
+  async function advanceStatus(orderId: string, nextStatus: string) {
+    setUpdating(orderId);
+    await supabase.from("orders").update({ status: nextStatus }).eq("id", orderId);
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+    setUpdating(null);
+  }
 
   useEffect(() => {
     async function load() {
@@ -131,6 +145,18 @@ export default function DashboardPasutijumiPage() {
                       </div>
                       <p className="font-extrabold text-gray-900">{formatPrice(order.total_cents / 100)}</p>
                     </div>
+                    {NEXT_STATUS[order.status] && (
+                      <button
+                        onClick={() => advanceStatus(order.id, NEXT_STATUS[order.status].next)}
+                        disabled={updating === order.id}
+                        className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#192635] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#243647] transition disabled:opacity-60"
+                      >
+                        {updating === order.id
+                          ? <Loader2 size={14} className="animate-spin" />
+                          : <ChevronRight size={14} />}
+                        {NEXT_STATUS[order.status].label}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
