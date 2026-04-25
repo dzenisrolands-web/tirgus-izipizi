@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Pencil, Check, X, Plus, Trash2, Loader2, CheckCircle,
-  MapPin, Package, Star, Globe, Facebook, Instagram, Youtube,
+  MapPin, Star, Globe, Facebook, Instagram, Youtube,
   Quote, Award, Calendar, Video, AlertCircle, Save, Send,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { ImageUpload } from "@/components/image-upload";
 
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
@@ -50,6 +51,7 @@ export function DashboardProfileEditor() {
 
   const isDirty = JSON.stringify(profile) !== JSON.stringify(saved);
   const [saveError, setSaveError] = useState("");
+  const [userId, setUserId] = useState("");
 
   const REQUIRED = [
     { key: "name",              label: "Vārds, uzvārds" },
@@ -66,6 +68,7 @@ export function DashboardProfileEditor() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { window.location.href = "/login"; return; }
+      setUserId(user.id);
       const { data } = await supabase.from("sellers").select("*").eq("user_id", user.id).single();
       if (data) {
         const p: Profile = {
@@ -189,8 +192,22 @@ export function DashboardProfileEditor() {
         label="Cover attēls un pamatinfo"
         editContent={
           <div className="space-y-3">
-            <Field label="Cover attēla URL" value={profile.cover_url} onChange={(v) => set("cover_url", v)} placeholder="https://..." />
-            <Field label="Avatāra URL (logo)" value={profile.avatar_url} onChange={(v) => set("avatar_url", v)} placeholder="https://..." />
+            <ImageUpload
+              value={profile.cover_url}
+              onChange={(v) => set("cover_url", v)}
+              path={`${userId}/cover`}
+              label="Cover attēls"
+              aspectRatio="wide"
+              hint="JPG, PNG vai WebP · maks. 5MB · ieteicamais izmērs 1200×400px"
+            />
+            <ImageUpload
+              value={profile.avatar_url}
+              onChange={(v) => set("avatar_url", v)}
+              path={`${userId}/avatar`}
+              label="Profila attēls / logo"
+              aspectRatio="square"
+              hint="Kvadrātveida attēls · maks. 5MB"
+            />
             <Field label="Vārds, uzvārds *" value={profile.name} onChange={(v) => set("name", v)} placeholder="Jānis Bērziņš" />
             <Field label="Saimniecības nosaukums" value={profile.farm_name} onChange={(v) => set("farm_name", v)} placeholder="Bērziņu saimniecība" />
             <Field label="Atrašanās vieta *" value={profile.location} onChange={(v) => set("location", v)} placeholder="Cēsis, Vidzeme" />
