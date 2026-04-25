@@ -12,6 +12,15 @@ function CallbackHandler() {
 
   useEffect(() => {
     async function handle() {
+      const type = searchParams.get("type");
+      const tokenHash = searchParams.get("token_hash");
+
+      // Password recovery flow
+      if (type === "recovery" && tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+        if (!error) { router.replace("/update-password"); return; }
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace("/login"); return; }
 
