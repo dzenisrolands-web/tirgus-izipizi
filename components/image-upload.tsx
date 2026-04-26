@@ -29,12 +29,12 @@ export function ImageUpload({ value, onChange, path, label, aspectRatio = "wide"
     const filePath = `${path}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("sellers")
+      .from("seller")
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) { setError(uploadError.message); setUploading(false); return; }
 
-    const { data } = supabase.storage.from("sellers").getPublicUrl(filePath);
+    const { data } = supabase.storage.from("seller").getPublicUrl(filePath);
     onChange(data.publicUrl + "?t=" + Date.now());
     setUploading(false);
   }
