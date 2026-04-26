@@ -16,14 +16,16 @@ type Listing = {
   category: string;
   image_url: string;
   quantity: number;
-  status: "active" | "paused" | "sold_out";
+  status: "active" | "paused" | "sold_out" | "pending_review" | "rejected";
   created_at: string;
 };
 
-const statusLabel = {
-  active:   { label: "Aktīvs",   cls: "bg-green-100 text-green-700" },
-  paused:   { label: "Pauzēts",  cls: "bg-gray-100 text-gray-500" },
-  sold_out: { label: "Izpārdots",cls: "bg-red-100 text-red-600" },
+const statusLabel: Record<string, { label: string; cls: string }> = {
+  active:         { label: "Aktīvs",             cls: "bg-green-100 text-green-700" },
+  paused:         { label: "Pauzēts",             cls: "bg-gray-100 text-gray-500" },
+  sold_out:       { label: "Izpārdots",           cls: "bg-red-100 text-red-600" },
+  pending_review: { label: "Gaida apstiprinājumu",cls: "bg-amber-100 text-amber-700" },
+  rejected:       { label: "Noraidīts",           cls: "bg-red-100 text-red-700" },
 };
 
 export default function ProduktisPage() {
@@ -49,6 +51,7 @@ export default function ProduktisPage() {
   useEffect(() => { load(); }, []);
 
   async function toggleStatus(item: Listing) {
+    if (item.status !== "active" && item.status !== "paused") return;
     const next = item.status === "active" ? "paused" : "active";
     await supabase.from("listings").update({ status: next }).eq("id", item.id);
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: next } : i));
@@ -187,10 +190,12 @@ export default function ProduktisPage() {
                       </div>
                     ) : (
                       <>
-                        <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
-                          {item.status === "active" ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
+                        {(item.status === "active" || item.status === "paused") && (
+                          <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                            {item.status === "active" ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        )}
                         <Link href={`/dashboard/produkti/${item.id}`} title="Rediģēt"
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
                           <Pencil size={15} />

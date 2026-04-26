@@ -2,94 +2,109 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Package, Search, Trash2, Loader2, Eye, EyeOff, X } from "lucide-react";
+import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 type Listing = {
   id: string;
+  user_id: string;
   title: string;
   price: number;
   unit: string;
   category: string;
   image_url: string;
-  status: "active" | "paused" | "sold_out";
+  status: "active" | "paused" | "sold_out" | "pending_review" | "rejected";
   storage_type: "frozen" | "chilled" | "ambient" | null;
   created_at: string;
-  sellers: { name: string } | null;
+  seller_name: string;
 };
 
-const statusLabel = {
-  active:   { label: "Aktīvs",    cls: "bg-green-100 text-green-700" },
-  paused:   { label: "Pauzēts",   cls: "bg-gray-100 text-gray-500" },
-  sold_out: { label: "Izpārdots", cls: "bg-red-100 text-red-600" },
+const statusLabel: Record<string, { label: string; cls: string }> = {
+  active:         { label: "Aktīvs",              cls: "bg-green-100 text-green-700" },
+  paused:         { label: "Pauzēts",              cls: "bg-gray-100 text-gray-500" },
+  sold_out:       { label: "Izpārdots",            cls: "bg-red-100 text-red-600" },
+  pending_review: { label: "Gaida apstiprinājumu", cls: "bg-amber-100 text-amber-700" },
+  rejected:       { label: "Noraidīts",            cls: "bg-red-100 text-red-700" },
 };
 
-const storageLabel = {
-  frozen:  { label: "-18°C",        cls: "bg-blue-50 text-blue-700 border border-blue-200" },
-  chilled: { label: "+2°C – +6°C",  cls: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
-  ambient: { label: "Istabas t°",   cls: "bg-gray-100 text-gray-600 border border-gray-200" },
-};
-
-type TempFilter = "all" | "frozen" | "chilled" | "ambient";
+type Tab = "pending" | "all";
 
 export default function AdminProduktisPage() {
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tempFilter, setTempFilter] = useState<TempFilter>("all");
+  const [tab, setTab] = useState<Tab>("pending");
+  const [acting, setActing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase
-      .from("listings")
-      .select("id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id")
-      .order("storage_type", { ascending: true })
-      .then(async ({ data, error }) => {
-        if (error) { console.error(error); setLoading(false); return; }
-        const listings = data ?? [];
-        const sellerIds = [...new Set(listings.map((l: any) => l.seller_id).filter(Boolean))];
-        let sellerMap: Record<string, string> = {};
-        if (sellerIds.length > 0) {
-          const { data: sData } = await supabase.from("sellers").select("id,name").in("id", sellerIds);
-          for (const s of sData ?? []) sellerMap[s.id] = s.name;
-        }
-        setItems(listings.map((l: any) => ({
-          ...l,
-          sellers: sellerMap[l.seller_id] ? { name: sellerMap[l.seller_id] } : null,
-        })));
-        setLoading(false);
-      });
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const counts = {
-    all:     items.length,
-    frozen:  items.filter(i => i.storage_type === "frozen").length,
-    chilled: items.filter(i => i.storage_type === "chilled").length,
-    ambient: items.filter(i => i.storage_type === "ambient").length,
-  };
+  async function load() {
+    const { data, error } = await supabase
+      .from("listings")
+      .select("id,user_id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id")
+      .order("created_at", { ascending: false });
+    if (error) { setLoading(false); return; }
+
+    const rows = data ?? [];
+    const sellerIds = [...new Set(rows.map((l) => l.seller_id).filter(Boolean))];
+    let sellerMap: Record<string, string> = {};
+    if (sellerIds.length > 0) {
+      const { data: sData } = await supabase.from("sellers").select("id,name").in("id", sellerIds);
+      for (const s of sData ?? []) sellerMap[s.id] = s.name;
+    }
+    setItems(rows.map((l) => ({ ...l, seller_name: sellerMap[l.seller_id] ?? "—" })));
+    setLoading(false);
+  }
+
+  async function approve(item: Listing) {
+    setActing(item.id);
+    await supabase.from("listings").update({ status: "active" }).eq("id", item.id);
+    await supabase.from("notifications").insert({
+      user_id: item.user_id,
+      title: "Produkts apstiprināts! ✅",
+      message: `Jūsu produkts "${item.title}" ir apstiprināts un tagad ir redzams katalogā.`,
+      listing_id: item.id,
+    });
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "active" } : i));
+    setActing(null);
+  }
+
+  async function reject(item: Listing) {
+    setActing(item.id);
+    await supabase.from("listings").update({ status: "rejected" }).eq("id", item.id);
+    await supabase.from("notifications").insert({
+      user_id: item.user_id,
+      title: "Produkts noraidīts",
+      message: `Jūsu produkts "${item.title}" diemžēl netika apstiprināts. Labojiet aprakstu un iesniedziet atkārtoti.`,
+      listing_id: item.id,
+    });
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "rejected" } : i));
+    setActing(null);
+  }
 
   async function toggleStatus(item: Listing) {
+    if (item.status !== "active" && item.status !== "paused") return;
     const next = item.status === "active" ? "paused" : "active";
     await supabase.from("listings").update({ status: next }).eq("id", item.id);
-    setItems(p => p.map(i => i.id === item.id ? { ...i, status: next } : i));
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: next } : i));
   }
 
   async function handleDelete(id: string) {
     setDeleting(id);
     await supabase.from("listings").delete().eq("id", id);
-    setItems(p => p.filter(i => i.id !== id));
+    setItems((p) => p.filter((i) => i.id !== id));
     setDeleting(null);
     setConfirmDelete(null);
   }
 
-  const visible = items.filter(i => {
-    const matchTemp = tempFilter === "all" || i.storage_type === tempFilter;
-    const matchSearch = i.title.toLowerCase().includes(search.toLowerCase()) ||
-      (i.sellers?.name ?? "").toLowerCase().includes(search.toLowerCase());
-    return matchTemp && matchSearch;
+  const pending = items.filter((i) => i.status === "pending_review");
+  const visible = (tab === "pending" ? pending : items).filter((i) => {
+    const q = search.toLowerCase();
+    return !q || i.title.toLowerCase().includes(q) || i.seller_name.toLowerCase().includes(q);
   });
 
   if (loading) return (
@@ -101,48 +116,56 @@ export default function AdminProduktisPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Visi produkti</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900">Produkti</h1>
         <p className="mt-0.5 text-sm text-gray-500">{items.length} kopā</p>
       </div>
 
-      {/* Temperatūras filtri */}
-      <div className="mb-5 flex flex-wrap gap-2">
-        {([
-          { key: "all",     label: `Visi (${counts.all})`,              cls: "bg-gray-900 text-white",                               inactiveCls: "bg-gray-100 text-gray-600 hover:bg-gray-200" },
-          { key: "frozen",  label: `❄ Saldēti -18°C (${counts.frozen})`, cls: "bg-blue-600 text-white",                              inactiveCls: "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100" },
-          { key: "chilled", label: `Dzesēti +2°C–+6°C (${counts.chilled})`, cls: "bg-cyan-600 text-white",                          inactiveCls: "bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100" },
-          { key: "ambient", label: `Istabas t° (${counts.ambient})`,    cls: "bg-gray-500 text-white",                               inactiveCls: "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200" },
-        ] as const).map(f => (
-          <button key={f.key} onClick={() => setTempFilter(f.key)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${tempFilter === f.key ? f.cls : f.inactiveCls}`}>
-            {f.label}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div className="mb-5 flex gap-2">
+        <button onClick={() => setTab("pending")}
+          className={cn("flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition",
+            tab === "pending" ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+          Gaida apstiprinājumu
+          {pending.length > 0 && (
+            <span className={cn("flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold",
+              tab === "pending" ? "bg-white text-amber-600" : "bg-amber-500 text-white")}>
+              {pending.length}
+            </span>
+          )}
+        </button>
+        <button onClick={() => setTab("all")}
+          className={cn("rounded-full px-4 py-1.5 text-sm font-semibold transition",
+            tab === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+          Visi ({items.length})
+        </button>
       </div>
 
+      {/* Search */}
       <div className="mb-5 relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Meklēt produktu vai ražotāju..."
-          className="input pl-9 w-full max-w-sm"
-        />
+          className="input pl-9 w-full max-w-sm" />
       </div>
 
       {visible.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-12 text-center">
           <Package size={36} className="mx-auto text-gray-300" />
-          <p className="mt-3 text-gray-400">Nav atrasts neviens produkts</p>
+          <p className="mt-3 text-gray-400">
+            {tab === "pending" ? "Nav produktu, kas gaida apstiprinājumu" : "Nav atrasts neviens produkts"}
+          </p>
         </div>
       ) : (
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
-            {visible.map(item => {
-              const st = statusLabel[item.status];
+            {visible.map((item) => {
+              const st = statusLabel[item.status] ?? statusLabel.paused;
+              const isPending = item.status === "pending_review";
               return (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                <div key={item.id} className={cn("flex items-center gap-3 px-4 py-3 transition",
+                  isPending ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-gray-50")}>
+
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100">
                     {item.image_url ? (
                       <Image src={item.image_url} alt={item.title} fill className="object-cover" />
                     ) : (
@@ -151,56 +174,57 @@ export default function AdminProduktisPage() {
                       </div>
                     )}
                   </div>
+
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-900">{item.title}</p>
-                    <p className="text-xs text-gray-400">{item.sellers?.name ?? "—"} · {item.category}</p>
+                    <p className="text-xs text-gray-400">{item.seller_name} · {item.category} · {formatPrice(item.price)}</p>
                   </div>
-                  <select
-                    value={item.storage_type ?? "chilled"}
-                    onChange={async (e) => {
-                      const val = e.target.value as "frozen" | "chilled" | "ambient";
-                      await supabase.from("listings").update({ storage_type: val }).eq("id", item.id);
-                      setItems(p => p.map(i => i.id === item.id ? { ...i, storage_type: val } : i));
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold shrink-0 border outline-none",
-                      item.storage_type === "frozen"  ? "bg-blue-50 text-blue-700 border-blue-300" :
-                      item.storage_type === "ambient" ? "bg-gray-100 text-gray-600 border-gray-300" :
-                                                        "bg-cyan-50 text-cyan-700 border-cyan-300"
-                    )}
-                  >
-                    <option value="frozen">❄ -18°C</option>
-                    <option value="chilled">🌡 +2°C – +6°C</option>
-                    <option value="ambient">📦 Istabas t°</option>
-                  </select>
-                  <span className="hidden md:block text-sm font-bold text-gray-900 shrink-0">
-                    {formatPrice(item.price)}
-                  </span>
-                  <span className={cn("hidden md:inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0", st.cls)}>
+
+                  <span className={cn("hidden sm:inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0", st.cls)}>
                     {st.label}
                   </span>
+
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
-                      {item.status === "active" ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                    {confirmDelete === item.id ? (
-                      <div className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 py-1">
-                        <span className="text-xs font-medium text-red-700 mr-1">Dzēst?</span>
-                        <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id}
-                          className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-40">
-                          {deleting === item.id ? <Loader2 size={11} className="animate-spin" /> : <span className="text-xs font-bold">Jā</span>}
+                    {isPending ? (
+                      <>
+                        <button onClick={() => approve(item)} disabled={acting === item.id}
+                          className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition disabled:opacity-50">
+                          {acting === item.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                          Apstiprināt
                         </button>
-                        <button onClick={() => setConfirmDelete(null)}
-                          className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200 transition">
+                        <button onClick={() => reject(item)} disabled={acting === item.id}
+                          className="flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition disabled:opacity-50">
                           <X size={12} />
+                          Noraidīt
                         </button>
-                      </div>
+                      </>
                     ) : (
-                      <button onClick={() => setConfirmDelete(item.id)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition">
-                        <Trash2 size={14} />
-                      </button>
+                      <>
+                        {(item.status === "active" || item.status === "paused") && (
+                          <button onClick={() => toggleStatus(item)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
+                            {item.status === "active" ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        )}
+                        {confirmDelete === item.id ? (
+                          <div className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2 py-1">
+                            <span className="text-xs font-medium text-red-700 mr-1">Dzēst?</span>
+                            <button onClick={() => handleDelete(item.id)} disabled={deleting === item.id}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40">
+                              {deleting === item.id ? <Loader2 size={11} className="animate-spin" /> : <span className="text-xs font-bold">Jā</span>}
+                            </button>
+                            <button onClick={() => setConfirmDelete(null)}
+                              className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200">
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDelete(item.id)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

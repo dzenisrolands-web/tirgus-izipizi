@@ -19,9 +19,9 @@ const NAV = [
 ];
 
 function SidebarContent({
-  pathname, email, pendingCount, onClose, onLogout,
+  pathname, email, pendingCount, pendingProducts, onClose, onLogout,
 }: {
-  pathname: string; email: string; pendingCount: number;
+  pathname: string; email: string; pendingCount: number; pendingProducts: number;
   onClose: () => void; onLogout: () => void;
 }) {
   return (
@@ -43,7 +43,8 @@ function SidebarContent({
       <nav className="flex-1 space-y-0.5 px-3">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);
-          const showBadge = href === "/admin/razotaji" && pendingCount > 0;
+          const showBadge = (href === "/admin/razotaji" && pendingCount > 0) ||
+                            (href === "/admin/produkti" && pendingProducts > 0);
           return (
             <Link key={href} href={href} onClick={onClose}
               className={cn(
@@ -57,7 +58,7 @@ function SidebarContent({
               {label}
               {showBadge && (
                 <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
-                  {pendingCount}
+                  {href === "/admin/produkti" ? pendingProducts : pendingCount}
                 </span>
               )}
               {active && !showBadge && <ChevronRight size={14} className="ml-auto opacity-60" />}
@@ -87,6 +88,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingProducts, setPendingProducts] = useState(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -99,11 +101,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (profile?.role !== "super_admin") { router.push("/"); return; }
       setEmail(data.user.email ?? "");
     });
-    // Poll pending count every 30s
     async function fetchPending() {
-      const { count } = await supabase
-        .from("sellers").select("*", { count: "exact", head: true }).eq("status", "pending");
-      setPendingCount(count ?? 0);
+      const [{ count: sellers }, { count: products }] = await Promise.all([
+        supabase.from("sellers").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "pending_review"),
+      ]);
+      setPendingCount((sellers ?? 0) + (products ?? 0));
+      setPendingProducts(products ?? 0);
     }
     fetchPending();
     const interval = setInterval(fetchPending, 30000);
@@ -118,14 +122,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-56 md:flex-col z-30">
-        <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} onClose={() => {}} onLogout={handleLogout} />
+        <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} pendingProducts={pendingProducts} onClose={() => {}} onLogout={handleLogout} />
       </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-64">
-            <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
+            <SidebarContent pathname={pathname} email={email} pendingCount={pendingCount} pendingProducts={pendingProducts} onClose={() => setMobileOpen(false)} onLogout={handleLogout} />
           </aside>
         </div>
       )}

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 const NAV = [
   { href: "/dashboard",           label: "Kopsavilkums", icon: LayoutDashboard, exact: true },
@@ -62,9 +63,12 @@ function SidebarContent({
 
       {/* User / logout */}
       <div className="border-t border-gray-100 p-3 space-y-1">
-        <div className="rounded-xl bg-gray-50 px-3 py-2">
-          <p className="text-xs font-medium text-gray-700 truncate">{email}</p>
-          <p className="text-[11px] text-gray-400">Pārdevēja konts</p>
+        <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-700 truncate">{email}</p>
+            <p className="text-[11px] text-gray-400">Pārdevēja konts</p>
+          </div>
+          <NotificationsBell />
         </div>
         <button onClick={onLogout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition">
@@ -118,9 +122,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button onClick={() => setMobileOpen(true)} className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100">
             <Menu size={20} />
           </button>
-          <p className="text-sm font-bold text-gray-900">
+          <p className="flex-1 text-sm font-bold text-gray-900">
             {NAV.find(n => n.exact ? pathname === n.href : pathname.startsWith(n.href))?.label ?? "Dashboard"}
           </p>
+          <NotificationsBell />
         </div>
 
         <main className="flex-1">{children}</main>

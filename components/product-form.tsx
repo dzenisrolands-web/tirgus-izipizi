@@ -90,7 +90,7 @@ export function ProductForm({
         .eq("user_id", user.id)
         .single();
 
-      const payload = {
+      const base = {
         user_id: user.id,
         seller_id: seller?.id ?? null,
         title: form.title.trim(),
@@ -101,15 +101,14 @@ export function ProductForm({
         image_url: form.image_url.trim(),
         locker_id: form.locker_id,
         quantity: Number(form.quantity) || 1,
-        status: form.status,
         updated_at: new Date().toISOString(),
       };
 
       if (productId) {
-        const { error } = await supabase.from("listings").update(payload).eq("id", productId);
+        const { error } = await supabase.from("listings").update(base).eq("id", productId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("listings").insert(payload);
+        const { error } = await supabase.from("listings").insert({ ...base, status: "pending_review" });
         if (error) throw error;
       }
 
@@ -217,10 +216,9 @@ export function ProductForm({
         )}
       </section>
 
-      {/* Locker + status */}
+      {/* Locker */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold text-gray-700">Pakomāts un statuss</h2>
-
+        <h2 className="text-sm font-extrabold text-gray-700">Pakomāts</h2>
         <div>
           <label className="block text-sm font-medium text-gray-700">Pakomāts</label>
           <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
@@ -229,15 +227,11 @@ export function ProductForm({
             ))}
           </select>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Statuss</label>
-          <select value={form.status} onChange={e => set("status", e.target.value as ProductData["status"])}
-            className="input mt-1 w-full">
-            <option value="active">Aktīvs — redzams katalogā</option>
-            <option value="paused">Pauzēts — slēpts no kataloga</option>
-          </select>
-        </div>
+        {!productId && (
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+            Produkts tiks iesniegts apstiprināšanai. Pēc apstiprināšanas tas parādīsies katalogā.
+          </p>
+        )}
       </section>
 
       {/* Actions */}
