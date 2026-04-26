@@ -5,17 +5,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, User, Package, ShoppingBag,
-  Menu, X, LogOut, ChevronRight,
+  Menu, X, LogOut, ChevronRight, Flame,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { NotificationsBell } from "@/components/notifications-bell";
 
 const NAV = [
-  { href: "/dashboard",           label: "Kopsavilkums", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/profils",   label: "Profils",       icon: User },
-  { href: "/dashboard/produkti",  label: "Produkti",      icon: Package },
-  { href: "/dashboard/pasutijumi",label: "Pasūtījumi",    icon: ShoppingBag },
+  { href: "/dashboard",                    label: "Kopsavilkums",     icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/profils",            label: "Profils",           icon: User },
+  { href: "/dashboard/produkti",           label: "Produkti",          icon: Package },
+  { href: "/dashboard/karstie-piradzini",  label: "Karstie pīradziņi", icon: Flame },
+  { href: "/dashboard/pasutijumi",         label: "Pasūtījumi",        icon: ShoppingBag },
 ];
 
 function SidebarContent({
