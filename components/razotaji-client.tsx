@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, Star, MapPin, CheckCircle, Package, Globe, Facebook, Instagram, Youtube } from "lucide-react";
-import { sellers, listings, type Seller, type Listing } from "@/lib/mock-data";
-import { sellersMeta, type SellerMeta } from "@/lib/sellers-meta";
+import { type Seller, type Listing } from "@/lib/mock-data";
+import { type SellerMeta } from "@/lib/sellers-meta";
 import type { DbSellerProfile } from "@/lib/db-listings";
 import { cn } from "@/lib/utils";
 
@@ -15,20 +15,10 @@ export function RazotajiClient({ dbSellers = [] }: { dbSellers?: DbSellerProfile
   const [activeCategory, setActiveCategory] = useState("Visi");
 
   const enriched = useMemo<EnrichedSeller[]>(() => {
-    const mockEnriched: EnrichedSeller[] = sellers.map((seller) => {
-      const sellerListings = listings.filter((l) => l.sellerId === seller.id);
-      const cats = Array.from(new Set(sellerListings.map((l) => l.category))).sort();
-      const meta = sellersMeta[seller.id] ?? { cover: "", description: "", shortDesc: "", facts: [], milestones: [], keywords: [] };
-      return { ...seller, listings: sellerListings, categories: cats, meta };
+    return dbSellers.map((d) => {
+      const cats = Array.from(new Set(d.listings.map((l) => l.category))).sort();
+      return { ...d.seller, listings: d.listings, categories: cats, meta: d.meta };
     });
-    const mockIds = new Set(sellers.map((s) => s.id));
-    const dbEnriched: EnrichedSeller[] = dbSellers
-      .filter((d) => !mockIds.has(d.seller.id))
-      .map((d) => {
-        const cats = Array.from(new Set(d.listings.map((l) => l.category))).sort();
-        return { ...d.seller, listings: d.listings, categories: cats, meta: d.meta };
-      });
-    return [...mockEnriched, ...dbEnriched];
   }, [dbSellers]);
 
   const allCategories = useMemo(() => {
