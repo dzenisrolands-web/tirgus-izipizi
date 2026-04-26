@@ -3,22 +3,33 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, Star, MapPin, CheckCircle, Package, Globe, Facebook, Instagram, Youtube } from "lucide-react";
-import { sellers, listings } from "@/lib/mock-data";
+import { sellers, listings, type Seller, type Listing } from "@/lib/mock-data";
 import { sellersMeta, type SellerMeta } from "@/lib/sellers-meta";
+import type { DbSellerProfile } from "@/lib/db-listings";
 import { cn } from "@/lib/utils";
 
-export function RazotajiClient() {
+type EnrichedSeller = Seller & { listings: Listing[]; categories: string[]; meta: SellerMeta };
+
+export function RazotajiClient({ dbSellers = [] }: { dbSellers?: DbSellerProfile[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Visi");
 
-  const enriched = useMemo(() => {
-    return sellers.map((seller) => {
+  const enriched = useMemo<EnrichedSeller[]>(() => {
+    const mockEnriched: EnrichedSeller[] = sellers.map((seller) => {
       const sellerListings = listings.filter((l) => l.sellerId === seller.id);
       const cats = Array.from(new Set(sellerListings.map((l) => l.category))).sort();
       const meta = sellersMeta[seller.id] ?? { cover: "", description: "", shortDesc: "", facts: [], milestones: [], keywords: [] };
       return { ...seller, listings: sellerListings, categories: cats, meta };
     });
-  }, []);
+    const mockIds = new Set(sellers.map((s) => s.id));
+    const dbEnriched: EnrichedSeller[] = dbSellers
+      .filter((d) => !mockIds.has(d.seller.id))
+      .map((d) => {
+        const cats = Array.from(new Set(d.listings.map((l) => l.category))).sort();
+        return { ...d.seller, listings: d.listings, categories: cats, meta: d.meta };
+      });
+    return [...mockEnriched, ...dbEnriched];
+  }, [dbSellers]);
 
   const allCategories = useMemo(() => {
     const set = new Set<string>();
@@ -74,8 +85,6 @@ export function RazotajiClient() {
     </div>
   );
 }
-
-type EnrichedSeller = (typeof sellers)[0] & { listings: typeof listings; categories: string[]; meta: SellerMeta };
 
 function SellerCard({ seller }: { seller: EnrichedSeller }) {
   return (

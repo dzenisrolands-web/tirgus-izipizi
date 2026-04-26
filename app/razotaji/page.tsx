@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Store } from "lucide-react";
 import { RazotajiClient } from "@/components/razotaji-client";
+import { fetchApprovedSellers } from "@/lib/db-listings";
 
 export const metadata: Metadata = {
   title: "Ražotāji — Vietējie pārtikas ražotāji | tirgus.izipizi.lv",
@@ -17,7 +18,9 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RazotajiPage() {
+export default async function RazotajiPage() {
+  const dbSellers = await fetchApprovedSellers();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="max-w-2xl">
@@ -35,7 +38,7 @@ export default function RazotajiPage() {
         </p>
       </div>
 
-      <RazotajiClient />
+      <RazotajiClient dbSellers={dbSellers} />
     </div>
   );
 }
