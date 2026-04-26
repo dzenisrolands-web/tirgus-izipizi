@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Pencil, Check, X, Plus, Trash2, Loader2, CheckCircle,
   MapPin, Star, Globe, Facebook, Instagram, Youtube,
-  Quote, Award, Calendar, Video, AlertCircle, Save, Send,
+  Quote, Award, Calendar, Video, Save, Send,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -52,17 +52,6 @@ export function DashboardProfileEditor() {
   const isDirty = JSON.stringify(profile) !== JSON.stringify(saved);
   const [saveError, setSaveError] = useState("");
   const [userId, setUserId] = useState("");
-
-  const REQUIRED = [
-    { key: "name",              label: "Vārds, uzvārds" },
-    { key: "location",          label: "Atrašanās vieta" },
-    { key: "short_desc",        label: "Īss apraksts (SEO)" },
-    { key: "description",       label: "Pilns apraksts" },
-    { key: "youtube_video_url", label: "YouTube video" },
-    { key: "avatar_url",        label: "Profila attēls" },
-  ];
-  const filledCount = REQUIRED.filter(f => !!(profile as Record<string, unknown>)[f.key]).length;
-  const missing = filledCount < REQUIRED.length;
 
   useEffect(() => {
     (async () => {
@@ -148,7 +137,7 @@ export function DashboardProfileEditor() {
                 Saglabāt
               </button>
               {profile.status !== "approved" && (
-                <button onClick={submit} disabled={submitting || missing || profile.status === "pending"}
+                <button onClick={submit} disabled={submitting || profile.status === "pending"}
                   className="btn-primary flex items-center gap-1.5 py-1.5 text-sm disabled:opacity-40">
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {profile.status === "pending" ? "Gaida apstiprināšanu" : "Iesniegt apstiprināšanai"}
@@ -162,28 +151,6 @@ export function DashboardProfileEditor() {
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="mt-2.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-500">Profila aizpildījums</span>
-              <span className="text-xs font-semibold text-gray-700">{filledCount}/{REQUIRED.length}</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-gray-100">
-              <div className="h-1.5 rounded-full bg-brand-500 transition-all duration-500"
-                style={{ width: `${(filledCount / REQUIRED.length) * 100}%` }} />
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              {REQUIRED.map(f => {
-                const filled = !!(profile as Record<string, unknown>)[f.key];
-                return (
-                  <span key={f.key} className={cn("flex items-center gap-1 text-[11px]", filled ? "text-green-600" : "text-amber-600")}>
-                    {filled ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
-                    {f.label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -411,20 +378,15 @@ export function DashboardProfileEditor() {
 
             {/* Video */}
             <EditableSection id="video" editSection={editSection} setEditSection={setEditSection}
-              label="Video (obligāts)"
-              required={!profile.youtube_video_url}
+              label="Video"
               editContent={
                 <div className="space-y-3">
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-                    Video ir obligāts lauks — pircēji vairāk uzticas ražotājiem ar video.
-                  </div>
-                  <Field label="YouTube video URL *" value={profile.youtube_video_url} onChange={(v) => set("youtube_video_url", v)} placeholder="https://www.youtube.com/watch?v=..." />
+                  <Field label="YouTube video URL" value={profile.youtube_video_url} onChange={(v) => set("youtube_video_url", v)} placeholder="https://www.youtube.com/watch?v=..." />
                 </div>
               }>
               <div>
                 <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
                   <Video size={13} /> Video
-                  {!profile.youtube_video_url && <span className="text-amber-500 font-normal normal-case">(obligāts — nav pievienots!)</span>}
                 </h2>
                 {videoId
                   ? <div className="overflow-hidden rounded-2xl shadow-md"><div className="relative aspect-video w-full">
