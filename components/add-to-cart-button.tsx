@@ -11,7 +11,7 @@ type Props = {
   unit: string;
   image: string;
   sellerName: string;
-  storageType: "frozen" | "chilled" | "ambient";
+  storageType: "frozen" | "chilled";
 };
 
 export function AddToCartButton({ id, title, price, unit, image, sellerName, storageType }: Props) {

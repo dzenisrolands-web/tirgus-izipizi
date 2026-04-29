@@ -8,7 +8,7 @@ export type Seller = {
   verified: boolean; rating: number; reviewCount: number; location: string;
   homeLockerIds?: string[];
 };
-export type StorageType = "frozen" | "chilled" | "ambient";
+export type StorageType = "frozen" | "chilled";
 
 export type Variant = {
   id: string; title: string; price: number; quantity: number;
@@ -20,6 +20,7 @@ export type Listing = {
   lockerId: string; locker: Locker; freshnessDate: string; quantity: number; createdAt: string;
   storageType?: StorageType;
   variants?: Variant[];
+  express_delivery?: boolean;
 };
 export type Review = {
   id: string; listingId: string; buyerName: string; buyerAvatar: string;

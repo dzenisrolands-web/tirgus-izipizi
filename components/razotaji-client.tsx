@@ -78,8 +78,14 @@ export function RazotajiClient({ dbSellers = [] }: { dbSellers?: DbSellerProfile
 
 function SellerCard({ seller }: { seller: EnrichedSeller }) {
   return (
-    <Link href={`/seller/${seller.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md hover:border-brand-200 cursor-pointer">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md hover:border-brand-200">
+      {/* Card-wide link covers everything except social icons (which sit above with relative z-10) */}
+      <Link
+        href={`/seller/${seller.id}`}
+        aria-label={`Skatīt ${seller.name} profilu`}
+        className="absolute inset-0 z-0"
+      />
+
       <div className="relative h-32 w-full overflow-hidden bg-gray-100">
         {seller.meta.cover ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -98,7 +104,7 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-4 pt-10">
+      <div className="relative flex flex-1 flex-col p-4 pt-10">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             {seller.verified && (
@@ -121,12 +127,13 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
           </p>
         )}
 
-        <div className="mt-2 flex items-center gap-2">
-          {seller.meta.website && <a href={seller.meta.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-gray-700 transition"><Globe size={13} /></a>}
-          {seller.meta.facebook && <a href={seller.meta.facebook} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-blue-600 transition"><Facebook size={13} /></a>}
-          {seller.meta.instagram && <a href={seller.meta.instagram} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-pink-600 transition"><Instagram size={13} /></a>}
+        {/* Social icons need higher z-index to be clickable above the cover link */}
+        <div className="relative z-10 mt-2 flex items-center gap-2">
+          {seller.meta.website && <a href={seller.meta.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-700 transition"><Globe size={13} /></a>}
+          {seller.meta.facebook && <a href={seller.meta.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition"><Facebook size={13} /></a>}
+          {seller.meta.instagram && <a href={seller.meta.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition"><Instagram size={13} /></a>}
           {(seller.meta.youtubeChannel || seller.meta.youtubeVideoId) && (
-            <a href={seller.meta.youtubeChannel || `https://youtube.com/watch?v=${seller.meta.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-gray-400 hover:text-red-600 transition"><Youtube size={13} /></a>
+            <a href={seller.meta.youtubeChannel || `https://youtube.com/watch?v=${seller.meta.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-red-600 transition"><Youtube size={13} /></a>
           )}
         </div>
 
@@ -142,6 +149,6 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
           <span className="rounded-full bg-brand-700 px-4 py-1.5 text-xs font-semibold text-white group-hover:bg-brand-800 transition">Skatīt profilu →</span>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

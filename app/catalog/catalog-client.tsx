@@ -148,7 +148,6 @@ export function CatalogClient({ listings }: { listings: Listing[] }) {
               { value: "all",     label: "Visi" },
               { value: "frozen",  label: "❄ -18°C" },
               { value: "chilled", label: "🌡 +2°C – +6°C" },
-              { value: "ambient", label: "📦 Istabas t°" },
             ] as const).map((opt) => (
               <button key={opt.value}
                 onClick={() => setFilters(f => ({ ...f, storageType: opt.value }))}
@@ -157,7 +156,6 @@ export function CatalogClient({ listings }: { listings: Listing[] }) {
                   filters.storageType === opt.value
                     ? opt.value === "frozen"  ? "bg-blue-600 text-white"
                     : opt.value === "chilled" ? "bg-cyan-600 text-white"
-                    : opt.value === "ambient" ? "bg-gray-500 text-white"
                     : "bg-gray-900 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 )}>

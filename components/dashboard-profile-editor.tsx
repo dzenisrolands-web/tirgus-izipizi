@@ -2,18 +2,26 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
-  Pencil, Check, X, Plus, Trash2, Loader2, CheckCircle,
+  Pencil, Check, X, Plus, Trash2, Loader2, CheckCircle, AlertCircle,
   MapPin, Star, Globe, Facebook, Instagram, Youtube,
-  Quote, Award, Calendar, Video, Save, Send,
+  Quote, Award, Calendar, Video, Save, Send, FileText,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { ImageUpload } from "@/components/image-upload";
+import {
+  SellerLegalSection,
+  EMPTY_LEGAL,
+  validateLegal,
+  type LegalData,
+} from "@/components/seller-legal-section";
 
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
 
-type Profile = {
+const SELF_BILLING_VERSION = "1.0";
+
+type Profile = LegalData & {
   id?: string;
   name: string;
   farm_name: string;
@@ -38,6 +46,7 @@ const EMPTY: Profile = {
   avatar_url: "", cover_url: "", youtube_video_url: "", youtube_channel: "",
   website: "", facebook: "", instagram: "",
   facts: [], milestones: [], events: [], status: "draft",
+  ...EMPTY_LEGAL,
 };
 
 export function DashboardProfileEditor() {
@@ -82,11 +91,26 @@ export function DashboardProfileEditor() {
     setSaveError("");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    const justAgreed = !saved.self_billing_agreed && profile.self_billing_agreed;
+    const payload = {
+      ...profile,
+      bank_iban: profile.bank_iban?.replace(/\s/g, "").toUpperCase() ?? "",
+      vat_number: profile.is_vat_registered ? profile.vat_number?.toUpperCase() : null,
+      ...(justAgreed
+        ? {
+            self_billing_agreed_at: new Date().toISOString(),
+            self_billing_agreement_version: SELF_BILLING_VERSION,
+          }
+        : {}),
+      updated_at: new Date().toISOString(),
+    };
+
     if (profile.id) {
-      const { error } = await supabase.from("sellers").update({ ...profile, updated_at: new Date().toISOString() }).eq("id", profile.id);
+      const { error } = await supabase.from("sellers").update(payload).eq("id", profile.id);
       if (error) { setSaveError(error.message); setSaving(false); return; }
     } else {
-      const { data, error } = await supabase.from("sellers").insert({ ...profile, user_id: user.id, status: "draft" }).select().single();
+      const { data, error } = await supabase.from("sellers").insert({ ...payload, user_id: user.id, status: "draft" }).select().single();
       if (error) { setSaveError(error.message); setSaving(false); return; }
       if (data) setProfile((p) => ({ ...p, id: data.id }));
     }
@@ -234,6 +258,76 @@ export function DashboardProfileEditor() {
             )}
           </div>
         </EditableSection>
+
+        {/* Legal info — required for invoicing */}
+        {(() => {
+          const legalErrs = validateLegal(profile);
+          const isComplete = legalErrs.length === 0;
+          return (
+            <div className="my-4">
+              {!isComplete && (
+                <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Juridiskā informācija nav aizpildīta</p>
+                    <p className="mt-0.5 text-xs text-amber-700">
+                      Lai saņemtu samaksu par pasūtījumiem un mēs varētu izrakstīt
+                      rēķinus tavā vārdā, lūdzu aizpildi sekojošo sadaļu.
+                    </p>
+                  </div>
+                </div>
+              )}
+              <EditableSection
+                id="legal"
+                editSection={editSection}
+                setEditSection={setEditSection}
+                label="Juridiskā informācija un bankas konts"
+                required={!isComplete}
+                editContent={
+                  <SellerLegalSection
+                    data={profile}
+                    onChange={(p) => setProfile((prev) => ({ ...prev, ...p }))}
+                  />
+                }
+              >
+                <div>
+                  <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                    <FileText size={13} /> Juridiskā informācija
+                  </h2>
+                  {isComplete ? (
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="rounded-xl bg-gray-50 px-3 py-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400">Juridiskais nosaukums</p>
+                        <p className="font-semibold text-gray-900">{profile.legal_name}</p>
+                        <p className="text-xs text-gray-500">Reģ. Nr.: {profile.registration_number}</p>
+                        {profile.is_vat_registered && (
+                          <p className="text-xs text-gray-500">PVN: {profile.vat_number}</p>
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-3 py-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400">Banka</p>
+                        <p className="font-semibold text-gray-900">{profile.bank_name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{profile.bank_iban}</p>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-3 py-2.5 sm:col-span-2">
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400">Juridiskā adrese</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">{profile.legal_address}</p>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 sm:col-span-2 text-xs text-green-700">
+                        <CheckCircle size={13} />
+                        Self-billing kārtība pieņemta (versija {profile.self_billing_agreement_version ?? "1.0"})
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm italic text-gray-300">
+                      + Pievienot juridiskos rekvizītus, bankas kontu un piekrišanu self-billing kārtībai
+                    </p>
+                  )}
+                </div>
+              </EditableSection>
+            </div>
+          );
+        })()}
 
         <div className="grid gap-10 lg:grid-cols-5 mt-4">
 

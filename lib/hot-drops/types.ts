@@ -1,6 +1,6 @@
 import type { Locker } from "@/lib/mock-data";
 
-export type TemperatureZone = "ambient" | "chilled" | "frozen";
+export type TemperatureZone = "chilled" | "frozen";
 export type DropStatus = "active" | "expired" | "sold_out" | "cancelled";
 export type ReservationStatus = "pending" | "paid" | "expired" | "cancelled";
 
@@ -20,6 +20,9 @@ export type HotDrop = {
   temperature_zone: TemperatureZone;
   expires_at: string;
   cover_image_url: string | null;
+  audio_url: string | null;
+  location_text: string | null;
+  posted_at: string | null;
   status: DropStatus;
   published_at: string;
   created_at: string;
@@ -62,6 +65,8 @@ export type DropFormData = {
   temperature_zone: TemperatureZone;
   expires_at: string;
   cover_image_url: string;
+  audio_url?: string;
+  location_text?: string;
 };
 
 export type DropBadge = {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, XCircle } from "lucide-react";
+import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, XCircle, Percent, Edit3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -16,9 +16,11 @@ type Listing = {
   category: string;
   image_url: string;
   status: "active" | "paused" | "sold_out" | "pending_review" | "rejected";
-  storage_type: "frozen" | "chilled" | "ambient" | null;
+  storage_type: "frozen" | "chilled" | null;
   created_at: string;
   seller_name: string;
+  commission_rate: number | null;
+  commission_status: "proposed" | "approved" | "rejected" | null;
 };
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -39,13 +41,15 @@ export default function AdminProduktisPage() {
   const [acting, setActing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editingCommission, setEditingCommission] = useState<string | null>(null);
+  const [commissionDraft, setCommissionDraft] = useState<string>("");
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     const { data, error } = await supabase
       .from("listings")
-      .select("id,user_id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id")
+      .select("id,user_id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id,commission_rate,commission_status")
       .order("created_at", { ascending: false });
     if (error) { setLoading(false); return; }
 
@@ -62,15 +66,39 @@ export default function AdminProduktisPage() {
 
   async function approve(item: Listing) {
     setActing(item.id);
-    await supabase.from("listings").update({ status: "active" }).eq("id", item.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("listings").update({
+      status: "active",
+      commission_status: "approved",
+      commission_approved_at: new Date().toISOString(),
+      commission_approved_by: user?.id ?? null,
+    }).eq("id", item.id);
     await supabase.from("notifications").insert({
       user_id: item.user_id,
       title: "Produkts apstiprināts! ✅",
-      message: `Jūsu produkts "${item.title}" ir apstiprināts un tagad ir redzams katalogā.`,
+      message: `Jūsu produkts "${item.title}" ir apstiprināts (komisija ${item.commission_rate}%) un tagad ir redzams katalogā.`,
       listing_id: item.id,
     });
-    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "active" } : i));
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "active", commission_status: "approved" } : i));
     setActing(null);
+  }
+
+  async function saveCommissionOverride(item: Listing) {
+    const newRate = Number(commissionDraft);
+    if (isNaN(newRate) || newRate < 5 || newRate > 20) {
+      alert("Likmei jābūt no 5 līdz 20");
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("listings").update({
+      commission_rate: newRate,
+      commission_status: "approved",
+      commission_approved_at: new Date().toISOString(),
+      commission_approved_by: user?.id ?? null,
+    }).eq("id", item.id);
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, commission_rate: newRate, commission_status: "approved" } : i));
+    setEditingCommission(null);
+    setCommissionDraft("");
   }
 
   async function reject(item: Listing) {
@@ -178,6 +206,53 @@ export default function AdminProduktisPage() {
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-900">{item.title}</p>
                     <p className="text-xs text-gray-400">{item.seller_name} · {item.category} · {formatPrice(item.price)}</p>
+
+                    {/* Commission row */}
+                    <div className="mt-1 flex items-center gap-2 text-xs">
+                      <Percent size={10} className="text-gray-400" />
+                      {editingCommission === item.id ? (
+                        <span className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="5"
+                            max="20"
+                            step="0.5"
+                            value={commissionDraft}
+                            onChange={(e) => setCommissionDraft(e.target.value)}
+                            className="w-14 rounded border border-gray-200 px-1.5 py-0.5 text-xs"
+                          />
+                          <button onClick={() => saveCommissionOverride(item)}
+                            className="rounded bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-green-700">
+                            OK
+                          </button>
+                          <button onClick={() => { setEditingCommission(null); setCommissionDraft(""); }}
+                            className="text-gray-400 hover:text-gray-600">
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ) : (
+                        <>
+                          <span className="font-mono font-semibold text-gray-700">
+                            {item.commission_rate ? `${item.commission_rate}%` : "—"}
+                          </span>
+                          {item.commission_status === "proposed" && (
+                            <span className="rounded-full bg-amber-100 px-1.5 py-0 text-[9px] font-bold text-amber-700">PIEDĀVĀTA</span>
+                          )}
+                          {item.commission_status === "approved" && (
+                            <span className="rounded-full bg-green-100 px-1.5 py-0 text-[9px] font-bold text-green-700">APSTIPR.</span>
+                          )}
+                          {item.commission_status === "rejected" && (
+                            <span className="rounded-full bg-red-100 px-1.5 py-0 text-[9px] font-bold text-red-700">NORAID.</span>
+                          )}
+                          {item.commission_rate && (
+                            <button onClick={() => { setEditingCommission(item.id); setCommissionDraft(String(item.commission_rate)); }}
+                              className="text-gray-400 hover:text-gray-700">
+                              <Edit3 size={10} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <span className={cn("hidden sm:inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0", st.cls)}>

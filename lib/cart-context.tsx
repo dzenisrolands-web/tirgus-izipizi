@@ -10,7 +10,7 @@ export type CartItem = {
   image: string;
   sellerName: string;
   quantity: number;
-  storageType: "frozen" | "chilled" | "ambient";
+  storageType: "frozen" | "chilled";
 };
 
 type CartCtx = {

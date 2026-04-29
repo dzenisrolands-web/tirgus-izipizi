@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Clock, Users, ChefHat, ArrowLeft, CheckCircle, Lightbulb } from "lucide-react";
 import { recipes } from "@/lib/recipes-data";
 import { listings } from "@/lib/mock-data";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, hasValidImage } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { RecipeAddToCart } from "@/components/recipe-add-to-cart";
 
@@ -16,7 +16,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const recipe = recipes.find((r) => r.slug === slug);
   if (!recipe) return {};
-  return { title: `${recipe.title} — receptes | tirgus.izipizi.lv` };
+  const title = `${recipe.title} — recepte`;
+  const description = recipe.shortDesc;
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `https://tirgus.izipizi.lv/receptes/${slug}`,
+      images: recipe.image
+        ? [{ url: recipe.image, width: 1200, height: 630, alt: recipe.title }]
+        : undefined,
+      type: "article",
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+      description,
+      ...(recipe.image && { images: [recipe.image] }),
+    },
+  };
 }
 
 const difficultyColor = {
@@ -32,11 +52,34 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 
   const linkedProducts = recipe.linkedProductIds
     .map((id) => listings.find((l) => l.id === id))
-    .filter(Boolean) as typeof listings;
+    .filter((l): l is (typeof listings)[number] => Boolean(l) && hasValidImage(l!));
   const relatedRecipes = recipes.filter((r) => r.slug !== recipe.slug).slice(0, 3);
+
+  // Recipe Schema.org structured data — enables rich Google snippets
+  // (cooking time, servings, ingredients, instructions in search results)
+  const recipeJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Recipe",
+    name: recipe.title,
+    description: recipe.shortDesc,
+    image: recipe.image ? [recipe.image] : undefined,
+    author: { "@type": "Organization", name: "tirgus.izipizi.lv" },
+    inLanguage: "lv-LV",
+    prepTime: `PT${recipe.prepTime}M`,
+    cookTime: `PT${recipe.cookTime}M`,
+    totalTime: `PT${recipe.prepTime + recipe.cookTime}M`,
+    recipeYield: `${recipe.servings} porcijas`,
+    recipeIngredient: recipe.ingredients.flatMap((g) => g.items),
+    recipeInstructions: recipe.steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      text: s,
+    })),
+  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(recipeJsonLd) }} />
 
       {/* Back */}
       <Link href="/receptes" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">

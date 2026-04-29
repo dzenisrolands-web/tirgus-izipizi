@@ -7,8 +7,8 @@ import type {
 const DROP_COLS = `
   id, seller_id, user_id, title, description, category, unit, price_cents,
   total_quantity, reserved_quantity, sold_quantity, pickup_locker_id,
-  temperature_zone, expires_at, cover_image_url, status,
-  published_at, created_at, updated_at
+  temperature_zone, expires_at, cover_image_url, audio_url, location_text,
+  posted_at, status, published_at, created_at, updated_at
 `;
 
 function attachLocker(drop: HotDrop): HotDropWithSeller {

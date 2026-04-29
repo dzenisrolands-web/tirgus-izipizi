@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, ImageIcon, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
+
+type Benchmark = { category: string; suggested_min: number; suggested_avg: number; suggested_max: number };
 
 export type ProductData = {
   title: string;
@@ -20,12 +22,16 @@ export type ProductData = {
   locker_id: string;
   quantity: string;
   status: "active" | "paused";
+  express_delivery: boolean;
+  commission_rate: string;
+  commission_status?: string;
 };
 
 const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
-  quantity: "1", status: "active",
+  quantity: "1", status: "active", express_delivery: false,
+  commission_rate: "10",
 };
 
 export function ProductForm({
@@ -36,11 +42,34 @@ export function ProductForm({
   productId?: string;
 }) {
   const router = useRouter();
-  const [form, setForm] = useState<ProductData>({ ...EMPTY, ...initial });
+  const [form, setForm] = useState<ProductData>({
+    ...EMPTY,
+    ...initial,
+    express_delivery: initial?.express_delivery ?? false,
+    commission_rate: initial?.commission_rate ?? "10",
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    supabase
+      .from("category_commission_benchmarks")
+      .select("category, suggested_min, suggested_avg, suggested_max")
+      .then(({ data }) => setBenchmarks(data ?? []));
+  }, []);
+
+  const benchmark = useMemo(
+    () => benchmarks.find((b) => b.category === form.category),
+    [benchmarks, form.category],
+  );
+
+  const priceNum = Number(form.price) || 0;
+  const commissionNum = Number(form.commission_rate) || 0;
+  const commissionEur = priceNum * (commissionNum / 100);
+  const netToSeller = priceNum - commissionEur;
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -70,6 +99,9 @@ export function ProductForm({
   function set(k: keyof ProductData, v: string) {
     setForm(f => ({ ...f, [k]: v }));
   }
+  function toggle(k: keyof ProductData) {
+    setForm(f => ({ ...f, [k]: !f[k] }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,6 +110,10 @@ export function ProductForm({
     if (!form.title.trim()) return setError("Nosaukums ir obligāts");
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
       return setError("Ievadi derīgu cenu");
+    if (!form.image_url.trim())
+      return setError("Bilde ir obligāta — produktu nevar publicēt bez bildes. Lūdzu augšupielādē attēlu sadaļā 'Bilde'.");
+    if (commissionNum < 5 || commissionNum > 20)
+      return setError("Komisijai jābūt no 5% līdz 20%");
 
     setSaving(true);
     try {
@@ -90,6 +126,17 @@ export function ProductForm({
         .eq("user_id", user.id)
         .single();
 
+      const commissionChanged = !productId || String(initial?.commission_rate ?? "") !== form.commission_rate;
+      const commissionFields = commissionChanged
+        ? {
+            commission_rate: commissionNum,
+            commission_status: "proposed",
+            commission_proposed_at: new Date().toISOString(),
+            commission_approved_at: null,
+            commission_approved_by: null,
+          }
+        : { commission_rate: commissionNum };
+
       const base = {
         user_id: user.id,
         seller_id: seller?.id ?? null,
@@ -101,6 +148,8 @@ export function ProductForm({
         image_url: form.image_url.trim(),
         locker_id: form.locker_id,
         quantity: Number(form.quantity) || 1,
+        express_delivery: form.express_delivery,
+        ...commissionFields,
         updated_at: new Date().toISOString(),
       };
 
@@ -182,9 +231,103 @@ export function ProductForm({
         </div>
       </section>
 
+      {/* Commission */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
+            <Percent size={14} className="text-brand-600" />
+            Komisija
+          </h2>
+          {form.commission_status === "approved" && (
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+              Apstiprināta
+            </span>
+          )}
+          {form.commission_status === "proposed" && productId && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+              Gaida apstiprināšanu
+            </span>
+          )}
+          {form.commission_status === "rejected" && (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+              Noraidīta — piedāvā citu
+            </span>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
+          Mūsu komisija ir <strong>5–20 %</strong> par darījuma apkalpošanu, Paysera maksājumu,
+          pakomātu tīklu un platformas uzturēšanu. Norādi vēlamo procentu — mūsu komanda
+          apstiprinās 1–2 darba dienu laikā.
+        </div>
+
+        {benchmark && (
+          <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <TrendingUp size={12} className="text-gray-400" />
+            <span>
+              Vidējā komisija kategorijā <strong className="text-gray-900">{form.category}</strong>:{" "}
+              <strong className="text-brand-700">{benchmark.suggested_avg}%</strong>
+              <span className="text-gray-400"> (diapazons {benchmark.suggested_min}–{benchmark.suggested_max}%)</span>
+            </span>
+          </div>
+        )}
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">Komisijas likme</label>
+            <span className="text-2xl font-extrabold text-brand-700">{form.commission_rate}%</span>
+          </div>
+          <input
+            type="range"
+            min="5"
+            max="20"
+            step="0.5"
+            value={form.commission_rate}
+            onChange={(e) => set("commission_rate", e.target.value)}
+            className="w-full accent-brand-600"
+          />
+          <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+            <span>5%</span>
+            <span>10%</span>
+            <span>15%</span>
+            <span>20%</span>
+          </div>
+        </div>
+
+        {priceNum > 0 && (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-gray-50 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">Pārdošanas cena</p>
+              <p className="mt-0.5 font-bold text-gray-900">{priceNum.toFixed(2)}€</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-amber-700">Komisija</p>
+              <p className="mt-0.5 font-bold text-amber-700">−{commissionEur.toFixed(2)}€</p>
+            </div>
+            <div className="rounded-xl bg-green-50 border border-green-200 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-green-700">Tu saņemsi</p>
+              <p className="mt-0.5 font-bold text-green-700">{netToSeller.toFixed(2)}€</p>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Image */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold text-gray-700">Bilde</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-extrabold text-gray-700">Bilde *</h2>
+          {!form.image_url && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+              OBLIGĀTA
+            </span>
+          )}
+        </div>
+
+        {!form.image_url && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            ⚠ <strong>Produktu nevar publicēt bez bildes.</strong> Augšupielādē attēlu, lai produkts kļūtu redzams pircējiem.
+          </div>
+        )}
 
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
 
@@ -218,15 +361,50 @@ export function ProductForm({
 
       {/* Locker */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold text-gray-700">Pakomāts</h2>
+        <h2 className="text-sm font-extrabold text-gray-700">Pārtikas pakomāts</h2>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Pakomāts</label>
+          <label className="block text-sm font-medium text-gray-700">Pārtikas pakomāts</label>
           <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
             {lockers.map(l => (
               <option key={l.id} value={l.id}>{l.city} — {l.name}</option>
             ))}
           </select>
         </div>
+        {/* Express delivery toggle */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Piegādes iespējas</label>
+          <button
+            type="button"
+            onClick={() => toggle("express_delivery")}
+            className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition ${
+              form.express_delivery
+                ? "border-yellow-400 bg-yellow-50"
+                : "border-gray-200 bg-gray-50 hover:border-gray-300"
+            }`}
+          >
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+              form.express_delivery ? "bg-yellow-400/20" : "bg-gray-200"
+            }`}>
+              <Zap size={18} className={form.express_delivery ? "text-yellow-600" : "text-gray-400"} />
+            </div>
+            <div className="flex-1">
+              <p className={`font-semibold text-sm ${form.express_delivery ? "text-yellow-800" : "text-gray-700"}`}>
+                ⚡ Eksprespiegāde (2–5h Rīgā)
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Aktivizē, ja esi Rīgā vai tuvākajā apkārtnē un vari piedāvāt tajā pašā dienā piegādi
+              </p>
+            </div>
+            <div className={`h-5 w-9 rounded-full transition-colors ${
+              form.express_delivery ? "bg-yellow-400" : "bg-gray-300"
+            }`}>
+              <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                form.express_delivery ? "translate-x-4" : "translate-x-0"
+              }`} />
+            </div>
+          </button>
+        </div>
+
         {!productId && (
           <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
             Produkts tiks iesniegts apstiprināšanai. Pēc apstiprināšanas tas parādīsies katalogā.

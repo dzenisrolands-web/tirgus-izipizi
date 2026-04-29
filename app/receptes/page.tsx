@@ -5,7 +5,17 @@ import { recipes } from "@/lib/recipes-data";
 import { listings } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Receptes — tirgus.izipizi.lv" };
+export const metadata = {
+  title: "Receptes ar vietējiem produktiem",
+  description:
+    "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi pakomātu.",
+  openGraph: {
+    title: "Receptes — tirgus.izipizi.lv",
+    description: "Receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas.",
+    url: "https://tirgus.izipizi.lv/receptes",
+    type: "website" as const,
+  },
+};
 
 const difficultyColor = {
   Viegla: "bg-green-100 text-green-700",

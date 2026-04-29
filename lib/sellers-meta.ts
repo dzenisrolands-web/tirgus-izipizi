@@ -144,7 +144,7 @@ export const sellersMeta: Record<string, SellerMeta> = {
       "\"Suntažu Barons\" — populārākā šokolādes siera torte",
       "\"Medus pļava\" — torte ar medu no Gaujas Nacionālā parka",
       "Flash saldēšana saglabā svaigumu un garšu kā tikko cepta",
-      "Piegāde visā Latvijā, bezmaksas virs 25€",
+      "Piegāde 4 zonās — Rīga, Pierīga un reģionālie centri",
     ],
     events: [
       { title: "Degustācijas", desc: "Regulāras degustāciju dienas Suntažos un Rīgā" },

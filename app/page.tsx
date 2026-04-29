@@ -1,400 +1,309 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowRight, Package, Clock,
-  Truck, Zap, CheckCircle, ChevronRight,
+  ArrowRight, Package, Flame, Zap,
+  CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
 } from "lucide-react";
 import { listings, sellers } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
+import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
 import { recipes } from "@/lib/recipes-data";
 import { fetchActiveListings } from "@/lib/db-listings";
+import { hasValidImage } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Svaiga pārtika no Latvijas ražotājiem",
+  description:
+    "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem tieši no ražotāja caur IziPizi pakomātiem. Svaigi. Ātri. Vietēji.",
+  openGraph: {
+    title: "tirgus.izipizi.lv — Svaiga pārtika bez starpniekiem",
+    description:
+      "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem tieši no ražotāja caur IziPizi pakomātiem.",
+    url: "https://tirgus.izipizi.lv",
+    images: [
+      {
+        url: "https://business.izipizi.lv/images/marketplace/products/4998684Pelmeni-veganie-webp.webp",
+        width: 1200,
+        height: 630,
+        alt: "tirgus.izipizi.lv produkti",
+      },
+    ],
+  },
+};
+
+const CATEGORIES = [
+  { label: "Saldēta pārtika", emoji: "🥟", slug: "Saldēta pārtika" },
+  { label: "Gaļa",            emoji: "🥩", slug: "Gaļa" },
+  { label: "Dzērieni",        emoji: "🥤", slug: "Dzērieni" },
+  { label: "Olas",            emoji: "🥚", slug: "Olas" },
+  { label: "Garšaugi",        emoji: "🌿", slug: "Garšaugi" },
+  { label: "Konservi",        emoji: "🥫", slug: "Konservi" },
+  { label: "Dārzeņi",         emoji: "🥦", slug: "Dārzeņi" },
+  { label: "Jūras veltes",    emoji: "🐟", slug: "Jūras veltes" },
+  { label: "Konditorejas",    emoji: "🍰", slug: "Konditorejas" },
+  { label: "Medus",           emoji: "🍯", slug: "Medus" },
+];
+
+const HERO_PRODUCTS = [
+  {
+    img: "https://business.izipizi.lv/images/marketplace/products/4998684Pelmeni-veganie-webp.webp",
+    name: "Vegānie pelmeņi", seller: "Bujums", price: "€4.00",
+  },
+  {
+    img: "https://business.izipizi.lv/images/marketplace/products/5397193Brie-a-steiks-stilbs-marin-ts-jpg.jpg",
+    name: "Brieža steiks", seller: "WILD'N'FREE", price: "€12.50",
+  },
+  {
+    img: "https://business.izipizi.lv/images/marketplace/products/3837272facebook-1770717542678-7426927672127940456-jpg.jpg",
+    name: "Paipalu olas", seller: "Bujums", price: "€5.50",
+  },
+  {
+    img: "https://business.izipizi.lv/images/marketplace/products/4066818Pankukas-Spinatu-2-webp.webp",
+    name: "Pankūkas ar spinātiem", seller: "Bujums", price: "€4.86",
+  },
+];
 
 export default async function HomePage() {
   const dbListings = await fetchActiveListings();
-  const allListings = [...dbListings, ...listings];
+  const allListings = [...dbListings, ...listings].filter(hasValidImage);
   const featured = allListings.slice(0, 8);
   const totalListings = allListings.length;
 
-  const coverImages = [
-    sellersMeta.s7.cover,
-    sellersMeta.s9.cover,
-    sellersMeta.s12.cover,
-    sellersMeta.s13.cover,
-  ].filter(Boolean);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://tirgus.izipizi.lv/#website",
+        url: "https://tirgus.izipizi.lv",
+        name: "tirgus.izipizi.lv",
+        description: "Latvijas ražotāju pārtikas tirgus vieta",
+        inLanguage: "lv",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: "https://tirgus.izipizi.lv/catalog?q={search_term_string}" },
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://tirgus.izipizi.lv/#organization",
+        name: "tirgus.izipizi.lv",
+        url: "https://tirgus.izipizi.lv",
+        logo: { "@type": "ImageObject", url: "https://tirgus.izipizi.lv/logo.png" },
+        sameAs: ["https://izipizi.lv"],
+      },
+    ],
+  };
 
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <div>
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#192635] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -right-40 -top-40 h-96 w-96 rounded-full opacity-10"
+
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden bg-[#192635]">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full opacity-10"
             style={{ background: "radial-gradient(circle, #53F3A4, transparent 70%)" }} />
-          <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full opacity-10"
+          <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full opacity-10"
             style={{ background: "radial-gradient(circle, #AD47FF, transparent 70%)" }} />
         </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-8 py-14 lg:grid-cols-2 lg:py-20">
 
-            {/* Left — copy */}
+            {/* Left */}
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1.5">
-                <Zap size={12} className="text-yellow-400" />
-                <span className="text-xs font-semibold text-yellow-300">Tagad arī eksprespiegāde Rīgā — 2–5h</span>
+              <div className="inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1.5 text-xs font-semibold text-green-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                Latvijā ražoti produkti — tieši no ražotāja
               </div>
 
-              <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
-                No ražotāja —{" "}
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}
-                >
-                  tieši pie tevis
+              <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
+                Svaiga pārtika{" "}
+                <span className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
+                  bez starpniekiem
                 </span>
               </h1>
 
-              <p className="mt-5 max-w-lg text-lg leading-relaxed text-gray-300">
-                Latvijas ražotāji pārdod tieši caur{" "}
-                <strong className="text-white">IziPizi infrastruktūru</strong>.
-                Mēs nodrošinām pilno ceļu — no ražotāja pakomāta līdz taviem durvīm. Svaigi. Ātri. Vietēji.
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
+                Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem
+                tieši no ražotāja caur <strong className="text-white">IziPizi pakomātiem</strong>. Svaigi. Ātri. Vietēji.
               </p>
 
-              {/* Delivery type pills */}
-              <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300">
-                  <Package size={12} className="text-brand-400" /> Pakomāts 24/7
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300">
-                  <Truck size={12} className="text-cyan-400" /> Piegāde uz adresi
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300">
-                  <Zap size={12} className="text-yellow-400" /> Eksprespiegāde 2–5h
-                </span>
-              </div>
-
               {/* CTAs */}
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/catalog"
                   className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-[#192635] transition hover:brightness-110"
                   style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  Skatīt produktus <ArrowRight size={16} />
+                  <ShoppingBag size={15} /> Skatīt visus produktus
                 </Link>
-                <Link href="/eksprespiegade"
-                  className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 px-6 py-3 text-sm font-medium text-yellow-300 transition hover:bg-yellow-400/10">
-                  <Zap size={14} /> Eksprespiegāde
+                <Link href="/keriens"
+                  className="inline-flex items-center gap-2 rounded-full border border-orange-400/50 bg-orange-400/10 px-6 py-3 text-sm font-bold text-orange-300 hover:bg-orange-400/20 transition">
+                  <Flame size={14} /> Sludinājumu dēlis
                 </Link>
               </div>
 
               {/* Stats */}
-              <div className="mt-10 flex flex-wrap gap-8 border-t border-white/10 pt-8">
+              <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8">
                 <div>
-                  <p className="text-2xl font-bold text-brand-400">{sellers.length}</p>
-                  <p className="text-sm text-gray-400">Ražotāji</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{sellers.length}</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Verificēti ražotāji</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-brand-400">{totalListings}+</p>
-                  <p className="text-sm text-gray-400">Produkti</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{totalListings}+</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Produkti</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-brand-400">6</p>
-                  <p className="text-sm text-gray-400">Pakomātu vietas</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-brand-400">2–5h</p>
-                  <p className="text-sm text-gray-400">Eksprespiegāde</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>6+</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Pārtikas pakomātu vietas</p>
                 </div>
               </div>
             </div>
 
-            {/* Right — cover image mosaic */}
-            <div className="hidden grid-cols-2 grid-rows-2 gap-3 lg:grid" style={{ height: 460 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverImages[0]} alt="" className="row-span-2 h-full w-full rounded-2xl object-cover" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverImages[1]} alt="" className="h-full w-full rounded-2xl object-cover" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverImages[2]} alt="" className="h-full w-full rounded-2xl object-cover" />
+            {/* Right — product card mosaic */}
+            <div className="hidden grid-cols-2 gap-3 lg:grid">
+              {HERO_PRODUCTS.map((p) => (
+                <div key={p.name}
+                  className="group overflow-hidden rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition">
+                  <div className="relative h-36 overflow-hidden bg-gray-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.img} alt={p.name}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90" />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs font-bold text-white leading-tight">{p.name}</p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <p className="text-[11px] text-gray-400">{p.seller}</p>
+                      <p className="text-xs font-bold text-green-400">{p.price}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Seller logos strip */}
+          <div className="border-t border-white/10 py-5">
+            <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+              Mūsu ražotāji
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-6 opacity-60">
+              {sellers.map((s) => (
+                <Link key={s.id} href={`/seller/${s.id}`}
+                  className="h-8 transition hover:opacity-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.avatar} alt={s.name} className="h-8 w-auto object-contain" />
+                </Link>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Full journey ─────────────────────────────────── */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
+      {/* ── CATEGORY STRIP ───────────────────────────────────── */}
+      <section className="border-b border-gray-100 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Kā tas strādā</span>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">Pilnais ceļš — no ražotāja līdz tev</h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Ražotājs tirgo patstāvīgi. IziPizi nodrošina visu infrastruktūru.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                icon: "🌾",
-                step: "01",
-                title: "Ražotājs tirgo",
-                desc: "Ražotājs pats nosaka cenu un daudzumu. Ievieto produktus savā mājas pakomātā vai nodod kurjeram.",
-                gradient: "from-brand-400/20 to-brand-400/5",
-                border: "border-brand-400/30",
-                num: "text-brand-400",
-              },
-              {
-                icon: "📦",
-                step: "02",
-                title: "IziPizi maršrutē",
-                desc: "Mūsu sistēma organizē sūtījumu — temperatūras ķēde, pakomātu tīkls, kurjeri un izsekošana reāllaikā.",
-                gradient: "from-purple-400/20 to-purple-400/5",
-                border: "border-purple-400/30",
-                num: "text-purple-400",
-              },
-              {
-                icon: "🚚",
-                step: "03",
-                title: "Tu izvēlies saņemšanu",
-                desc: "Pakomāts 24/7, standarta piegāde 1–2 dienās vai eksprespiegāde 2–5h. Izvēlies, kas tev ērtāk.",
-                gradient: "from-cyan-400/20 to-cyan-400/5",
-                border: "border-cyan-400/30",
-                num: "text-cyan-500",
-              },
-              {
-                icon: "✅",
-                step: "04",
-                title: "Saņem svaigu!",
-                desc: "Saņem kodu un izņem produktus pakomātā jebkurā laikā vai sagaidi kurjeru pie durvīm.",
-                gradient: "from-green-400/20 to-green-400/5",
-                border: "border-green-400/30",
-                num: "text-green-500",
-              },
-            ].map((item, i) => (
-              <div key={item.step} className="relative">
-                {i < 3 && (
-                  <ChevronRight size={20} className="absolute -right-3 top-10 z-10 hidden text-gray-300 lg:block" />
-                )}
-                <div className={`h-full rounded-2xl border bg-gradient-to-b p-5 ${item.border} ${item.gradient}`}>
-                  <span className="text-3xl">{item.icon}</span>
-                  <div className={`mt-3 text-xs font-extrabold ${item.num}`}>{item.step}</div>
-                  <h3 className="mt-1 font-bold text-gray-900">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-500">{item.desc}</p>
-                </div>
-              </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {CATEGORIES.map((cat) => (
+              <Link key={cat.slug}
+                href={`/catalog?category=${encodeURIComponent(cat.slug)}`}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition">
+                <span>{cat.emoji}</span>
+                {cat.label}
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Delivery options ─────────────────────────────── */}
-      <section className="bg-[#192635] px-4 py-16 text-white sm:px-6 lg:px-8">
+      {/* ── SLUDINĀJUMU DĒLIS — paslēpts līdz launch ──
+      <HotDropsPreview />
+      */}
+
+      {/* ── FEATURED PRODUCTS ────────────────────────────────── */}
+      <section className="bg-gray-50 px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <span className="text-xs font-semibold uppercase tracking-wider text-brand-400">Piegādes iespējas</span>
-            <h2 className="mt-2 text-2xl font-bold text-white">Saņem tā, kā tev ērti</h2>
-            <p className="mt-2 text-gray-400">Trīs veidi, kā produkti nonāk pie tevis</p>
-          </div>
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-3">
-            {/* Pakomāts */}
-            <div className="flex flex-col rounded-2xl border border-brand-400/30 bg-brand-400/5 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-400/20">
-                <Package size={22} className="text-brand-400" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">IziPizi pakomāts</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-400">
-                Saņem produktus jebkurā no 6+ IziPizi pakomātiem 24/7. Dzesēts un saldēts režīms.
-              </p>
-              <div className="mt-4">
-                <span className="text-2xl font-extrabold text-brand-400">no 1.50€</span>
-              </div>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-brand-400 shrink-0" /> Pieejams 24/7</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-brand-400 shrink-0" /> Temperatūras kontrole</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-brand-400 shrink-0" /> Uzglabāšana līdz 48h</li>
-              </ul>
-              <Link href="/piegade" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-brand-400 hover:underline">
-                Uzzināt vairāk <ArrowRight size={13} />
-              </Link>
-            </div>
-
-            {/* Standarta */}
-            <div className="flex flex-col rounded-2xl border border-white/10 bg-white/5 p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10">
-                <Truck size={22} className="text-gray-300" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">Standarta piegāde</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-400">
-                Piegāde uz mājām vai biroju 1–2 darba dienu laikā. Temperatūras kontrolēts kurjers pa visu Latviju.
-              </p>
-              <div className="mt-4">
-                <span className="text-2xl font-extrabold text-white">no 4.50€</span>
-              </div>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-gray-500 shrink-0" /> Pa visu Latviju</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-gray-500 shrink-0" /> 1–2 darba dienas</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-gray-500 shrink-0" /> Saldēts un dzesēts</li>
-              </ul>
-              <Link href="/piegade" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-gray-300 hover:underline">
-                Uzzināt vairāk <ArrowRight size={13} />
-              </Link>
-            </div>
-
-            {/* Eksprespiegāde */}
-            <div className="relative flex flex-col overflow-hidden rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-6">
-              <div className="absolute right-3 top-3 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[10px] font-bold text-yellow-400">
-                JAUNS
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400/20">
-                <Zap size={22} className="text-yellow-400" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-white">Eksprespiegāde</h3>
-              <p className="mt-2 text-sm leading-relaxed text-gray-400">
-                Saņem produktus 2–5 stundu laikā. Pieejama Rīgā un tuvākajā apkārtnē — tieši no ražotāja pie tevis.
-              </p>
-              <div className="mt-4">
-                <span className="text-2xl font-extrabold text-yellow-400">no 5.99€</span>
-              </div>
-              <ul className="mt-3 space-y-1.5 text-xs text-gray-400">
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-yellow-400 shrink-0" /> 2–5h piegāde</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-yellow-400 shrink-0" /> Rīga un apkārtne</li>
-                <li className="flex items-center gap-1.5"><CheckCircle size={11} className="text-yellow-400 shrink-0" /> Reāllaika izsekošana</li>
-              </ul>
-              <Link href="/eksprespiegade" className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-yellow-400 hover:underline">
-                Pasūtīt eksprespiegādi <ArrowRight size={13} />
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-6 text-center">
-            <Link href="/piegade"
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-white/10">
-              Pilna piegādes informācija <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Featured products ────────────────────────────── */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between">
+          <div className="mb-7 flex items-end justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Svaigākie produkti</h2>
-              <p className="mt-1 text-sm text-gray-500">Tieši no ražotāja</p>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Tieši no ražotāja</span>
+              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Svaigākie produkti</h2>
             </div>
-            <Link href="/catalog" className="flex items-center gap-1 text-sm text-brand-600 hover:underline">
-              Skatīt visus <ArrowRight size={14} />
+            <Link href="/catalog"
+              className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
+              Visi produkti <ArrowRight size={14} />
             </Link>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {featured.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── Why IziPizi ──────────────────────────────────── */}
-      <section className="bg-gray-50 px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Mūsu priekšrocības</span>
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">Kāpēc tirgus.izipizi.lv?</h2>
-          </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { icon: "🌱", title: "Tieši no ražotāja", desc: "Bez starpniekiem. Ražotājs nosaka cenu, tu maksā godīgi — lielāka daļa nonāk tieši pie ražotāja." },
-              { icon: "❄️", title: "Aukstā ķēde — nesalauzta", desc: "No ražotāja līdz tev produkts atrodas temperatūras kontrolētā vidē. -18°C vai +2°C — nemainīgi." },
-              { icon: "⚡", title: "Eksprespiegāde 2–5h", desc: "Pasūti no rīta — saņem pusdienā. Expresss kurjers Rīgā nogādā svaigu produkciju tajā pašā dienā." },
-              { icon: "📍", title: "6+ pakomātu vietas", desc: "Izvēlies tuvāko IziPizi pakomātu — saņem 24/7 jebkurā ērtā laikā. Pilsētā vai ārpus tās." },
-              { icon: "✅", title: "Verificēti ražotāji", desc: "Katrs ražotājs manuāli apstiprināts. Tu zini, no kā pērki — vārds, foto un atrašanās vieta." },
-              { icon: "🤝", title: "Kopienas tirgus", desc: "Latvijas lauki dzīvo. Katrs pirkums atbalsta vietējo ražotāju, nevis lielveikalu ķēdi." },
-            ].map((f) => (
-              <div key={f.title} className="rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-                <span className="text-2xl">{f.icon}</span>
-                <h3 className="mt-3 font-bold text-gray-900">{f.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{f.desc}</p>
-              </div>
-            ))}
+          <div className="mt-6 text-center sm:hidden">
+            <Link href="/catalog" className="btn-outline text-sm">Skatīt visus produktus</Link>
           </div>
         </div>
       </section>
 
-      {/* ── Recipes promo ───────────────────────────────── */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
+      {/* ── SELLERS SPOTLIGHT ────────────────────────────────── */}
+      <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-end justify-between">
+          <div className="mb-7 flex items-end justify-between">
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Iedvesma virtuvē</span>
-              <h2 className="mt-1 text-2xl font-bold text-gray-900">Receptes no ražotāju produktiem</h2>
-              <p className="mt-1 text-sm text-gray-500">Garšīgas idejas, ko pagatavot no vietējiem produktiem</p>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Verificēti</span>
+              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Mūsu ražotāji</h2>
             </div>
-            <Link href="/receptes" className="hidden shrink-0 items-center gap-1 text-sm text-brand-600 hover:underline sm:flex">
-              Visas receptes <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            {recipes.slice(0, 3).map((r) => (
-              <Link key={r.slug} href={`/receptes/${r.slug}`}
-                className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-                <div className="relative h-44 w-full overflow-hidden bg-gray-100">
-                  <Image src={r.image} alt={r.title} fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, 33vw" />
-                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
-                    {r.category}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-600">{r.title}</h3>
-                  <p className="mt-1 line-clamp-2 text-xs text-gray-500">{r.shortDesc}</p>
-                  <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><Clock size={11} /> {r.prepTime + r.cookTime} min</span>
-                    <span>{r.difficulty}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-5 text-center sm:hidden">
-            <Link href="/receptes" className="btn-outline text-sm">Skatīt visas receptes</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Producers strip ──────────────────────────────── */}
-      <section className="bg-gray-50 px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Mūsu ražotāji</h2>
-              <p className="mt-1 text-sm text-gray-500">Verificēti Latvijas ražotāji</p>
-            </div>
-            <Link href="/razotaji" className="flex items-center gap-1 text-sm text-brand-600 hover:underline">
+            <Link href="/razotaji"
+              className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
               Visi ražotāji <ArrowRight size={14} />
             </Link>
           </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sellers.map((seller) => {
               const meta = sellersMeta[seller.id];
               const count = listings.filter((l) => l.sellerId === seller.id).length;
               return (
                 <Link key={seller.id} href={`/seller/${seller.id}`}
-                  className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={seller.avatar} alt={seller.name}
-                    className="h-14 w-14 shrink-0 rounded-xl border border-gray-100 object-contain p-1" />
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-gray-900 group-hover:text-brand-600">{seller.name}</p>
-                    {meta?.description && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{meta.description}</p>
+                  className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition">
+                  {/* Cover image */}
+                  <div className="relative h-32 overflow-hidden bg-gradient-to-br from-gray-800 to-gray-700">
+                    {meta?.cover && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={meta.cover} alt="" className="h-full w-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-300" />
                     )}
-                    <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
-                      <Package size={11} /> {count} produkti
-                    </p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    {/* Logo */}
+                    <div className="absolute bottom-3 left-3 h-12 w-12 overflow-hidden rounded-xl border-2 border-white bg-white shadow">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={seller.avatar} alt={seller.name} className="h-full w-full object-contain p-1" />
+                    </div>
+                    {seller.verified && (
+                      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-green-700 backdrop-blur-sm">
+                        <CheckCircle size={9} /> Verificēts
+                      </div>
+                    )}
                   </div>
-                  <ArrowRight size={16} className="ml-auto shrink-0 text-gray-300 transition group-hover:text-brand-400" />
+                  {/* Info */}
+                  <div className="p-4">
+                    <p className="font-bold text-gray-900 group-hover:text-brand-600 transition">{seller.name}</p>
+                    {meta?.shortDesc && (
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-gray-500">{meta.shortDesc}</p>
+                    )}
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Package size={11} /> {count} produkti
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star size={11} fill="currentColor" className="text-amber-400" />
+                        {seller.rating} ({seller.reviewCount})
+                      </span>
+                    </div>
+                  </div>
                 </Link>
               );
             })}
@@ -402,52 +311,168 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── HOW IT WORKS ─────────────────────────────────────── */}
+      <section className="bg-[#192635] px-4 py-14 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-400">Vienkārši</span>
+            <h2 className="mt-2 text-2xl font-extrabold text-white">Kā tas strādā?</h2>
+          </div>
+          <div className="mt-10 grid gap-3 sm:grid-cols-4">
+            {[
+              { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Kataloogs, meklēšana vai hot drops — atrodi ko vēlies." },
+              { icon: "📍", step: "02", title: "Izvēlies pakomātu", desc: "Tuvākais IziPizi pakomāts — 6+ vietas Latvijā." },
+              { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
+              { icon: "✅", step: "04", title: "Saņem pakomātā", desc: "24/7 piekļuve. Svaigs produkts tevi gaida." },
+            ].map((item, i) => (
+              <div key={item.step} className="relative">
+                {i < 3 && (
+                  <ChevronRight size={18} className="absolute -right-2 top-8 z-10 hidden text-white/20 sm:block" />
+                )}
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <span className="text-3xl">{item.icon}</span>
+                  <p className="mt-3 text-xs font-extrabold text-brand-400">{item.step}</p>
+                  <h3 className="mt-1 font-bold text-white">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-400">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* ── Seller CTA ───────────────────────────────────── */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-[#192635] px-8 py-14 text-white">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+      {/* ── DELIVERY OPTIONS ─────────────────────────────────── */}
+      <section className="px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Piegāde</span>
+            <h2 className="mt-2 text-2xl font-extrabold text-gray-900">Saņem tā, kā tev ērti</h2>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                icon: <Package size={22} className="text-brand-500" />,
+                bg: "bg-brand-50 border-brand-200",
+                title: "IziPizi pakomāts",
+                desc: "Saņem jebkurā no 6+ pakomātiem 24/7. Dzesēts un saldēts režīms.",
+                price: "3 € / skapītis",
+                href: "/piegade",
+                color: "text-brand-600",
+              },
+              {
+                icon: <Truck size={22} className="text-gray-600" />,
+                bg: "bg-gray-50 border-gray-200",
+                title: "Kurjers",
+                desc: "Mājas durvīs 4 zonās — Rīga, Pierīga un reģionālie centri. 1–2 darba dienās.",
+                price: "no 5.45 €",
+                href: "/piegade",
+                color: "text-gray-700",
+              },
+              {
+                icon: <Zap size={22} className="text-yellow-500" />,
+                bg: "bg-yellow-50 border-yellow-200",
+                title: "Eksprespiegāde",
+                desc: "2–5h piegāde Rīgā un Pierīgā. Pasūti no rīta — saņem pusdienā.",
+                price: "no 6.66 €",
+                href: "/piegade#ekspres",
+                color: "text-yellow-700",
+              },
+            ].map((d) => (
+              <Link key={d.title} href={d.href}
+                className={`group flex flex-col rounded-2xl border p-6 transition hover:shadow-md ${d.bg}`}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                  {d.icon}
+                </div>
+                <h3 className="mt-4 font-bold text-gray-900">{d.title}</h3>
+                <p className="mt-1.5 flex-1 text-sm leading-relaxed text-gray-500">{d.desc}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className={`text-xl font-extrabold ${d.color}`}>{d.price}</span>
+                  <ArrowRight size={16} className="text-gray-300 transition group-hover:translate-x-1 group-hover:text-gray-500" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── RECIPES ──────────────────────────────────────────── */}
+      <section className="bg-gray-50 px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-7 flex items-end justify-between">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-400/20 px-3 py-1 text-xs font-medium text-brand-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Iedvesma virtuvē</span>
+              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Receptes ar vietējiem produktiem</h2>
+            </div>
+            <Link href="/receptes"
+              className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
+              Visas receptes <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {recipes.slice(0, 3).map((r) => (
+              <Link key={r.slug} href={`/receptes/${r.slug}`}
+                className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition">
+                <div className="relative h-44 overflow-hidden bg-gray-100">
+                  <Image src={r.image} alt={r.title} fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 640px) 100vw, 33vw" />
+                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-gray-700 backdrop-blur-sm">
+                    {r.category}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 group-hover:text-brand-600 transition">{r.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs text-gray-500">{r.shortDesc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SELLER CTA ───────────────────────────────────────── */}
+      <section className="px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-[#192635] px-8 py-12 text-white">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-400/20 px-3 py-1 text-xs font-semibold text-brand-400">
                 🌱 Pārdod vietēji
               </span>
               <h2 className="mt-4 text-3xl font-extrabold leading-tight">
                 Esi ražotājs<br />vai pārdevējs?
               </h2>
-              <p className="mt-3 leading-relaxed text-gray-300">
-                Tu tirgo, mēs nodrošinām visu pārējo — pakomātu tīklu, temperatūras ķēdi, piegādi un maksājumus.
-                Ievieto produktus, un mūsu infrastruktūra to nogādā pie pircēja.
+              <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                Tu tirgo, mēs nodrošinām visu pārējo — pakomātu tīklu, temperatūras ķēdi,
+                piegādi un maksājumus. Reģistrējies un sasniedz vairāk pircējus.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Link href="/sell"
-                  className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-bold text-[#192635] transition hover:brightness-110"
+                  className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold text-[#192635] hover:brightness-110 transition"
                   style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  Sākt pārdot <ArrowRight size={16} />
-                </Link>
-                <Link href="/how-it-works"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-medium text-white transition hover:bg-white/10">
-                  Kā tas strādā
+                  Sākt pārdot <ArrowRight size={15} />
                 </Link>
               </div>
             </div>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <ul className="space-y-2">
               {[
-                { icon: "✅", text: "Bezmaksas reģistrācija" },
-                { icon: "⚡", text: "Apstiprināšana 24h laikā" },
-                { icon: "💰", text: "Komisija tikai no pārdošanas" },
-                { icon: "🚚", text: "Piegāde ar IziPizi infrastruktūru" },
-                { icon: "❄️", text: "Temperatūras ķēde no ražotāja" },
+                "✅ Bezmaksas reģistrācija",
+                "⚡ Apstiprināšana 24h laikā",
+                "💰 Komisija tikai no pārdošanas",
+                "🚚 IziPizi piegādes infrastruktūra",
+                "❄️ Temperatūras ķēde no ražotāja",
+                "🔥 Flash drops — pārdod ātri un vairāk",
               ].map((f) => (
-                <li key={f.text}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
-                  <span className="text-base">{f.icon}</span>
-                  {f.text}
+                <li key={f}
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-gray-300">
+                  {f}
                 </li>
               ))}
             </ul>
           </div>
         </div>
       </section>
+
     </div>
+    </>
   );
 }

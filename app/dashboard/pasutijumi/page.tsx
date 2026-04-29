@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2 } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ type Order = {
   total_cents: number;
   paid_at: string | null;
   created_at: string;
+  locker_code: string | null;
 };
 
 const statusMap: Record<string, { label: string; cls: string }> = {
@@ -33,6 +34,8 @@ export default function DashboardPasutijumiPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [shipDialog, setShipDialog] = useState<Order | null>(null);
+  const [lockerCodeDraft, setLockerCodeDraft] = useState("");
 
   const NEXT_STATUS: Record<string, { label: string; next: string }> = {
     paid:       { label: "Apstiprināt pasūtījumu", next: "processing" },
@@ -40,10 +43,53 @@ export default function DashboardPasutijumiPage() {
     shipped:    { label: "Atzīmēt kā saņemtu",     next: "delivered" },
   };
 
+  async function notifyBuyer(orderId: string, status: string) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      await fetch("/api/notify/order-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId, status }),
+      });
+    } catch (e) {
+      console.error("notify failed", e);
+    }
+  }
+
   async function advanceStatus(orderId: string, nextStatus: string) {
+    // If marking as shipped, require locker code first
+    if (nextStatus === "shipped") {
+      const order = orders.find((o) => o.id === orderId);
+      if (order) {
+        setShipDialog(order);
+        setLockerCodeDraft(order.locker_code ?? "");
+        return;
+      }
+    }
     setUpdating(orderId);
     await supabase.from("orders").update({ status: nextStatus }).eq("id", orderId);
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+    notifyBuyer(orderId, nextStatus); // fire and forget
+    setUpdating(null);
+  }
+
+  async function confirmShip() {
+    if (!shipDialog) return;
+    const code = lockerCodeDraft.trim();
+    if (!code) return;
+    setUpdating(shipDialog.id);
+    await supabase
+      .from("orders")
+      .update({ status: "shipped", locker_code: code })
+      .eq("id", shipDialog.id);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
+    );
+    notifyBuyer(shipDialog.id, "shipped"); // fire and forget
+    setShipDialog(null);
+    setLockerCodeDraft("");
     setUpdating(null);
   }
 
@@ -162,6 +208,64 @@ export default function DashboardPasutijumiPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Locker code dialog */}
+      {shipDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100">
+                  <KeyRound size={16} className="text-brand-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900">Atzīmēt kā ievietotu pakomātā</h3>
+                  <p className="text-xs text-gray-500">{shipDialog.order_number}</p>
+                </div>
+              </div>
+              <button onClick={() => setShipDialog(null)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+              <p className="font-semibold">Saņemšanas vieta:</p>
+              <p className="text-xs">{shipDialog.delivery_info?.locker_city} — {shipDialog.delivery_info?.locker_name}</p>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">PIN kods pakomātam *</label>
+              <p className="mt-1 text-xs text-gray-500">
+                Pircējs saņems push paziņojumu ar šo kodu, lai izņemtu pasūtījumu.
+              </p>
+              <input
+                value={lockerCodeDraft}
+                onChange={(e) => setLockerCodeDraft(e.target.value.replace(/\s/g, ""))}
+                placeholder="123456"
+                inputMode="numeric"
+                className="input mt-2 w-full font-mono text-lg tracking-widest text-center"
+                autoFocus
+              />
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setShipDialog(null)}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Atcelt
+              </button>
+              <button onClick={confirmShip}
+                disabled={!lockerCodeDraft.trim() || updating === shipDialog.id}
+                className="btn-primary flex flex-1 items-center justify-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50">
+                {updating === shipDialog.id
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Send size={14} />}
+                Saglabāt un paziņot
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

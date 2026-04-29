@@ -2,7 +2,15 @@ import Link from "next/link";
 import { CheckCircle, ArrowRight, Clock, Percent, Shield } from "lucide-react";
 
 export const metadata = {
-  title: "Kļūt par pārdevēju — tirgus.izipizi.lv",
+  title: "Sākt pārdot — pievienojies kā ražotājs",
+  description:
+    "Pārdod savus produktus caur IziPizi pakomātu tīklu visā Latvijā. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",
+  openGraph: {
+    title: "Sākt pārdot tirgus.izipizi.lv — pievienojies kā ražotājs",
+    description: "Pārdod savus produktus caur IziPizi pakomātu tīklu visā Latvijā. Komisija tikai no pārdošanas.",
+    url: "https://tirgus.izipizi.lv/sell",
+    type: "website" as const,
+  },
 };
 
 const steps = [

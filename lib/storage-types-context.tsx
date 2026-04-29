@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
-type StorageMap = Record<string, "frozen" | "chilled" | "ambient">;
+type StorageMap = Record<string, "frozen" | "chilled">;
 
 const Ctx = createContext<StorageMap>({});
 

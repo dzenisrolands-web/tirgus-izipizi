@@ -15,7 +15,7 @@ const NAV = [
   { href: "/dashboard",                    label: "Kopsavilkums",     icon: LayoutDashboard, exact: true },
   { href: "/dashboard/profils",            label: "Profils",           icon: User },
   { href: "/dashboard/produkti",           label: "Produkti",          icon: Package },
-  { href: "/dashboard/karstie-piradzini",  label: "Karstie pīradziņi", icon: Flame },
+  { href: "/dashboard/keriens",  label: "Sludinājumu dēlis", icon: Flame },
   { href: "/dashboard/pasutijumi",         label: "Pasūtījumi",        icon: ShoppingBag },
 ];
 

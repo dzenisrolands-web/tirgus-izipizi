@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Star, CheckCircle, ShoppingCart, Check } from "lucide-react";
+import { MapPin, Star, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing, sellerHomeLockers } from "@/lib/mock-data";
 import { formatPrice, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
@@ -15,11 +15,15 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const freshLabel = days <= 1 ? "Šodien" : days <= 3 ? `${days} dienas` : null;
   const freshUrgent = days <= 1;
   const isHome = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
+  const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const storageTypes = useStorageTypes();
-  const storageType = storageTypes[listing.id] ?? getStorageType(listing);
+  const rawStorageType = storageTypes[listing.id] ?? getStorageType(listing);
+  // Defensive: if DB still has legacy "ambient" or unexpected value, fall back to chilled
+  const storageType: "frozen" | "chilled" = rawStorageType === "frozen" ? "frozen" : "chilled";
   const storage = storageConfig[storageType];
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -40,9 +44,17 @@ export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <Link href={`/listing/${listing.id}`} className="group block">
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100">
-        <Image src={listing.image} alt={listing.title} fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
+        {listing.image && !imageError ? (
+          <Image src={listing.image} alt={listing.title} fill
+            onError={() => setImageError(true)}
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-gray-100 to-gray-200">
+            <ShoppingCart size={32} className="text-gray-300" />
+            <p className="text-[10px] font-medium text-gray-400">Bilde nav pieejama</p>
+          </div>
+        )}
         {freshLabel && (
           <span className={cn("absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold",
             freshUrgent ? "bg-red-500 text-white" : "bg-amber-400 text-amber-900")}>
@@ -52,6 +64,11 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
           {listing.category}
         </span>
+        {expressAvailable && (
+          <span className="absolute bottom-2 left-2 flex items-center gap-0.5 rounded-full bg-yellow-400/90 px-2 py-0.5 text-[10px] font-bold text-yellow-900 backdrop-blur-sm">
+            <Zap size={9} /> Ekspres
+          </span>
+        )}
       </div>
 
       <div className="mt-2 space-y-1 px-0.5">

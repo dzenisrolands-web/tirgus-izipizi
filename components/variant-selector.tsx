@@ -11,7 +11,7 @@ type Props = {
   title: string;
   image: string;
   sellerName: string;
-  storageType: "frozen" | "chilled" | "ambient";
+  storageType: "frozen" | "chilled";
   variants: Variant[];
 };
 

@@ -10,6 +10,8 @@ import { sellers, listings } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
+import { PushSubscribeButton } from "@/components/PushSubscribeButton";
+import { hasValidImage } from "@/lib/utils";
 
 export const dynamicParams = true;
 
@@ -25,11 +27,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const meta = sellersMeta[id] ?? (await fetchDbSellerProfile(id))?.meta;
   const title = `${seller.name} | tirgus.izipizi.lv`;
   const description = meta?.shortDesc ?? `${seller.name} produkti IziPizi tirgū.`;
+  const ogImage = meta?.cover ?? seller.avatar;
   return {
-    title, description,
+    title,
+    description,
     keywords: meta?.keywords?.join(", "),
-    openGraph: { title, description, images: meta?.cover ? [{ url: meta.cover }] : [{ url: seller.avatar }], type: "profile", siteName: "tirgus.izipizi.lv" },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: {
+      title,
+      description,
+      url: `https://tirgus.izipizi.lv/seller/${id}`,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: seller.name }],
+      type: "profile",
+      siteName: "tirgus.izipizi.lv",
+    },
+    twitter: { card: "summary_large_image", title, description, images: [ogImage] },
   };
 }
 
@@ -41,13 +52,13 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
   if (mockSeller) {
     seller = mockSeller;
     meta = sellersMeta[id];
-    sellerListings = listings.filter((l) => l.sellerId === id);
+    sellerListings = listings.filter((l) => l.sellerId === id).filter(hasValidImage);
   } else {
     const db = await fetchDbSellerProfile(id);
     if (!db) notFound();
     seller = db.seller;
     meta = db.meta;
-    sellerListings = db.listings;
+    sellerListings = db.listings.filter(hasValidImage);
   }
 
   const categories = Array.from(new Set(sellerListings.map((l) => l.category))).sort();
@@ -96,7 +107,8 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
+          <div className="mb-8 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
+            <PushSubscribeButton />
             {meta?.website && <a href={meta.website} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-gray-400 hover:text-gray-900"><Globe size={16} /></a>}
             {meta?.facebook && <a href={meta.facebook} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-blue-500 hover:text-blue-600"><Facebook size={16} /></a>}
             {meta?.instagram && <a href={meta.instagram} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-pink-500 hover:text-pink-600"><Instagram size={16} /></a>}

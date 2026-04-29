@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Search, Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Search, Menu, X, ShoppingBag, ShoppingCart, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useRouter } from "next/navigation";
@@ -71,20 +71,20 @@ export function Nav() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-2 md:flex">
+            {/* Sludinājumu dēlis paslēpts līdz launch — saglabāts, lai ātri atjaunotu
+            <Link href="/keriens" className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:brightness-110"
+              style={{ background: "linear-gradient(90deg, #f97316, #ef4444)" }}>
+              <Flame size={13} className="animate-pulse" /> Sludinājumu dēlis
+            </Link>
+            */}
             <Link href="/catalog" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Produkti
             </Link>
             <Link href="/razotaji" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Ražotāji
             </Link>
-            <Link href="/lockers" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
-              Pakomāti
-            </Link>
             <Link href="/piegade" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2">
               Piegāde
-            </Link>
-            <Link href="/eksprespiegade" className="flex items-center gap-1 rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-100">
-              ⚡ Ekspres
             </Link>
             <Link href="/cart" className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100">
               <ShoppingCart size={20} />
@@ -130,6 +130,16 @@ export function Nav() {
       {mobileOpen && (
         <div className="border-t border-gray-100 bg-white px-4 py-4 md:hidden">
           <nav className="flex flex-col gap-1">
+            {/* Sludinājumu dēlis paslēpts līdz launch
+            <Link
+              href="/keriens"
+              className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-bold text-white shadow-sm"
+              style={{ background: "linear-gradient(90deg, #f97316, #ef4444)" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Flame size={16} className="animate-pulse" /> Sludinājumu dēlis
+            </Link>
+            */}
             <Link
               href="/catalog"
               className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -145,25 +155,11 @@ export function Nav() {
               Ražotāji
             </Link>
             <Link
-              href="/lockers"
-              className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pakomātu vietas
-            </Link>
-            <Link
               href="/piegade"
               className="rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
               onClick={() => setMobileOpen(false)}
             >
               Piegāde
-            </Link>
-            <Link
-              href="/eksprespiegade"
-              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-yellow-700 hover:bg-yellow-50"
-              onClick={() => setMobileOpen(false)}
-            >
-              ⚡ Eksprespiegāde
             </Link>
             {authed ? (
               <Link href="/dashboard" className="mt-2 btn-outline text-center text-sm"

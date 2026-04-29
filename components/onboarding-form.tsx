@@ -2,11 +2,13 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X } from "lucide-react";
+import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 
-const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie"];
+const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Juridiskā info"];
+const SELF_BILLING_VERSION = "1.0";
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -53,21 +55,33 @@ export function OnboardingForm() {
     facebook: "",
     instagram: "",
     youtube_channel: "",
+    ...EMPTY_LEGAL,
   });
 
-  function set(field: string, value: string) {
+  function set(field: string, value: string | boolean) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function patchLegal(patch: Partial<LegalData>) {
+    setForm((f) => ({ ...f, ...patch }));
   }
 
   function canNext() {
     if (step === 0) return form.name.trim() && form.location.trim();
     if (step === 1) return form.description.trim() && form.short_desc.trim();
     if (step === 2) return form.youtube_video_url.trim();
+    if (step === 4) return validateLegal(form).length === 0;
     return true;
   }
 
   async function handleSubmit() {
     setError("");
+    const legalErrors = validateLegal(form);
+    if (legalErrors.length > 0) {
+      setError(legalErrors[0]);
+      setStep(4);
+      return;
+    }
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,6 +90,11 @@ export function OnboardingForm() {
       const { error } = await supabase.from("sellers").insert({
         user_id: user.id,
         ...form,
+        bank_iban: form.bank_iban.replace(/\s/g, "").toUpperCase(),
+        vat_number: form.is_vat_registered ? form.vat_number.toUpperCase() : null,
+        self_billing_agreed: true,
+        self_billing_agreed_at: new Date().toISOString(),
+        self_billing_agreement_version: SELF_BILLING_VERSION,
         status: "pending",
       });
       if (error) throw error;
@@ -259,6 +278,15 @@ export function OnboardingForm() {
             <Field label="Mājas lapa" value={form.website} onChange={(v) => set("website", v)} placeholder="https://tava-saimnieciba.lv" />
             <Field label="Facebook" value={form.facebook} onChange={(v) => set("facebook", v)} placeholder="https://facebook.com/..." />
             <Field label="Instagram" value={form.instagram} onChange={(v) => set("instagram", v)} placeholder="https://instagram.com/..." />
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
+              <FileText size={16} className="text-brand-600" /> Juridiskā informācija
+            </div>
+            <SellerLegalSection data={form} onChange={patchLegal} />
           </div>
         )}
 

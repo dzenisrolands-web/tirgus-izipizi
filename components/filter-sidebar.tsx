@@ -10,7 +10,7 @@ export type Filters = {
   city: string;
   maxPrice: number;
   seller: string;
-  storageType: "all" | "frozen" | "chilled" | "ambient";
+  storageType: "all" | "frozen" | "chilled";
 };
 
 type Props = {
@@ -57,7 +57,6 @@ export function FilterSidebar({ filters, onChange }: Props) {
             { value: "all",     label: "Visi produkti" },
             { value: "frozen",  label: "❄ Saldēti  -18°C" },
             { value: "chilled", label: "🌡 Dzesēti  +2°C – +6°C" },
-            { value: "ambient", label: "📦 Istabas temperatūra" },
           ] as const).map((opt) => (
             <button key={opt.value}
               onClick={() => onChange({ ...filters, storageType: opt.value })}
@@ -122,7 +121,7 @@ export function FilterSidebar({ filters, onChange }: Props) {
         </div>
       </Section>
 
-      <Section title="Pakomāta pilsēta">
+      <Section title="Pārtikas pakomāta pilsēta">
         <div className="flex flex-col gap-1">
           <button
             onClick={() => onChange({ ...filters, city: "" })}

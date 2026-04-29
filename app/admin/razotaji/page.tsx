@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X, FileText, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Seller = {
@@ -13,6 +13,17 @@ type Seller = {
   status: "draft" | "pending" | "approved" | "rejected";
   created_at: string;
   home_locker_ids: string[] | null;
+  legal_name: string | null;
+  registration_number: string | null;
+  is_vat_registered: boolean | null;
+  vat_number: string | null;
+  legal_address: string | null;
+  bank_name: string | null;
+  bank_iban: string | null;
+  bank_swift: string | null;
+  self_billing_agreed: boolean | null;
+  self_billing_agreed_at: string | null;
+  self_billing_agreement_version: string | null;
 };
 
 const statusMap = {
@@ -37,13 +48,14 @@ export default function AdminRazotajiPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [search, setSearch] = useState("");
   const [expandedLocker, setExpandedLocker] = useState<string | null>(null);
+  const [expandedLegal, setExpandedLegal] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
       .from("sellers")
-      .select("id,user_id,name,description,location,status,created_at,home_locker_ids")
+      .select("*")
       .order("created_at", { ascending: false });
-    setSellers(data ?? []);
+    setSellers((data as Seller[] | null) ?? []);
     setLoading(false);
   }
 
@@ -159,6 +171,18 @@ export default function AdminRazotajiPage() {
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.cls}`}>
                         {st.label}
                       </span>
+                      {/* Legal info toggle */}
+                      <button
+                        onClick={() => setExpandedLegal(expandedLegal === seller.id ? null : seller.id)}
+                        className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                          seller.self_billing_agreed
+                            ? "bg-green-50 text-green-700 hover:bg-green-100"
+                            : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        }`}
+                        title={seller.self_billing_agreed ? "Juridiskā info aizpildīta" : "Juridiskā info nav aizpildīta"}
+                      >
+                        {seller.self_billing_agreed ? <FileText size={12} /> : <AlertTriangle size={12} />}
+                      </button>
                       {/* Home locker toggle */}
                       <button
                         onClick={() => setExpandedLocker(isExpanded ? null : seller.id)}
@@ -198,6 +222,33 @@ export default function AdminRazotajiPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Legal info expanded panel */}
+                  {expandedLegal === seller.id && (
+                    <div className="mt-3 ml-12 rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs">
+                      <p className="mb-2 font-semibold text-gray-500 uppercase tracking-wider">Juridiskā informācija</p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        <div><span className="text-gray-400">Juridiskais nosaukums:</span> <span className="font-medium text-gray-900">{seller.legal_name ?? "—"}</span></div>
+                        <div><span className="text-gray-400">Reģ. Nr.:</span> <span className="font-mono text-gray-900">{seller.registration_number ?? "—"}</span></div>
+                        <div><span className="text-gray-400">PVN maksātājs:</span> <span className="font-medium text-gray-900">{seller.is_vat_registered ? "Jā" : "Nē"}</span></div>
+                        <div><span className="text-gray-400">PVN reģ. Nr.:</span> <span className="font-mono text-gray-900">{seller.vat_number ?? "—"}</span></div>
+                        <div className="sm:col-span-2"><span className="text-gray-400">Adrese:</span> <span className="text-gray-900 whitespace-pre-line">{seller.legal_address ?? "—"}</span></div>
+                        <div><span className="text-gray-400">Banka:</span> <span className="text-gray-900">{seller.bank_name ?? "—"}</span></div>
+                        <div><span className="text-gray-400">IBAN:</span> <span className="font-mono text-gray-900">{seller.bank_iban ?? "—"}</span></div>
+                        {seller.bank_swift && <div><span className="text-gray-400">SWIFT:</span> <span className="font-mono text-gray-900">{seller.bank_swift}</span></div>}
+                      </div>
+                      <div className={`mt-3 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${
+                        seller.self_billing_agreed
+                          ? "bg-green-100 text-green-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {seller.self_billing_agreed ? <CheckCircle size={11} /> : <AlertTriangle size={11} />}
+                        {seller.self_billing_agreed
+                          ? `Self-billing pieņemts (v${seller.self_billing_agreement_version ?? "?"}, ${seller.self_billing_agreed_at ? new Date(seller.self_billing_agreed_at).toLocaleDateString("lv-LV") : "?"})`
+                          : "Self-billing vēl nav pieņemts — bez tā nevar izrakstīt rēķinus"}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Home locker expanded panel */}
                   {isExpanded && (

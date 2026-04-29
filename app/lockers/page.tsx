@@ -2,14 +2,14 @@ import { MapPin, Clock, Thermometer } from "lucide-react";
 import { lockers, listings } from "@/lib/mock-data";
 
 export const metadata = {
-  title: "Pakomātu vietas — tirgus.izipizi.lv",
+  title: "Pārtikas pakomātu vietas — tirgus.izipizi.lv",
 };
 
 export default function LockersPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="text-center">
-        <h1 className="text-3xl font-extrabold text-gray-900">Pakomātu vietas</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900">Pārtikas pakomātu vietas</h1>
         <p className="mt-3 text-gray-500">
           Latvijas pirmie termoregulatoru pakomāti svaigai pārtikai.
           Pieejami {lockers.length} vietās.

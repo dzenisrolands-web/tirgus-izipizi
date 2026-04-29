@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
 import { listings, sellerHomeLockers } from "@/lib/mock-data";
 import { fetchListingById } from "@/lib/db-listings";
-import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
+import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig, hasValidImage } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSectionDb } from "@/components/reviews-section-db";
@@ -44,10 +44,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const listing = listings.find((l) => l.id === id) ?? await fetchListingById(id);
   if (!listing) notFound();
+  // Hide products without a valid image — they should not be public
+  if (!hasValidImage(listing)) notFound();
 
   const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
   const isHomeLocker = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
+  const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
 
   const jsonLd = {
@@ -120,7 +123,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <span>{listing.quantity} {listing.unit}</span>
           </div>
 
-          <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} />
+          <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} expressAvailable={expressAvailable} />
 
           {listing.variants && listing.variants.length > 0 ? (
             <VariantSelector

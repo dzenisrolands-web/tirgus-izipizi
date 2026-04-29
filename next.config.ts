@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.supabase.co" },
     ],
   },
+  async redirects() {
+    return [
+      // Apvienots /piegade aizvieto atsevišķās sadaļas
+      { source: "/lockers", destination: "/piegade#pakomati-saraksts", permanent: true },
+      { source: "/eksprespiegade", destination: "/piegade#ekspres", permanent: true },
+      // Vecās URL struktūras (vienskaitlis) atbalsts
+      { source: "/razotajs/:id", destination: "/seller/:id", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
