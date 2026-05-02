@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
@@ -11,6 +11,7 @@ import { BuyerAddressProvider } from "@/lib/buyer-address-context";
 import { BuyerAddressPrompt } from "@/components/buyer-address-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -66,6 +67,26 @@ export const metadata: Metadata = {
       "verify-paysera": "6567d173da1185168a8bf3c13a6d3456",
     },
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Tirgus",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#192635",
+  width: "device-width",
+  initialScale: 1,
 };
 
 const organizationJsonLd = {
@@ -131,6 +152,7 @@ export default function RootLayout({
         />
       </head>
       <body spellCheck={false}>
+        <ServiceWorkerRegister />
         <CartProvider>
           <BuyerAddressProvider>
             <StorageTypesProvider>
