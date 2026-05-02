@@ -6,7 +6,7 @@ import { listings } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
-  title: "Receptes ar vietējiem produktiem",
+  title: "IziPizi RECEPTE",
   description:
     "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi pakomātu.",
   openGraph: {

@@ -524,7 +524,7 @@ export default async function HomePage() {
           <div className="mb-7 flex items-end justify-between">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Iedvesma virtuvē</span>
-              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Receptes ar vietējiem produktiem</h2>
+              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">IziPizi RECEPTE</h2>
             </div>
             <Link href="/receptes"
               className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
