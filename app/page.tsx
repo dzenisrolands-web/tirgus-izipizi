@@ -2,25 +2,33 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowRight, Package, Flame, Zap,
+  ArrowRight, Package, Zap,
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
+  TrendingUp, Sparkles,
 } from "lucide-react";
 import { listings, sellers } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
 import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
+import { HeroProductRotator } from "@/components/hero-product-rotator";
 import { recipes } from "@/lib/recipes-data";
-import { fetchActiveListings } from "@/lib/db-listings";
+import {
+  fetchActiveListings,
+  fetchApprovedSellers,
+  fetchBestSellers,
+  fetchNewestListings,
+  fetchWeeklyFeatured,
+} from "@/lib/db-listings";
 import { hasValidImage } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Svaiga pārtika no Latvijas ražotājiem",
+  title: "Pērc no vietējā, saņem ērti — pakomātā vai ar piegādi",
   description:
-    "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem tieši no ražotāja caur IziPizi pakomātiem. Svaigi. Ātri. Vietēji.",
+    "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet. Saņem pārtikas pakomātā vai ar piegādi uz mājām.",
   openGraph: {
-    title: "tirgus.izipizi.lv — Svaiga pārtika bez starpniekiem",
+    title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
     description:
-      "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem tieši no ražotāja caur IziPizi pakomātiem.",
+      "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet. Pakomātā vai ar piegādi.",
     url: "https://tirgus.izipizi.lv",
     images: [
       {
@@ -42,33 +50,68 @@ const CATEGORIES = [
   { label: "Konservi",        emoji: "🥫", slug: "Konservi" },
   { label: "Dārzeņi",         emoji: "🥦", slug: "Dārzeņi" },
   { label: "Jūras veltes",    emoji: "🐟", slug: "Jūras veltes" },
-  { label: "Konditorejas",    emoji: "🍰", slug: "Konditorejas" },
+  { label: "Konditorija",     emoji: "🍰", slug: "Konditorija" },
+  { label: "Mērces",          emoji: "🥣", slug: "Mērces" },
   { label: "Medus",           emoji: "🍯", slug: "Medus" },
 ];
 
-const HERO_PRODUCTS = [
-  {
-    img: "https://business.izipizi.lv/images/marketplace/products/4998684Pelmeni-veganie-webp.webp",
-    name: "Vegānie pelmeņi", seller: "Bujums", price: "€4.00",
-  },
-  {
-    img: "https://business.izipizi.lv/images/marketplace/products/5397193Brie-a-steiks-stilbs-marin-ts-jpg.jpg",
-    name: "Brieža steiks", seller: "WILD'N'FREE", price: "€12.50",
-  },
-  {
-    img: "https://business.izipizi.lv/images/marketplace/products/3837272facebook-1770717542678-7426927672127940456-jpg.jpg",
-    name: "Paipalu olas", seller: "Bujums", price: "€5.50",
-  },
-  {
-    img: "https://business.izipizi.lv/images/marketplace/products/4066818Pankukas-Spinatu-2-webp.webp",
-    name: "Pankūkas ar spinātiem", seller: "Bujums", price: "€4.86",
-  },
-];
+// Old static hero mosaic — replaced by <HeroProductRotator/> with live DB data.
+// const HERO_PRODUCTS = [
+//   { img: "...", name: "Vegānie pelmeņi", seller: "Bujums", price: "€4.00" },
+//   { img: "...", name: "Brieža steiks", seller: "WILD'N'FREE", price: "€12.50" },
+//   { img: "...", name: "Paipalu olas", seller: "Bujums", price: "€5.50" },
+//   { img: "...", name: "Pankūkas ar spinātiem", seller: "Bujums", price: "€4.86" },
+// ];
 
 export default async function HomePage() {
-  const dbListings = await fetchActiveListings();
+  const [dbListings, dbBestSellers, dbNewest, dbWeekly, dbApproved] = await Promise.all([
+    fetchActiveListings(),
+    fetchBestSellers(6),
+    fetchNewestListings(8),
+    fetchWeeklyFeatured(7),
+    fetchApprovedSellers(),
+  ]);
   const allListings = [...dbListings, ...listings].filter(hasValidImage);
-  const featured = allListings.slice(0, 8);
+
+  // Hero stats — real data, not hardcoded
+  const liveSellerCount = dbApproved.length || sellers.length;
+  const liveSellerNames = (dbApproved.length ? dbApproved.map((s) => s.seller.name) : sellers.map((s) => s.name))
+    .filter(Boolean)
+    .slice(0, 4);
+  // "Šonedēļ pievienoti" — last 7 days, active listings only
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const freshThisWeekCount = dbListings.filter((l) => {
+    const t = new Date(l.createdAt).getTime();
+    return Number.isFinite(t) && Date.now() - t < SEVEN_DAYS_MS;
+  }).length;
+
+  // Hero product rotator — newest with images first, falls back to mock
+  const rotatorProducts = (dbNewest.length ? dbNewest : listings)
+    .filter(hasValidImage)
+    .slice(0, 8)
+    .map((l) => ({
+      id: l.id,
+      title: l.title,
+      price: l.price,
+      image: l.image,
+      sellerName: l.seller?.name ?? "",
+      createdAt: l.createdAt ?? new Date().toISOString(),
+    }));
+
+  // Pad helper — if a section has fewer than `target` items, fill from `pool`
+  // (avoiding duplicates) so each row always shows a full grid.
+  function padTo(target: number, primary: typeof allListings, pool: typeof allListings) {
+    const ids = new Set(primary.map((l) => l.id));
+    const extras = pool.filter((l) => !ids.has(l.id));
+    return [...primary, ...extras].slice(0, target);
+  }
+
+  // Best sellers — DB orders first, pad with rest of catalog
+  const bestSellers = padTo(6, dbBestSellers.filter(hasValidImage), allListings);
+  // Newest — DB sorted by created_at, pad if mock-only catalog is sparse
+  const newestListings = padTo(6, dbNewest.filter(hasValidImage), allListings);
+  // Weekly featured — only show what admin selected (no fallback — section hides if empty)
+  const weeklyFeatured = dbWeekly.filter(hasValidImage);
   const totalListings = allListings.length;
 
   const jsonLd = {
@@ -110,6 +153,9 @@ export default async function HomePage() {
             style={{ background: "radial-gradient(circle, #53F3A4, transparent 70%)" }} />
           <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full opacity-10"
             style={{ background: "radial-gradient(circle, #AD47FF, transparent 70%)" }} />
+          {/* Warm food halo — adds appetite cue alongside the cool brand colors */}
+          <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full opacity-[0.09]"
+            style={{ background: "radial-gradient(circle, #fbbf24, transparent 70%)" }} />
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -117,22 +163,63 @@ export default async function HomePage() {
 
             {/* Left */}
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1.5 text-xs font-semibold text-green-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-                Latvijā ražoti produkti — tieši no ražotāja
+              {/*
+                Old hero pill + headline — kept for browser comparison.
+                <div className="inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1.5 text-xs font-semibold text-green-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                  Latvijā ražoti produkti — tieši no ražotāja
+                </div>
+                <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  Pērc no <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>vietējā</span>,
+                  <br className="hidden sm:block" />
+                  saņem <span className="text-white">ērti</span>
+                </h1>
+                <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
+                  Pārtikas <strong className="text-white">pakomātā</strong> vai ar <strong className="text-white">piegādi</strong> uz mājām. Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet.
+                </p>
+              */}
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+                {freshThisWeekCount > 0
+                  ? `🔥 Šonedēļ pievienoti ${freshThisWeekCount} jauni produkti`
+                  : "Latvijā ražoti produkti — tieši no ražotāja"}
               </div>
 
-              <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
-                Svaiga pārtika{" "}
+              <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Tavs{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  bez starpniekiem
-                </span>
+                  galds
+                </span>.{" "}
+                <br className="hidden sm:block" />
+                Tavs{" "}
+                <span className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
+                  ražotājs
+                </span>.{" "}
+                Tavs{" "}
+                <span className="bg-clip-text text-transparent"
+                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
+                  pakomāts
+                </span>.
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
-                Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — saņem
-                tieši no ražotāja caur <strong className="text-white">IziPizi pakomātiem</strong>. Svaigi. Ātri. Vietēji.
+                {liveSellerNames.length > 0 && (
+                  <>
+                    {liveSellerNames.map((n, i) => (
+                      <span key={n}>
+                        <strong className="text-white">{n}</strong>
+                        {i < liveSellerNames.length - 1 ? ", " : ""}
+                      </span>
+                    ))}
+                    {" un citi — "}
+                  </>
+                )}
+                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
+                Saņem <strong className="text-white">pakomātā</strong> vai ar{" "}
+                <strong className="text-white">piegādi</strong> uz mājām.
               </p>
 
               {/* CTAs */}
@@ -142,49 +229,31 @@ export default async function HomePage() {
                   style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
                   <ShoppingBag size={15} /> Skatīt visus produktus
                 </Link>
-                <Link href="/keriens"
-                  className="inline-flex items-center gap-2 rounded-full border border-orange-400/50 bg-orange-400/10 px-6 py-3 text-sm font-bold text-orange-300 hover:bg-orange-400/20 transition">
-                  <Flame size={14} /> Sludinājumu dēlis
+                <Link href="/piegade"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-bold text-white hover:bg-white/10 transition">
+                  <Truck size={14} /> Piegādes veidi
                 </Link>
               </div>
 
               {/* Stats */}
               <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8">
                 <div>
-                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{sellers.length}</p>
-                  <p className="mt-0.5 text-xs text-gray-400">Verificēti ražotāji</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{liveSellerCount}</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Šodien tirgo</p>
                 </div>
                 <div>
                   <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{totalListings}+</p>
-                  <p className="mt-0.5 text-xs text-gray-400">Produkti</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Svaigi produkti</p>
                 </div>
                 <div>
                   <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>6+</p>
-                  <p className="mt-0.5 text-xs text-gray-400">Pārtikas pakomātu vietas</p>
+                  <p className="mt-0.5 text-xs text-gray-400">Pakomātu vietas</p>
                 </div>
               </div>
             </div>
 
-            {/* Right — product card mosaic */}
-            <div className="hidden grid-cols-2 gap-3 lg:grid">
-              {HERO_PRODUCTS.map((p) => (
-                <div key={p.name}
-                  className="group overflow-hidden rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition">
-                  <div className="relative h-36 overflow-hidden bg-gray-800">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.img} alt={p.name}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90" />
-                  </div>
-                  <div className="p-3">
-                    <p className="text-xs font-bold text-white leading-tight">{p.name}</p>
-                    <div className="mt-1 flex items-center justify-between">
-                      <p className="text-[11px] text-gray-400">{p.seller}</p>
-                      <p className="text-xs font-bold text-green-400">{p.price}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Right — product rotator (auto-fades every 5s) */}
+            <HeroProductRotator products={rotatorProducts} />
           </div>
 
           {/* Seller logos strip */}
@@ -225,37 +294,97 @@ export default async function HomePage() {
       <HotDropsPreview />
       */}
 
-      {/* ── FEATURED PRODUCTS ────────────────────────────────── */}
-      <section className="bg-gray-50 px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-7 flex items-end justify-between">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Tieši no ražotāja</span>
-              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Svaigākie produkti</h2>
+      {/* ── BEST SELLERS — Pirktākie ──────────────────────────── */}
+      {bestSellers.length > 0 && (
+        <section className="bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-6 flex items-end justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                  <TrendingUp size={20} className="text-rose-600" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Šonedēļ populārākie</span>
+                  <h2 className="mt-0.5 text-2xl font-extrabold text-gray-900">Šonedēļ visi pērk šo</h2>
+                </div>
+              </div>
+              <Link href="/catalog?sort=popular"
+                className="hidden items-center gap-1 text-sm font-medium text-rose-600 hover:underline sm:flex">
+                Visi populārākie <ArrowRight size={14} />
+              </Link>
             </div>
-            <Link href="/catalog"
-              className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
-              Visi produkti <ArrowRight size={14} />
-            </Link>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {bestSellers.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {featured.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
+        </section>
+      )}
+
+      {/* ── WEEKLY FEATURED — Nedēļas piedāvājums ─────────────── */}
+      {weeklyFeatured.length > 0 && (
+        <section className="px-4 py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-yellow-50 via-white to-purple-50">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-6 flex items-end justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ background: "linear-gradient(135deg,#fef3c7,#e9d5ff)" }}>
+                  <Star size={20} className="text-amber-600" fill="currentColor" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Redaktoru izvēle</span>
+                  <h2 className="mt-0.5 text-2xl font-extrabold text-gray-900">Nedēļas piedāvājums</h2>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+              {weeklyFeatured.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
           </div>
-          <div className="mt-6 text-center sm:hidden">
-            <Link href="/catalog" className="btn-outline text-sm">Skatīt visus produktus</Link>
+        </section>
+      )}
+
+      {/* ── NEWEST — Tikko pievienoti ────────────────────────── */}
+      {newestListings.length > 0 && (
+        <section className="bg-white px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-6 flex items-end justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100">
+                  <Sparkles size={20} className="text-brand-700" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-brand-600">Tieši no ražotāja</span>
+                  <h2 className="mt-0.5 text-2xl font-extrabold text-gray-900">Vēl silti — tikko ievietoti</h2>
+                </div>
+              </div>
+              <Link href="/catalog?sort=newest"
+                className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
+                Visi jaunākie <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {newestListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+            <div className="mt-6 text-center sm:hidden">
+              <Link href="/catalog" className="btn-outline text-sm">Skatīt visus produktus</Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── SELLERS SPOTLIGHT ────────────────────────────────── */}
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mb-7 flex items-end justify-between">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Verificēti</span>
-              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Mūsu ražotāji</h2>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Iepazīsti vārdā</span>
+              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">Mūsu saimnieki</h2>
             </div>
             <Link href="/razotaji"
               className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
@@ -320,10 +449,10 @@ export default async function HomePage() {
           </div>
           <div className="mt-10 grid gap-3 sm:grid-cols-4">
             {[
-              { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Kataloogs, meklēšana vai hot drops — atrodi ko vēlies." },
-              { icon: "📍", step: "02", title: "Izvēlies pakomātu", desc: "Tuvākais IziPizi pakomāts — 6+ vietas Latvijā." },
+              { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Pārlūko katalogu vai izmanto meklēšanu — atrodi ko vēlies." },
+              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "Pakomāts, kurjers vai ekspres — visā Latvijā." },
               { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
-              { icon: "✅", step: "04", title: "Saņem pakomātā", desc: "24/7 piekļuve. Svaigs produkts tevi gaida." },
+              { icon: "✅", step: "04", title: "Saņem ērti", desc: "Pakomātā 24/7, mājās vai dažu stundu laikā." },
             ].map((item, i) => (
               <div key={item.step} className="relative">
                 {i < 3 && (
@@ -374,7 +503,7 @@ export default async function HomePage() {
                 title: "Eksprespiegāde",
                 desc: "2–5h piegāde Rīgā un Pierīgā. Pasūti no rīta — saņem pusdienā.",
                 price: "no 6.66 €",
-                href: "/piegade#ekspres",
+                href: "/piegade",
                 color: "text-yellow-700",
               },
             ].map((d) => (
@@ -458,9 +587,9 @@ export default async function HomePage() {
                 "✅ Bezmaksas reģistrācija",
                 "⚡ Apstiprināšana 24h laikā",
                 "💰 Komisija tikai no pārdošanas",
-                "🚚 IziPizi piegādes infrastruktūra",
+                "🚚 Pakomāts, kurjers un ekspres piegāde",
                 "❄️ Temperatūras ķēde no ražotāja",
-                "🔥 Flash drops — pārdod ātri un vairāk",
+                "📍 Visi izipizi pakomāti Latvijā",
               ].map((f) => (
                 <li key={f}
                   className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-gray-300">
