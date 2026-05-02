@@ -85,18 +85,34 @@ export default async function HomePage() {
     return Number.isFinite(t) && Date.now() - t < SEVEN_DAYS_MS;
   }).length;
 
-  // Hero product rotator — newest with images first, falls back to mock
-  const rotatorProducts = (dbNewest.length ? dbNewest : listings)
-    .filter(hasValidImage)
-    .slice(0, 8)
-    .map((l) => ({
-      id: l.id,
-      title: l.title,
-      price: l.price,
-      image: l.image,
-      sellerName: l.seller?.name ?? "",
-      createdAt: l.createdAt ?? new Date().toISOString(),
-    }));
+  // Hero product rotator — diverse mix: 2 newest + 2 best-sellers + 8 random
+  // from the full catalog, deduped, capped at 12. Ensures rotations show
+  // visually distinct products rather than 8 variations of the same thing.
+  const rotatorPool: typeof allListings = [];
+  const seen = new Set<string>();
+  const pushUnique = (l: (typeof allListings)[number]) => {
+    if (!seen.has(l.id) && hasValidImage(l)) {
+      seen.add(l.id);
+      rotatorPool.push(l);
+    }
+  };
+  dbNewest.slice(0, 2).forEach(pushUnique);
+  dbBestSellers.slice(0, 2).forEach(pushUnique);
+  // Deterministic shuffle of the rest by hashing id — stable across SSR/CSR
+  const rest = allListings
+    .filter((l) => !seen.has(l.id))
+    .map((l) => ({ l, hash: [...l.id].reduce((a, c) => a + c.charCodeAt(0), 0) }))
+    .sort((a, b) => a.hash - b.hash)
+    .map((x) => x.l);
+  rest.forEach(pushUnique);
+  const rotatorProducts = rotatorPool.slice(0, 12).map((l) => ({
+    id: l.id,
+    title: l.title,
+    price: l.price,
+    image: l.image,
+    sellerName: l.seller?.name ?? "",
+    createdAt: l.createdAt ?? new Date().toISOString(),
+  }));
 
   // Pad helper — if a section has fewer than `target` items, fill from `pool`
   // (avoiding duplicates) so each row always shows a full grid.
