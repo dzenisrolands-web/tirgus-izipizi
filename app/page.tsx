@@ -128,7 +128,8 @@ export default async function HomePage() {
   const newestListings = padTo(6, dbNewest.filter(hasValidImage), allListings);
   // Weekly featured — only show what admin selected (no fallback — section hides if empty)
   const weeklyFeatured = dbWeekly.filter(hasValidImage);
-  const totalListings = allListings.length;
+  // Hero "Svaigi produkti" stat — count only real DB listings (no mock)
+  const totalListings = dbListings.filter(hasValidImage).length;
 
   const jsonLd = {
     "@context": "https://schema.org",
