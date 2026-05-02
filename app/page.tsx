@@ -186,7 +186,7 @@ export default async function HomePage() {
                   : "Latvijā ražoti produkti — tieši no ražotāja"}
               </div>
 
-              <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 text-4xl font-extrabold uppercase leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
                   Ražotājs
@@ -196,9 +196,7 @@ export default async function HomePage() {
                   pārtikas pakomāts
                 </span>,
                 <br />
-                <span className="uppercase tracking-tight text-white">
-                  Tavs galds
-                </span>.
+                <span className="text-white">Tavs galds</span>.
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
