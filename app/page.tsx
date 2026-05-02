@@ -187,21 +187,17 @@ export default async function HomePage() {
               </div>
 
               <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Tavs{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  galds
-                </span>.{" "}
-                <br className="hidden sm:block" />
-                Tavs{" "}
+                  Ražotājs
+                </span>,{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  ražotājs
-                </span>.{" "}
-                Tavs{" "}
-                <span className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  pakomāts
+                  pārtikas pakomāts
+                </span>,
+                <br />
+                <span className="uppercase tracking-tight text-white">
+                  Tavs galds
                 </span>.
               </h1>
 
