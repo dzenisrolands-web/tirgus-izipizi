@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X, Star } from "lucide-react";
 import { sellers, type Listing } from "@/lib/mock-data";
 import { ListingCard } from "@/components/listing-card";
 import { FilterSidebar, DEFAULT_FILTERS, type Filters } from "@/components/filter-sidebar";
@@ -11,11 +11,13 @@ import { useStorageTypes } from "@/lib/storage-types-context";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Jaunākie" },
+  { value: "alpha_asc", label: "Alfabētiski (A–Z)" },
+  { value: "alpha_desc", label: "Alfabētiski (Z–A)" },
   { value: "price_asc", label: "Cena: augšup" },
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
-export function CatalogClient({ listings }: { listings: Listing[] }) {
+export function CatalogClient({ listings, weeklyFeatured = [] }: { listings: Listing[]; weeklyFeatured?: Listing[] }) {
   const params = useSearchParams();
   const storageTypes = useStorageTypes();
 
@@ -49,19 +51,26 @@ export function CatalogClient({ listings }: { listings: Listing[] }) {
       );
     }
     if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
-    if (filters.city) result = result.filter((l) => l.locker.city === filters.city);
     if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
     if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
     result = result.filter((l) => l.price <= filters.maxPrice);
     if (sort === "price_asc") result.sort((a, b) => a.price - b.price);
     else if (sort === "price_desc") result.sort((a, b) => b.price - a.price);
+    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv"));
+    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv"));
     else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return result;
   }, [filters, query, sort, storageTypes]);
 
+  // Show weekly featured at top only when no filters are active (clean catalog browse)
+  const showFeatured = weeklyFeatured.length > 0
+    && !query.trim()
+    && filters.category === "Visi"
+    && !filters.seller
+    && filters.storageType === "all";
+
   const activeFilterCount = [
     filters.category !== "Visi",
-    filters.city !== "",
     filters.maxPrice < 100,
     filters.seller !== "",
     filters.storageType !== "all",
@@ -72,6 +81,27 @@ export function CatalogClient({ listings }: { listings: Listing[] }) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Weekly featured strip — only on clean catalog view */}
+      {showFeatured && (
+        <section className="mb-8 rounded-2xl bg-gradient-to-br from-yellow-50 via-white to-purple-50 p-5 sm:p-6 ring-1 ring-amber-100">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl"
+              style={{ background: "linear-gradient(135deg,#fef3c7,#e9d5ff)" }}>
+              <Star size={18} className="text-amber-600" fill="currentColor" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Redaktoru izvēle</p>
+              <h2 className="text-lg font-extrabold text-gray-900">Nedēļas piedāvājums</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+            {weeklyFeatured.map((listing) => (
+              <ListingCard key={`featured-${listing.id}`} listing={listing} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">

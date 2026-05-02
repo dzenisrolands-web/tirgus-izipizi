@@ -94,15 +94,17 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <span className="text-base font-bold text-gray-900">{formatPrice(listing.price)}</span>
             <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>
           </div>
-          <button onClick={handleAddToCart} title={added ? "Pievienots!" : "Ielikt grozā"}
-            className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all",
-              added ? "bg-green-500 text-white" : "bg-[#192635] text-white hover:bg-[#243647]")}>
-            {added ? <Check size={13} /> : <ShoppingCart size={13} />}
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none", storage.cls)}>
+              {storage.label}
+            </span>
+            <button onClick={handleAddToCart} title={added ? "Pievienots!" : "Ielikt grozā"}
+              className={cn("flex h-8 w-8 items-center justify-center rounded-full transition-all",
+                added ? "bg-green-500 text-white" : "bg-[#192635] text-white hover:bg-[#243647]")}>
+              {added ? <Check size={13} /> : <ShoppingCart size={13} />}
+            </button>
+          </div>
         </div>
-        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit", storage.cls)}>
-          {storage.label}
-        </span>
       </div>
     </Link>
   );

@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { categories, lockers, sellers } from "@/lib/mock-data";
+import { categories, sellers } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export type Filters = {
   category: string;
-  city: string;
   maxPrice: number;
   seller: string;
   storageType: "all" | "frozen" | "chilled";
@@ -34,11 +33,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export const DEFAULT_FILTERS: Filters = { category: "Visi", city: "", maxPrice: 100, seller: "", storageType: "all" };
+export const DEFAULT_FILTERS: Filters = { category: "Visi", maxPrice: 100, seller: "", storageType: "all" };
 
 export function FilterSidebar({ filters, onChange }: Props) {
-  const cities = Array.from(new Set(lockers.map((l) => l.city)));
-
   return (
     <aside className="w-full">
       <div className="flex items-center justify-between">
@@ -116,36 +113,6 @@ export function FilterSidebar({ filters, onChange }: Props) {
               )}
             >
               {s.name}
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Pārtikas pakomāta pilsēta">
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={() => onChange({ ...filters, city: "" })}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-left text-sm transition",
-              filters.city === ""
-                ? "bg-brand-50 font-semibold text-brand-700"
-                : "text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            Visas pilsētas
-          </button>
-          {cities.map((city) => (
-            <button
-              key={city}
-              onClick={() => onChange({ ...filters, city })}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-left text-sm transition",
-                filters.city === city
-                  ? "bg-brand-50 font-semibold text-brand-700"
-                  : "text-gray-600 hover:bg-gray-50"
-              )}
-            >
-              {city}
             </button>
           ))}
         </div>
