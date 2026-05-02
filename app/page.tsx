@@ -212,7 +212,7 @@ export default async function HomePage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
                 {freshThisWeekCount > 0
                   ? `🔥 Šonedēļ pievienoti ${freshThisWeekCount} jauni produkti`
-                  : "Latvijā ražoti produkti — tieši no ražotāja"}
+                  : "Latvijas pārtikas tirgotāju mārketplace"}
               </div>
 
               <h1 className="mt-5 text-4xl font-extrabold uppercase leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
