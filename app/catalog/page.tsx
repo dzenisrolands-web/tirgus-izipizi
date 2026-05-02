@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { CatalogClient } from "./catalog-client";
-import { fetchActiveListings } from "@/lib/db-listings";
+import { fetchActiveListings, fetchWeeklyFeatured } from "@/lib/db-listings";
 import { listings as mockListings } from "@/lib/mock-data";
 import { hasValidImage } from "@/lib/utils";
 
@@ -17,13 +17,20 @@ export const metadata = {
 };
 
 export default async function CatalogPage() {
-  const dbListings = await fetchActiveListings();
-  // Real DB listings first, then mock demo listings — filter out anything without a valid image
-  const allListings = [...dbListings, ...mockListings].filter(hasValidImage);
+  const [dbListings, dbWeekly] = await Promise.all([
+    fetchActiveListings(),
+    fetchWeeklyFeatured(7),
+  ]);
+  // Real DB listings only. Mock data falls back ONLY if the DB returns
+  // nothing (dev without a populated DB) — it should never inflate counts
+  // alongside real products.
+  const realListings = dbListings.filter(hasValidImage);
+  const allListings = realListings.length > 0 ? realListings : mockListings.filter(hasValidImage);
+  const weeklyFeatured = dbWeekly.filter(hasValidImage);
 
   return (
     <Suspense>
-      <CatalogClient listings={allListings} />
+      <CatalogClient listings={allListings} weeklyFeatured={weeklyFeatured} />
     </Suspense>
   );
 }
