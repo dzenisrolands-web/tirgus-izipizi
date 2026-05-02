@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { IziPiziNetworkBar } from "@/components/izipizi-network-bar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PageTransition } from "@/components/page-transition";
 import { CartProvider } from "@/lib/cart-context";
 import { StorageTypesProvider } from "@/lib/storage-types-context";
+import { BuyerAddressProvider } from "@/lib/buyer-address-context";
+import { BuyerAddressPrompt } from "@/components/buyer-address-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
 
@@ -19,11 +22,11 @@ const BASE_URL = "https://tirgus.izipizi.lv";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "tirgus.izipizi.lv — Svaiga pārtika no Latvijas ražotājiem",
+    default: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
     template: "%s | tirgus.izipizi.lv",
   },
   description:
-    "Iegādājies svaigus produktus no Latvijas ražotājiem un saņem tos izipizi pakomātā savā tuvumā. Pelmeņi, gaļa, olas, dārzeņi — tieši no fermas.",
+    "Pērc no vietējā un saņem ērti — pārtikas pakomātā vai ar piegādi uz mājām. Pelmeņi, gaļa, olas, dārzeņi no Latvijas ražotājiem.",
   keywords: ["tirgus", "svaiga pārtika", "ražotāji", "pakomāts", "izipizi", "vietējie produkti", "latvija", "ferma"],
   authors: [{ name: "tirgus.izipizi.lv" }],
   creator: "IziPizi",
@@ -32,9 +35,9 @@ export const metadata: Metadata = {
     locale: "lv_LV",
     url: BASE_URL,
     siteName: "tirgus.izipizi.lv",
-    title: "tirgus.izipizi.lv — Svaiga pārtika no Latvijas ražotājiem",
+    title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
     description:
-      "Iegādājies svaigus produktus no Latvijas ražotājiem un saņem tos izipizi pakomātā. Pelmeņi, gaļa, olas, dārzeņi — tieši no fermas.",
+      "Pērc no vietējā un saņem ērti — pārtikas pakomātā vai ar piegādi uz mājām. Latvijas ražotāji vienuviet.",
     images: [
       {
         url: "/og-default.jpg",
@@ -46,8 +49,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "tirgus.izipizi.lv — Svaiga pārtika no Latvijas ražotājiem",
-    description: "Iegādājies svaigus produktus no Latvijas ražotājiem caur izipizi pakomātiem.",
+    title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
+    description: "Pērc no vietējā — pakomātā vai ar piegādi.",
     images: ["/og-default.jpg"],
   },
   robots: {
@@ -129,13 +132,17 @@ export default function RootLayout({
       </head>
       <body spellCheck={false}>
         <CartProvider>
-          <StorageTypesProvider>
-            <Nav />
-            <main className="pb-16 md:pb-0">
-              <PageTransition>{children}</PageTransition>
-            </main>
-            <MobileBottomNav />
-          </StorageTypesProvider>
+          <BuyerAddressProvider>
+            <StorageTypesProvider>
+              <IziPiziNetworkBar />
+              <Nav />
+              <BuyerAddressPrompt />
+              <main className="pb-16 md:pb-0">
+                <PageTransition>{children}</PageTransition>
+              </main>
+              <MobileBottomNav />
+            </StorageTypesProvider>
+          </BuyerAddressProvider>
         </CartProvider>
         <CookieConsent />
         <footer className="mt-20 border-t border-gray-100 bg-gray-50">
@@ -156,7 +163,7 @@ export default function RootLayout({
                 <ul className="mt-3 space-y-2">
                   <li><a href="/catalog" className="text-sm text-gray-600 hover:text-brand-600">Produkti</a></li>
                   <li><a href="/razotaji" className="text-sm text-gray-600 hover:text-brand-600">Ražotāji</a></li>
-                  <li><a href="/receptes" className="text-sm text-gray-600 hover:text-brand-600">Receptes</a></li>
+                  <li><a href="/receptes" className="text-sm text-gray-600 hover:text-brand-600">IziPizi RECEPTE</a></li>
                   {/* <li><a href="/keriens" className="text-sm font-medium text-orange-600 hover:text-orange-700">🔥 Sludinājumu dēlis</a></li> */}
                   <li><a href="/sell" className="text-sm text-gray-600 hover:text-brand-600">Sākt pārdot</a></li>
                 </ul>

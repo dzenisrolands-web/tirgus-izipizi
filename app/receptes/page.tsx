@@ -10,7 +10,7 @@ export const metadata = {
   description:
     "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi pakomātu.",
   openGraph: {
-    title: "Receptes — tirgus.izipizi.lv",
+    title: "IziPizi RECEPTE — tirgus.izipizi.lv",
     description: "Receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas.",
     url: "https://tirgus.izipizi.lv/receptes",
     type: "website" as const,
@@ -28,7 +28,7 @@ export default function ReceptesPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-extrabold text-gray-900">Receptes</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900">IziPizi RECEPTE</h1>
         <p className="mt-2 text-gray-500 max-w-xl">
           Iedvesmojošas receptes no mūsu ražotāju produktiem — no ātrajām vakariņām līdz svētku galdam.
         </p>
