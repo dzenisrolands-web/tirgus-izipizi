@@ -5,17 +5,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
-  Menu, X, LogOut, ChevronRight, ShieldCheck,
+  Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/admin",              label: "Kopsavilkums",  icon: LayoutDashboard, exact: true },
-  { href: "/admin/razotaji",     label: "Ražotāji",      icon: Users },
-  { href: "/admin/produkti",     label: "Produkti",      icon: Package },
-  { href: "/admin/pasutijumi",   label: "Pasūtījumi",    icon: ShoppingBag },
-  { href: "/admin/pirceji",       label: "Pircēji",       icon: UserCheck },
+  { href: "/admin",                      label: "Kopsavilkums",        icon: LayoutDashboard, exact: true },
+  { href: "/admin/statistika",           label: "Statistika",          icon: BarChart3 },
+  { href: "/admin/razotaji",             label: "Ražotāji",            icon: Users },
+  { href: "/admin/produkti",             label: "Produkti",            icon: Package },
+  { href: "/admin/nedelas-piedavajums",  label: "Nedēļas piedāvājums", icon: Star },
+  { href: "/admin/pasutijumi",           label: "Pasūtījumi",          icon: ShoppingBag },
+  { href: "/admin/pirceji",              label: "Pircēji",             icon: UserCheck },
 ];
 
 function SidebarContent({

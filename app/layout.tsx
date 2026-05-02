@@ -12,6 +12,9 @@ import { BuyerAddressPrompt } from "@/components/buyer-address-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { PWAInstallTracker } from "@/components/pwa-install-tracker";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -153,6 +156,9 @@ export default function RootLayout({
       </head>
       <body spellCheck={false}>
         <ServiceWorkerRegister />
+        <PWAInstallTracker />
+        <Analytics />
+        <SpeedInsights />
         <CartProvider>
           <BuyerAddressProvider>
             <StorageTypesProvider>
