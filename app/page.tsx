@@ -126,18 +126,57 @@ export default async function HomePage() {
     createdAt: l.createdAt ?? new Date().toISOString(),
   }));
 
-  // Pad helper — if a section has fewer than `target` items, fill from `pool`
-  // (avoiding duplicates) so each row always shows a full grid.
-  function padTo(target: number, primary: typeof allListings, pool: typeof allListings) {
-    const ids = new Set(primary.map((l) => l.id));
-    const extras = pool.filter((l) => !ids.has(l.id));
-    return [...primary, ...extras].slice(0, target);
+  // Pad helper — fills a section to `target` items. Prioritises product
+  // diversity by seller: padding picks NEW sellers first, only repeats
+  // an already-shown seller if the target can't be reached otherwise.
+  // TODO(post-launch): when paid orders > ~50/week, drop padding and use
+  // raw dbBestSellers / dbNewest signal directly.
+  function padToDiverseSellers(
+    target: number,
+    primary: typeof allListings,
+    pool: typeof allListings,
+  ) {
+    const sellerKeyOf = (l: (typeof allListings)[number]) =>
+      l.sellerId || l.seller?.name || "unknown";
+    // Dedupe primary by seller — a single seller's run shouldn't fill the row
+    const seenIds = new Set<string>();
+    const seenSellers = new Set<string>();
+    const out: typeof allListings = [];
+    for (const l of primary) {
+      const sk = sellerKeyOf(l);
+      if (seenIds.has(l.id) || seenSellers.has(sk)) continue;
+      out.push(l);
+      seenIds.add(l.id);
+      seenSellers.add(sk);
+      if (out.length >= target) return out;
+    }
+    // Pad pass 1: only sellers not yet shown
+    for (const l of pool) {
+      if (out.length >= target) return out;
+      const sk = sellerKeyOf(l);
+      if (seenIds.has(l.id) || seenSellers.has(sk)) continue;
+      out.push(l);
+      seenIds.add(l.id);
+      seenSellers.add(sk);
+    }
+    // Pad pass 2: allow seller repeats if still short
+    for (const l of pool) {
+      if (out.length >= target) return out;
+      if (seenIds.has(l.id)) continue;
+      out.push(l);
+      seenIds.add(l.id);
+    }
+    return out;
   }
 
-  // Best sellers — DB orders first, pad with rest of catalog
-  const bestSellers = padTo(6, dbBestSellers.filter(hasValidImage), allListings);
-  // Newest — DB sorted by created_at, pad if mock-only catalog is sparse
-  const newestListings = padTo(6, dbNewest.filter(hasValidImage), allListings);
+  // Both sections pull diverse-by-seller picks until real signal arrives.
+  // "Šonedēļ visi pērk šo" — DB best-sellers first (when orders exist),
+  // padded with one product per seller from the round-robin pool.
+  const bestSellers = padToDiverseSellers(6, dbBestSellers.filter(hasValidImage), rotatorPool);
+  // "Vēl silti — tikko ievietoti" — DB newest first, padded similarly,
+  // then re-sorted by recency so the row still reads as "newest first".
+  const newestListings = padToDiverseSellers(6, dbNewest.filter(hasValidImage), rotatorPool)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   // Weekly featured — only show what admin selected (no fallback — section hides if empty)
   const weeklyFeatured = dbWeekly.filter(hasValidImage);
   // Hero "Svaigi produkti" stat — count only real DB listings (no mock)
