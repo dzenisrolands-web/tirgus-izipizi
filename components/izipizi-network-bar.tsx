@@ -11,9 +11,9 @@ export function IziPiziNetworkBar() {
         <span className="text-white/80">Pārtikas sūtījumi?</span>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://static.wixstatic.com/media/d87e7f_82911c0279744ed5a20873b390e115bdf000.jpg/v1/fill/w_292,h_138,al_c,q_90/d87e7f_82911c0279744ed5a20873b390e115bdf000.jpg"
+          src="/izipizi-logo.png"
           alt="izipizi.lv"
-          className="h-5 w-auto rounded-sm sm:h-6"
+          className="h-7 w-auto sm:h-8"
           loading="lazy"
           decoding="async"
         />
