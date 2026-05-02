@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Star, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
-import { type Listing, sellerHomeLockers } from "@/lib/mock-data";
+import { type Listing } from "@/lib/mock-data";
 import { formatPrice, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
@@ -14,7 +14,6 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const days = daysUntil(listing.freshnessDate);
   const freshLabel = days <= 1 ? "Šodien" : days <= 3 ? `${days} dienas` : null;
   const freshUrgent = days <= 1;
-  const isHome = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const storageTypes = useStorageTypes();
   const rawStorageType = storageTypes[listing.id] ?? getStorageType(listing);
@@ -35,6 +34,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       unit: listing.unit,
       image: listing.image,
       sellerName: listing.seller.farmName,
+      sellerId: listing.sellerId,
       storageType: storageType,
     });
     setAdded(true);
@@ -82,15 +82,12 @@ export function ListingCard({ listing }: { listing: Listing }) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <MapPin size={11} className="shrink-0" />
-          <span className="truncate">{listing.locker.city} · {listing.locker.name}</span>
-          {isHome && (
-            <span className="ml-auto shrink-0 rounded-full bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
-              🏠 Mājas
-            </span>
-          )}
-        </div>
+        {listing.seller.location && (
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <MapPin size={11} className="shrink-0" />
+            <span className="truncate">no {listing.seller.location}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <div className="flex items-baseline gap-1 min-w-0">
