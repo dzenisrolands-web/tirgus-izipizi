@@ -85,32 +85,44 @@ export default async function HomePage() {
     return Number.isFinite(t) && Date.now() - t < SEVEN_DAYS_MS;
   }).length;
 
-  // Hero product rotator — diverse mix: 2 newest + 2 best-sellers + 8 random
-  // from the full catalog, deduped, capped at 12. Ensures rotations show
-  // visually distinct products rather than 8 variations of the same thing.
-  const rotatorPool: typeof allListings = [];
-  const seen = new Set<string>();
-  const pushUnique = (l: (typeof allListings)[number]) => {
-    if (!seen.has(l.id) && hasValidImage(l)) {
-      seen.add(l.id);
-      rotatorPool.push(l);
+  // Hero product rotator — round-robin per seller so every group of 4
+  // shows 4 *different* sellers, and within the first ~2 groups every
+  // approved seller appears at least once.
+  //
+  //   Pass 1: seller1.product1, seller2.product1, ..., sellerN.product1
+  //   Pass 2: seller1.product2, seller2.product2, ..., sellerN.product2
+  //   ... (skips sellers who have no Nth product)
+  //
+  // Stable seller order: by name (deterministic across SSR + client hydration).
+  const realListings = dbListings.filter(hasValidImage);
+  const bySeller = new Map<string, typeof realListings>();
+  for (const l of realListings) {
+    const key = l.sellerId || l.seller?.name || "unknown";
+    if (!bySeller.has(key)) bySeller.set(key, []);
+    bySeller.get(key)!.push(l);
+  }
+  for (const [, arr] of bySeller) {
+    arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  const sellerKeys = [...bySeller.keys()].sort((a, b) => {
+    const an = bySeller.get(a)![0]?.seller?.name ?? "";
+    const bn = bySeller.get(b)![0]?.seller?.name ?? "";
+    return an.localeCompare(bn, "lv");
+  });
+  const rotatorPool: typeof realListings = [];
+  const MAX_PASSES = 4;
+  for (let n = 0; n < MAX_PASSES; n++) {
+    for (const sk of sellerKeys) {
+      const list = bySeller.get(sk)!;
+      if (list[n]) rotatorPool.push(list[n]);
     }
-  };
-  dbNewest.slice(0, 2).forEach(pushUnique);
-  dbBestSellers.slice(0, 2).forEach(pushUnique);
-  // Deterministic shuffle of the rest by hashing id — stable across SSR/CSR
-  const rest = allListings
-    .filter((l) => !seen.has(l.id))
-    .map((l) => ({ l, hash: [...l.id].reduce((a, c) => a + c.charCodeAt(0), 0) }))
-    .sort((a, b) => a.hash - b.hash)
-    .map((x) => x.l);
-  rest.forEach(pushUnique);
-  const rotatorProducts = rotatorPool.slice(0, 12).map((l) => ({
+  }
+  const rotatorProducts = rotatorPool.slice(0, 16).map((l) => ({
     id: l.id,
     title: l.title,
     price: l.price,
     image: l.image,
-    sellerName: l.seller?.name ?? "",
+    sellerName: l.seller?.farmName || l.seller?.name || "",
     createdAt: l.createdAt ?? new Date().toISOString(),
   }));
 
