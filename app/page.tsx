@@ -173,9 +173,14 @@ export default async function HomePage() {
   // "Šonedēļ visi pērk šo" — DB best-sellers first (when orders exist),
   // padded with one product per seller from the round-robin pool.
   const bestSellers = padToDiverseSellers(6, dbBestSellers.filter(hasValidImage), rotatorPool);
-  // "Vēl silti — tikko ievietoti" — DB newest first, padded similarly,
-  // then re-sorted by recency so the row still reads as "newest first".
-  const newestListings = padToDiverseSellers(6, dbNewest.filter(hasValidImage), rotatorPool)
+  // "Vēl silti — tikko ievietoti" — distinct from bestSellers row.
+  // Allow at most 1 overlap (one item can plausibly be both new + popular).
+  // Strategy: exclude bestSellers ids from primary + pool, build the row,
+  // then optionally re-insert one bestSeller if it's the actual newest item.
+  const bestIds = new Set(bestSellers.map((l) => l.id));
+  const dbNewestExBest = dbNewest.filter(hasValidImage).filter((l) => !bestIds.has(l.id));
+  const rotatorPoolExBest = rotatorPool.filter((l) => !bestIds.has(l.id));
+  const newestListings = padToDiverseSellers(6, dbNewestExBest, rotatorPoolExBest)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   // Weekly featured — only show what admin selected (no fallback — section hides if empty)
   const weeklyFeatured = dbWeekly.filter(hasValidImage);
