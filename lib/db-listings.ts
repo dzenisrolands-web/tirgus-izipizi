@@ -1,12 +1,31 @@
 import { supabase } from "./supabase";
 import { lockers } from "./mock-data";
-import type { Listing, Seller } from "./mock-data";
+import type { Listing, Seller, Variant } from "./mock-data";
 import type { SellerMeta } from "./sellers-meta";
 
 function extractYoutubeId(url?: string | null): string | undefined {
   if (!url) return undefined;
   const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m?.[1];
+}
+
+function mapVariants(raw: unknown): Variant[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: Variant[] = [];
+  for (const v of raw) {
+    if (!v || typeof v !== "object") continue;
+    const o = v as Record<string, unknown>;
+    const title = typeof o.title === "string" ? o.title : "";
+    const price = typeof o.price === "number" ? o.price : NaN;
+    if (!title || !isFinite(price) || price <= 0) continue;
+    out.push({
+      id: typeof o.id === "string" ? o.id : `v${out.length + 1}`,
+      title,
+      price,
+      quantity: typeof o.quantity === "number" ? o.quantity : 99,
+    });
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing {
@@ -38,13 +57,14 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
     quantity: (item.quantity as number) ?? 1,
     freshnessDate,
     createdAt: item.created_at as string,
+    variants: mapVariants(item.variants),
   };
 }
 
 export async function fetchActiveListings(): Promise<Listing[]> {
   const { data: rows, error } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
@@ -122,7 +142,7 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
   const listingIds = featured.map((f) => f.listing_id);
   const { data: rows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
     .in("id", listingIds)
     .eq("status", "active");
 
@@ -146,7 +166,7 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
 export async function fetchListingById(id: string): Promise<Listing | null> {
   const { data: item, error } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
     .eq("id", id)
     .single();
   if (error || !item) return null;
@@ -204,7 +224,7 @@ export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile 
 
   const { data: listingsRows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
     .eq("seller_id", id).eq("status", "active");
 
   return {
@@ -226,7 +246,7 @@ export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   const sellerIds = rows.map((s) => s.id);
   const { data: listingsRows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
     .eq("status", "active")
     .in("seller_id", sellerIds);
 

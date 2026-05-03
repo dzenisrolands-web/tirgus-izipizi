@@ -24,9 +24,17 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const [added, setAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
+  const hasVariants = (listing.variants?.length ?? 0) > 0;
+
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    // With variants the user must pick a size before adding — let the card
+    // navigate to the listing page instead of adding the wrong/cheapest one.
+    if (hasVariants) {
+      window.location.href = `/listing/${listing.id}`;
+      return;
+    }
     addItem({
       id: listing.id,
       title: listing.title,
@@ -91,8 +99,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <div className="flex items-baseline gap-1 min-w-0">
+            {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
             <span className="text-base font-bold text-gray-900">{formatPrice(listing.price)}</span>
-            <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>
+            {!hasVariants && <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none", storage.cls)}>

@@ -1,0 +1,203 @@
+// Run: node scripts/audit-corrupt-descriptions.mjs
+// Finds listings where the description was scraped together with the variant
+// dropdown text + "Pievienot grozam" button. Reports what's affected so we can
+// decide on a fix.
+
+import { readFileSync, writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "..");
+
+// Try .env.local first, then .env.production.local. We need URL + any key
+// (publishable for read, secret for write). Read-only audit can use the
+// publishable key; the SQL fix is emitted as a migration the user applies.
+const env = {};
+for (const file of [".env.local", ".env.production.local"]) {
+  try {
+    const raw = readFileSync(join(ROOT, file), "utf-8").replace(/^﻿/, "");
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/);
+      if (!m) continue;
+      let v = m[2].trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        v = v.slice(1, -1);
+      }
+      if (v && !env[m[1]]) env[m[1]] = v;
+    }
+  } catch {}
+}
+const URL = env.NEXT_PUBLIC_SUPABASE_URL;
+const KEY = env.SUPABASE_SECRET_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (!URL || !KEY) throw new Error("Missing SUPABASE creds (need URL + a key)");
+
+const supabase = createClient(URL, KEY);
+
+const { data: rows, error } = await supabase
+  .from("listings")
+  .select("id, title, description, price, unit")
+  .order("created_at", { ascending: false });
+if (error) throw error;
+
+const total = rows.length;
+console.log(`Total listings: ${total}\n`);
+
+// Patterns that indicate scrape pollution
+const PATTERNS = [
+  /Pievienot grozam/i,
+  /&euro;/i,
+  /gab\.?\s*kast[īi]t[ēe]?\s*-/i,
+];
+
+const affected = rows.filter((r) =>
+  r.description && PATTERNS.some((p) => p.test(r.description)),
+);
+
+console.log(`Affected listings: ${affected.length} (${Math.round((affected.length / total) * 100)}%)\n`);
+
+// Try to parse out variants
+function parseVariants(desc) {
+  const variants = [];
+  // Match patterns like:
+  //   "12 gab kastītē - 34.00&euro;"
+  //   "12 gab. kastītē-34.00&euro;"
+  //   "1 gab - 5.50&euro;"
+  //   "500g - 12.00&euro;"
+  const rx = /(\d+\s*[a-zA-ZāčēģīķļņōŗšūžĀČĒĢĪĶĻŅŌŖŠŪŽ.]+(?:\s+[a-zA-ZāčēģīķļņōŗšūžĀČĒĢĪĶĻŅŌŖŠŪŽ.]+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*&euro;/gi;
+  let m;
+  while ((m = rx.exec(desc)) !== null) {
+    const label = m[1].trim().replace(/\s+/g, " ");
+    const price = parseFloat(m[2].replace(",", "."));
+    if (!isFinite(price) || price <= 0) continue;
+    variants.push({ label, price });
+  }
+  // Dedupe by label
+  const seen = new Set();
+  return variants.filter((v) => {
+    const key = v.label.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function cleanDescription(desc, title) {
+  let s = desc;
+  // Strategy: the scrape pollution always starts at one of:
+  //  - the TITLE repeated with a "-" separator: "Austeres ...-12 gab kastītē"
+  //  - a literal "&euro;" entity
+  //  - the literal "Pievienot grozam"
+  // Find the earliest pollution marker, truncate everything after.
+  const markers = [];
+  if (title) {
+    const titleEsc = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const titleRx = new RegExp(`${titleEsc}\\s*[-—]`, "i");
+    const m = s.match(titleRx);
+    if (m && m.index !== undefined && m.index > 0) markers.push(m.index);
+  }
+  const euroIdx = s.search(/&euro;/i);
+  if (euroIdx > 0) markers.push(euroIdx);
+  const pievienotIdx = s.search(/Pievienot grozam/i);
+  if (pievienotIdx > 0) markers.push(pievienotIdx);
+  // Variant-line pattern (just digits + word + price + &euro;)
+  const variantIdx = s.search(/\d+\s*[a-zA-ZāčēģīķļņōŗšūžĀČĒĢĪĶĻŅŌŖŠŪŽ.]+\s*(?:kast|gab)[^-—]*[-—]\s*\d+(?:[.,]\d+)?\s*(?:&euro;|€)/i);
+  if (variantIdx > 0) markers.push(variantIdx);
+
+  if (markers.length > 0) {
+    const cut = Math.min(...markers);
+    s = s.slice(0, cut);
+  }
+  // Final cleanups: strip trailing dashes, whitespace, "X" stray tokens
+  s = s.replace(/\s+X\s*$/g, "");
+  s = s.replace(/[\s\-—]+$/g, "");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+const report = [];
+for (const r of affected) {
+  const variants = parseVariants(r.description);
+  const cleaned = cleanDescription(r.description, r.title);
+  report.push({
+    id: r.id,
+    title: r.title,
+    price: r.price,
+    unit: r.unit,
+    original_description: r.description,
+    cleaned_description: cleaned,
+    parsed_variants: variants,
+  });
+}
+
+writeFileSync(
+  join(ROOT, "scripts/audit-corrupt-descriptions.json"),
+  JSON.stringify(report, null, 2),
+);
+
+// ----- SQL migration generator -----
+// One UPDATE per affected listing. Wraps all in a single transaction.
+function sqlEscape(s) {
+  return s.replace(/'/g, "''");
+}
+
+const sqlLines = [];
+sqlLines.push("-- AUTO-GENERATED by scripts/audit-corrupt-descriptions.mjs");
+sqlLines.push("-- Strips scrape pollution from listings.description and");
+sqlLines.push("-- moves parsed variants into listings.variants JSONB.");
+sqlLines.push("");
+sqlLines.push("BEGIN;");
+sqlLines.push("");
+
+let updates = 0;
+for (const item of report) {
+  const cleanDesc = sqlEscape(item.cleaned_description);
+  const variantsArr = item.parsed_variants.map((v, i) => ({
+    id: `v${i + 1}`,
+    title: v.label,
+    price: v.price,
+    quantity: 99,
+  }));
+  // Build SET clauses
+  const setParts = [`description = '${cleanDesc}'`];
+  if (variantsArr.length > 0) {
+    const variantsJson = sqlEscape(JSON.stringify(variantsArr));
+    setParts.push(`variants = '${variantsJson}'::jsonb`);
+    // Also update price to MIN variant price so catalog cards show "no €X"
+    const minPrice = Math.min(...variantsArr.map((v) => v.price));
+    setParts.push(`price = ${minPrice}`);
+  }
+  sqlLines.push(`UPDATE listings SET ${setParts.join(", ")} WHERE id = '${item.id}';`);
+  updates++;
+}
+
+sqlLines.push("");
+sqlLines.push("COMMIT;");
+
+writeFileSync(
+  join(ROOT, "scripts/migrations/0015_fix_corrupt_descriptions.sql"),
+  sqlLines.join("\n"),
+);
+
+console.log(`\nSQL migration written: scripts/migrations/0015_fix_corrupt_descriptions.sql`);
+console.log(`UPDATE statements: ${updates}`);
+
+// Print sample
+console.log("=".repeat(80));
+console.log("Sample of affected products (first 5):");
+console.log("=".repeat(80));
+for (const item of report.slice(0, 5)) {
+  console.log(`\n--- ${item.title} (${item.id}) ---`);
+  console.log("ORIG:", item.original_description.slice(0, 240));
+  console.log("CLEAN:", item.cleaned_description.slice(0, 240));
+  console.log("VARIANTS:", item.parsed_variants);
+}
+
+// Variant stats
+const withVariants = report.filter((r) => r.parsed_variants.length > 0);
+console.log(`\n${"=".repeat(80)}`);
+console.log(`Products with parseable variants: ${withVariants.length}`);
+console.log(`Products with corrupt text but no variants parsed: ${report.length - withVariants.length}`);
+
+console.log(`\nFull report written: scripts/audit-corrupt-descriptions.json`);
