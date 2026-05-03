@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Search, Menu, X, ShoppingBag, ShoppingCart, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export function Nav() {
@@ -15,7 +15,6 @@ export function Nav() {
   const { count } = useCart();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
@@ -25,11 +24,18 @@ export function Nav() {
 
   // Sync the search input with the URL — when the user lands on /catalog?q=foo
   // (or navigates between catalog queries), the input should reflect that.
-  // Outside /catalog the input clears unless the user is actively typing.
+  // Outside /catalog the input clears. We read window.location (not
+  // useSearchParams) so the Nav, which lives in the root layout, doesn't drag
+  // every page into a CSR bailout.
   useEffect(() => {
-    if (pathname === "/catalog") setSearchQuery(params.get("q") ?? "");
-    else setSearchQuery("");
-  }, [pathname, params]);
+    if (typeof window === "undefined") return;
+    if (pathname === "/catalog") {
+      const q = new URLSearchParams(window.location.search).get("q") ?? "";
+      setSearchQuery(q);
+    } else {
+      setSearchQuery("");
+    }
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
