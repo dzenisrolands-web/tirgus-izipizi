@@ -52,7 +52,7 @@ export const TOOL_DECLARATIONS = [
   },
 ];
 
-type SearchProduct = {
+export type SearchProduct = {
   id: string;
   title: string;
   price: number;
@@ -60,6 +60,7 @@ type SearchProduct = {
   category: string;
   image: string;
   url: string;
+  sellerId: string;
   sellerName: string;
 };
 
@@ -86,6 +87,7 @@ export async function searchProducts({ query, limit = 6 }: { query: string; limi
     category: r.category,
     image: r.image_url,
     url: `${BASE_URL}/listing/${r.id}`,
+    sellerId: r.seller_id,
     sellerName: sellerMap[r.seller_id] ?? "",
   }));
 }

@@ -154,6 +154,11 @@ export async function POST(req: NextRequest) {
             for (const call of calls) {
               send("tool", { name: call.name });
               const out = await dispatchTool(call.name, (call.args ?? {}) as Record<string, unknown>);
+              // When products are returned, also stream them as a separate event
+              // so the client can render real product cards (not just text links).
+              if (call.name === "search_products" && Array.isArray(out)) {
+                send("products", out);
+              }
               responseParts.push({
                 functionResponse: { name: call.name, response: { result: out } },
               } as Part);

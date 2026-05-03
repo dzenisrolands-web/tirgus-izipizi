@@ -1,12 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Send, X, Loader2, ArrowUpRight } from "lucide-react";
+import { Sparkles, Send, X, Loader2, ArrowUpRight, Plus, Check } from "lucide-react";
 import Link from "next/link";
+import { useCart } from "@/lib/cart-context";
+import { formatPrice, getStorageType } from "@/lib/utils";
+
+type Product = {
+  id: string;
+  title: string;
+  price: number;
+  unit: string;
+  category: string;
+  image: string;
+  url: string;
+  sellerId: string;
+  sellerName: string;
+};
 
 type Message = {
   role: "user" | "model";
   content: string;
+  products?: Product[];
 };
 
 const SUGGESTIONS = [
@@ -16,6 +31,9 @@ const SUGGESTIONS = [
   "Kā nopirkt?",
   "Kā kļūt par pārdevēju?",
 ];
+
+const STORAGE_KEY = "ai-chat-history";
+const MAX_STORED = 30;
 
 export function AISearchDialog({
   open,
@@ -30,16 +48,38 @@ export function AISearchDialog({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const [streamingProducts, setStreamingProducts] = useState<Product[] | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentInitialRef = useRef(false);
+  const loadedRef = useRef(false);
+
+  // Load chat history on first mount (only once, from localStorage)
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Message[];
+        if (Array.isArray(parsed)) setMessages(parsed.slice(-MAX_STORED));
+      }
+    } catch {}
+  }, []);
+
+  // Persist on every change (skip empty)
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    try {
+      if (messages.length === 0) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED)));
+    } catch {}
+  }, [messages]);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
-    else {
-      sentInitialRef.current = false;
-    }
+    else sentInitialRef.current = false;
   }, [open]);
 
   useEffect(() => {
@@ -61,13 +101,17 @@ export function AISearchDialog({
     setInput("");
     setLoading(true);
     setStreamingText("");
+    setStreamingProducts(null);
     setActiveTool(null);
 
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({
+          // Send only role+content to keep payload lean; products live client-side.
+          messages: next.map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
       if (!res.body) {
         setMessages([...next, { role: "model", content: "Asistents pašlaik nav pieejams." }]);
@@ -77,12 +121,12 @@ export function AISearchDialog({
       const decoder = new TextDecoder();
       let buffer = "";
       let acc = "";
+      let collectedProducts: Product[] | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        // SSE frames separated by blank line
         let idx;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
           const frame = buffer.slice(0, idx);
@@ -95,18 +139,26 @@ export function AISearchDialog({
           if (eventName === "tool") {
             const parsed = JSON.parse(data) as { name: string };
             setActiveTool(toolLabel(parsed.name));
+          } else if (eventName === "products") {
+            collectedProducts = JSON.parse(data) as Product[];
+            setStreamingProducts(collectedProducts);
           } else if (eventName === "token") {
             const chunk = JSON.parse(data) as string;
             acc += chunk;
             setStreamingText(acc);
           } else if (eventName === "done") {
-            setMessages((prev) => [...prev, { role: "model", content: acc }]);
+            setMessages((prev) => [
+              ...prev,
+              { role: "model", content: acc, products: collectedProducts ?? undefined },
+            ]);
             setStreamingText("");
+            setStreamingProducts(null);
             setActiveTool(null);
           } else if (eventName === "error") {
             const e = JSON.parse(data) as { message: string };
             setMessages((prev) => [...prev, { role: "model", content: `Kļūda: ${e.message}` }]);
             setStreamingText("");
+            setStreamingProducts(null);
             setActiveTool(null);
           }
         }
@@ -122,19 +174,19 @@ export function AISearchDialog({
   function reset() {
     setMessages([]);
     setStreamingText("");
+    setStreamingProducts(null);
     setInput("");
     setActiveTool(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
   }
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/40 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
-      <div
-        className="absolute inset-0"
-        onClick={onClose}
-        aria-label="Aizvērt"
-      />
+      <div className="absolute inset-0" onClick={onClose} aria-label="Aizvērt" />
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[85vh] sm:max-h-[720px] sm:w-full sm:max-w-2xl sm:rounded-3xl">
         {/* Header */}
         <div
@@ -152,10 +204,7 @@ export function AISearchDialog({
             <p className="text-[11px] text-gray-500">Palīdzu atrast produktus un atbildu jautājumus</p>
           </div>
           {messages.length > 0 && (
-            <button
-              onClick={reset}
-              className="rounded-full px-3 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-100"
-            >
+            <button onClick={reset} className="rounded-full px-3 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-100">
               Sākt no jauna
             </button>
           )}
@@ -168,10 +217,7 @@ export function AISearchDialog({
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
           {messages.length === 0 && !streamingText && (
             <div className="flex flex-col items-center justify-center gap-4 pt-12">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg"
-                style={{ background: "linear-gradient(135deg, #53F3A4, #AD47FF)" }}
-              >
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg" style={{ background: "linear-gradient(135deg, #53F3A4, #AD47FF)" }}>
                 <Sparkles size={28} className="text-[#192635]" strokeWidth={2.5} />
               </div>
               <div className="text-center">
@@ -193,9 +239,23 @@ export function AISearchDialog({
           )}
 
           {messages.map((m, i) => (
-            <MessageBubble key={i} role={m.role} content={m.content} />
+            <MessageBubble
+              key={i}
+              role={m.role}
+              content={m.content}
+              products={m.products}
+              onProductLink={onClose}
+            />
           ))}
-          {streamingText && <MessageBubble role="model" content={streamingText} streaming />}
+          {streamingText && (
+            <MessageBubble
+              role="model"
+              content={streamingText}
+              products={streamingProducts ?? undefined}
+              streaming
+              onProductLink={onClose}
+            />
+          )}
           {loading && !streamingText && (
             <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
               <Loader2 size={14} className="animate-spin" />
@@ -239,10 +299,22 @@ export function AISearchDialog({
   );
 }
 
-function MessageBubble({ role, content, streaming }: { role: "user" | "model"; content: string; streaming?: boolean }) {
+function MessageBubble({
+  role,
+  content,
+  products,
+  streaming,
+  onProductLink,
+}: {
+  role: "user" | "model";
+  content: string;
+  products?: Product[];
+  streaming?: boolean;
+  onProductLink?: () => void;
+}) {
   const isUser = role === "user";
   return (
-    <div className={`mb-3 flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`mb-3 flex flex-col ${isUser ? "items-end" : "items-start"}`}>
       <div
         className={
           isUser
@@ -253,26 +325,99 @@ function MessageBubble({ role, content, streaming }: { role: "user" | "model"; c
         <FormattedText text={content} />
         {streaming && <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-gray-500 align-middle" />}
       </div>
+      {products && products.length > 0 && (
+        <div className="mt-2 grid w-full grid-cols-2 gap-2">
+          {products.map((p) => (
+            <ProductCard key={p.id} product={p} onLink={onProductLink} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// Render text with [label](url) → React Link, **bold** → <strong>, line breaks
+function ProductCard({ product, onLink }: { product: Product; onLink?: () => void }) {
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+
+  function handleAdd() {
+    addItem({
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      unit: product.unit,
+      image: product.image,
+      sellerName: product.sellerName,
+      sellerId: product.sellerId,
+      storageType: getStorageType(product),
+    });
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <Link
+        href={normalizeHref(product.url)}
+        onClick={onLink}
+        className="block aspect-square overflow-hidden bg-gray-100"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={product.image}
+          alt={product.title}
+          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+        />
+      </Link>
+      <div className="p-2">
+        <Link
+          href={normalizeHref(product.url)}
+          onClick={onLink}
+          className="line-clamp-2 text-xs font-semibold text-gray-900 hover:text-purple-700"
+        >
+          {product.title}
+        </Link>
+        <p className="mt-0.5 line-clamp-1 text-[10px] text-gray-500">{product.sellerName}</p>
+        <div className="mt-1.5 flex items-center justify-between gap-1">
+          <span className="text-xs font-extrabold text-gray-900">
+            {formatPrice(product.price)}
+            <span className="ml-0.5 text-[9px] font-semibold text-gray-500">/{product.unit}</span>
+          </span>
+          <button
+            onClick={handleAdd}
+            disabled={added}
+            className="flex h-7 items-center gap-1 rounded-full px-2 text-[10px] font-bold text-[#192635] transition active:scale-90"
+            style={{ background: added ? "#bbf7d0" : "linear-gradient(135deg, #53F3A4, #AD47FF)" }}
+            aria-label="Pievienot grozam"
+          >
+            {added ? (
+              <>
+                <Check size={11} strokeWidth={3} /> OK
+              </>
+            ) : (
+              <>
+                <Plus size={11} strokeWidth={3} /> Grozam
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormattedText({ text }: { text: string }) {
   const lines = text.split("\n");
   return (
     <div className="space-y-1">
       {lines.map((line, i) => (
-        <div key={i}>
-          {line.length === 0 ? <br /> : renderInline(line)}
-        </div>
+        <div key={i}>{line.length === 0 ? <br /> : renderInline(line)}</div>
       ))}
     </div>
   );
 }
 
 function renderInline(line: string): React.ReactNode {
-  // Pattern: [label](url) or **bold**
   const tokens: Array<string | React.ReactNode> = [];
   let remaining = line;
   let key = 0;
@@ -317,7 +462,6 @@ function renderInline(line: string): React.ReactNode {
 }
 
 function normalizeHref(url: string): string {
-  // Strip the public BASE_URL so internal links use Next routing
   return url.replace(/^https?:\/\/tirgus\.izipizi\.lv/, "") || "/";
 }
 
