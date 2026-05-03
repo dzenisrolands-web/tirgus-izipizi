@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Apvienots /piegade aizvieto atsevišķās sadaļas
-      { source: "/lockers", destination: "/piegade#pakomati-saraksts", permanent: true },
-      { source: "/eksprespiegade", destination: "/piegade#ekspres", permanent: true },
+      { source: "/lockers", destination: "/piegade", permanent: true },
+      { source: "/eksprespiegade", destination: "/piegade", permanent: true },
       // Vecās URL struktūras (vienskaitlis) atbalsts
       { source: "/razotajs/:id", destination: "/seller/:id", permanent: true },
     ];

@@ -9,6 +9,7 @@ export type CartItem = {
   unit: string;
   image: string;
   sellerName: string;
+  sellerId?: string;
   quantity: number;
   storageType: "frozen" | "chilled";
 };

@@ -1,11 +1,5 @@
 import webpush from 'web-push';
 
-webpush.setVapidDetails(
-  'mailto:dzenis.rolands@gmail.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
-
 export type PushPayload = {
   title: string;
   body: string;
@@ -18,7 +12,27 @@ export type PushSub = {
   auth: string;
 };
 
+let vapidConfigured = false;
+
+function ensureVapidConfigured(): boolean {
+  if (vapidConfigured) return true;
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return false;
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT ?? 'mailto:dzenis.rolands@gmail.com',
+    pub,
+    priv,
+  );
+  vapidConfigured = true;
+  return true;
+}
+
 export async function sendPushToSubscriptions(subs: PushSub[], payload: PushPayload) {
+  if (!ensureVapidConfigured()) {
+    console.warn('[push] VAPID keys not configured — skipping send');
+    return { sent: 0, failed: subs.length };
+  }
   const results = await Promise.allSettled(
     subs.map((sub) =>
       webpush.sendNotification(

@@ -11,15 +11,16 @@ type Props = {
   unit: string;
   image: string;
   sellerName: string;
+  sellerId?: string;
   storageType: "frozen" | "chilled";
 };
 
-export function AddToCartButton({ id, title, price, unit, image, sellerName, storageType }: Props) {
+export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType }: Props) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
   function handle() {
-    addItem({ id, title, price, unit, image, sellerName, storageType });
+    addItem({ id, title, price, unit, image, sellerName, sellerId, storageType });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }

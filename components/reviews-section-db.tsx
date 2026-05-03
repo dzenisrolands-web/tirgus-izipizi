@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star, Loader2, Send } from "lucide-react";
+import Link from "next/link";
+import { Star, Loader2, Send, CheckCircle, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type DbReview = {
   id: string;
   listing_id: string;
+  buyer_id: string | null;
   buyer_name: string;
   stars: number;
   comment: string;
+  verified_purchase: boolean;
   created_at: string;
 };
 
@@ -22,7 +25,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
           onMouseEnter={() => setHovered(s)} onMouseLeave={() => setHovered(0)}
           onClick={() => onChange(s)}
           className="transition-transform hover:scale-110">
-          <Star size={24} fill="currentColor"
+          <Star size={28} fill="currentColor"
             className={s <= (hovered || value) ? "text-amber-400" : "text-gray-200"} />
         </button>
       ))}
@@ -33,43 +36,110 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 export function ReviewsSectionDb({ listingId }: { listingId: string }) {
   const [reviews, setReviews] = useState<DbReview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
 
-  async function load() {
+  // Auth state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [orderIdForReview, setOrderIdForReview] = useState<string | null>(null);
+  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  async function loadReviews() {
     const { data } = await supabase
       .from("reviews")
-      .select("id, listing_id, buyer_name, stars, comment, created_at")
+      .select("id, listing_id, buyer_id, buyer_name, stars, comment, verified_purchase, created_at")
       .eq("listing_id", listingId)
       .order("created_at", { ascending: false });
-    setReviews(data ?? []);
+    setReviews((data as DbReview[] | null) ?? []);
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [listingId]);
+  async function loadAuthState() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setCheckingAuth(false);
+      return;
+    }
+    setUserId(user.id);
+
+    // Get user's full name from profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    setUserName(profile?.full_name ?? user.email?.split("@")[0] ?? "");
+
+    // Check if user has a paid order with this listing
+    const { data: orders } = await supabase
+      .from("orders")
+      .select("id, items")
+      .eq("buyer_id", user.id)
+      .eq("payment_status", "paid");
+    const matchingOrder = (orders ?? []).find((o) => {
+      const items = (o.items as Array<{ id?: string }> | null) ?? [];
+      return items.some((it) => it.id === listingId);
+    });
+    if (matchingOrder) {
+      setHasPurchased(true);
+      setOrderIdForReview(matchingOrder.id as string);
+    }
+
+    // Check if user already reviewed
+    const { data: existing } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("buyer_id", user.id)
+      .eq("listing_id", listingId)
+      .maybeSingle();
+    setHasAlreadyReviewed(!!existing);
+
+    setCheckingAuth(false);
+  }
+
+  useEffect(() => {
+    loadReviews();
+    loadAuthState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError("");
-    if (!name.trim()) return setFormError("Ievadi savu vārdu");
+    if (!userId) return setFormError("Lai atstātu atsauksmi, vispirms pieslēdzies");
     if (stars === 0) return setFormError("Izvēlies vērtējumu");
     if (comment.trim().length < 10) return setFormError("Atsauksme ir pārāk īsa (min. 10 rakstzīmes)");
+
     setSubmitting(true);
     try {
+      // Get listing's seller_id for review record
+      const { data: listing } = await supabase
+        .from("listings")
+        .select("seller_id")
+        .eq("id", listingId)
+        .single();
+
       const { error } = await supabase.from("reviews").insert({
         listing_id: listingId,
-        buyer_name: name.trim(),
+        seller_id: listing?.seller_id ?? null,
+        buyer_id: userId,
+        order_id: orderIdForReview,
+        buyer_name: userName.trim() || "Pircējs",
         stars,
         comment: comment.trim(),
+        verified_purchase: hasPurchased,
       });
       if (error) throw error;
       setSubmitted(true);
-      setName(""); setStars(0); setComment("");
-      await load();
+      setStars(0); setComment("");
+      await loadReviews();
+      setHasAlreadyReviewed(true);
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Kļūda saglabājot");
     } finally {
@@ -130,7 +200,14 @@ export function ReviewsSectionDb({ listingId }: { listingId: string }) {
               <div key={r.id} className="py-5">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{r.buyer_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{r.buyer_name}</p>
+                      {r.verified_purchase && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700" title="Verificēts pirkums">
+                          <CheckCircle size={9} /> Pirkums
+                        </span>
+                      )}
+                    </div>
                     <div className="flex mt-0.5">
                       {[1,2,3,4,5].map(s => (
                         <Star key={s} size={13} fill="currentColor"
@@ -150,40 +227,79 @@ export function ReviewsSectionDb({ listingId }: { listingId: string }) {
         )}
       </div>
 
-      {/* Write review form */}
+      {/* Write review form — auth-aware */}
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <h3 className="mb-4 text-sm font-extrabold text-gray-900">Rakstīt atsauksmi</h3>
-        {submitted ? (
+
+        {checkingAuth ? (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <Loader2 size={14} className="animate-spin" /> Pārbauda autentifikāciju...
+          </div>
+        ) : !userId ? (
+          <div className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+            <Lock size={15} className="mt-0.5 shrink-0 text-gray-400" />
+            <div>
+              <p>Lai atstātu atsauksmi, vispirms{" "}
+                <Link href="/login" className="font-semibold text-brand-700 hover:underline">pieslēdzies</Link>.
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Atsauksmes atļautas tikai reģistrētiem lietotājiem.
+              </p>
+            </div>
+          </div>
+        ) : hasAlreadyReviewed ? (
+          <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <CheckCircle size={15} className="shrink-0" />
+            Tu jau esi atstājis atsauksmi šim produktam. Paldies!
+          </div>
+        ) : submitted ? (
           <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
             <Star size={15} fill="currentColor" className="text-green-500" />
             Paldies! Tava atsauksme ir pievienota.
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {formError && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</div>
+          <>
+            {hasPurchased && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                <CheckCircle size={12} />
+                <span>Tu esi nopircis šo produktu — atsauksme tiks atzīmēta kā <strong>Verificēts pirkums</strong>.</span>
+              </div>
             )}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tavs vārds</label>
-              <input value={name} onChange={e => setName(e.target.value)}
-                className="input w-full" placeholder="Jānis B." />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Vērtējums</label>
-              <StarPicker value={stars} onChange={setStars} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Atsauksme</label>
-              <textarea value={comment} onChange={e => setComment(e.target.value)}
-                rows={3} className="input w-full resize-none"
-                placeholder="Pastāsti par savu pieredzi ar šo produktu..." />
-            </div>
-            <button type="submit" disabled={submitting}
-              className="flex items-center gap-2 rounded-xl bg-[#192635] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#243647] transition disabled:opacity-50">
-              {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Nosūtīt atsauksmi
-            </button>
-          </form>
+            {!hasPurchased && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                <Lock size={12} />
+                <span>Tu vēl nav nopircis šo produktu. Atsauksme būs publicēta, bet bez "Verificēts" zīmes.</span>
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {formError && (
+                <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{formError}</div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Vārds (no profila)</label>
+                <input value={userName} onChange={e => setUserName(e.target.value)}
+                  className="input w-full" placeholder="Tavs vārds" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Vērtējums *</label>
+                <StarPicker value={stars} onChange={setStars} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Atsauksme *</label>
+                <textarea value={comment} onChange={e => setComment(e.target.value)}
+                  rows={3} className="input w-full resize-none"
+                  placeholder="Pastāsti par savu pieredzi ar šo produktu..." />
+                <p className="mt-1 text-[10px] text-gray-400">
+                  {comment.length} / min. 10 rakstzīmes
+                </p>
+              </div>
+              <button type="submit" disabled={submitting}
+                className="flex items-center gap-2 rounded-xl bg-[#192635] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#243647] transition disabled:opacity-50">
+                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Nosūtīt atsauksmi
+              </button>
+            </form>
+          </>
         )}
       </div>
     </div>

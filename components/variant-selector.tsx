@@ -11,11 +11,12 @@ type Props = {
   title: string;
   image: string;
   sellerName: string;
+  sellerId?: string;
   storageType: "frozen" | "chilled";
   variants: Variant[];
 };
 
-export function VariantSelector({ listingId, title, image, sellerName, storageType, variants }: Props) {
+export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants }: Props) {
   const { addItem } = useCart();
   const [selected, setSelected] = useState(variants[0].id);
   const [added, setAdded] = useState(false);
@@ -30,6 +31,7 @@ export function VariantSelector({ listingId, title, image, sellerName, storageTy
       unit: "gab.",
       image,
       sellerName,
+      sellerId,
       storageType,
     });
     setAdded(true);

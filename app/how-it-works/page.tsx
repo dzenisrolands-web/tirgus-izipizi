@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   UserPlus, ClipboardList, PackageCheck, Bell, ShoppingBag, CheckCircle, ArrowRight,
-  MapPin, Truck, CreditCard, Shield, Star, Leaf,
+  Truck, CreditCard, Shield, Star, Leaf,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -12,14 +12,14 @@ export const metadata: Metadata = {
 
 const buyerSteps = [
   {
-    icon: <MapPin size={22} />,
-    title: "Atrodi tuvāko pakomātu",
-    desc: "Skatīt karti ar visiem 6 IziPizi pakomātu atrašanās vietām Latvijā un izvēlies ērtāko.",
-  },
-  {
     icon: <ShoppingBag size={22} />,
     title: "Izvēlies produktus",
-    desc: "Pārlūko katalāogu, filtrē pēc kategorijas, ražotāja vai atrašanās vietas. Pievieno grozam.",
+    desc: "Pārlūko katalogu, filtrē pēc kategorijas, ražotāja vai atrašanās vietas. Pievieno grozam.",
+  },
+  {
+    icon: <Truck size={22} />,
+    title: "Izvēlies piegādes veidu",
+    desc: "Pakomāts (3 €/skapītis), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
   },
   {
     icon: <CreditCard size={22} />,
@@ -28,8 +28,8 @@ const buyerSteps = [
   },
   {
     icon: <Bell size={22} />,
-    title: "Saņem kodu",
-    desc: "Pēc apmaksas uz e-pastu nosūtām pakomāta kodu. Izņem produktus 48h laikā jebkurā laikā.",
+    title: "Saņem pasūtījumu",
+    desc: "Pakomāta gadījumā uz e-pastu un SMS atsūtām kodu — izņem 48h laikā. Kurjeru un ekspres piegādi nogādājam tieši uz tavu adresi.",
   },
 ];
 
@@ -60,7 +60,7 @@ const features = [
   { icon: <Shield size={20} />, title: "Droši darījumi", desc: "Paysera maksājumu aizsardzība" },
   { icon: <Leaf size={20} />, title: "Vietējie produkti", desc: "Tieši no Latvijas ražotājiem" },
   { icon: <Star size={20} />, title: "Kvalitātes kontrole", desc: "Katrs pārdevējs tiek apstiprināts" },
-  { icon: <Truck size={20} />, title: "Temperatūras kontrole", desc: "Saldēti un svaigi produkti" },
+  { icon: <Truck size={20} />, title: "3 piegādes veidi", desc: "Pakomāts, kurjers vai ekspres" },
 ];
 
 export default function HowItWorksPage() {
@@ -71,8 +71,8 @@ export default function HowItWorksPage() {
       <div className="text-center">
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Kā tas strādā?</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-500">
-          tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar klientiem caur IziPizi pakomātu tīklu.
-          Ērti abiem — pārdevējam un pircējam.
+          tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar klientiem visā Latvijā —
+          ar piegādi pakomātā, kurjeru uz adresi vai ekspres piegādi tajā pašā dienā.
         </p>
       </div>
 
@@ -160,24 +160,28 @@ export default function HowItWorksPage() {
         <div className="mt-6 space-y-4">
           {[
             {
-              q: "Vai varu saņemt produktus arī pakomātā, kas nav mans tuvākais?",
-              a: "Jā — izvēlies jebkuru no 6 IziPizi pakomātiem Latvijā. Piegādes cena var atšķirties atkarībā no attāluma.",
+              q: "Kādi piegādes veidi ir pieejami?",
+              a: "Trīs varianti: (1) IziPizi pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
             },
             {
               q: "Kādā termiņā produkti jāizņem no pakomāta?",
-              a: "Produkti pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti.",
+              a: "Produkti pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam. Kurjera un ekspres piegādei termiņš netiek piemērots — saņem pie durvīm.",
+            },
+            {
+              q: "Kā saņemšu paziņojumu par pasūtījumu?",
+              a: "Pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās. Visi atjauninājumi pieejami arī tavā kontā.",
             },
             {
               q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?",
-              a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv vai telefoniski. Visus strīdus risinām individuāli.",
+              a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv vai telefoniski. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas.",
             },
             {
               q: "Vai var pārdot arī saldētas preces?",
-              a: "Jā — IziPizi pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C.",
+              a: "Jā — IziPizi pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C. Kurjera un ekspres piegādei izmantojam termo iesaiņojumu.",
             },
             {
               q: "Kāda ir komisija pārdevējiem?",
-              a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas. Konkrēts apmērs tiek paziņots apstiprināšanas laikā.",
+              a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas). Konkrēts apmērs tiek apspriests un apstiprināts pirms produkta publicēšanas.",
             },
           ].map((item, i) => (
             <details key={i} className="group rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -205,7 +209,7 @@ export default function HowItWorksPage() {
           </Link>
         </div>
         <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-300">
-          {["Drošs maksājums", "Vietējie produkti", "Temperatūras kontrole", "24/7 pakomāti"].map((f) => (
+          {["Drošs maksājums", "Vietējie produkti", "3 piegādes veidi", "Visā Latvijā"].map((f) => (
             <span key={f} className="flex items-center gap-1.5">
               <CheckCircle size={13} className="text-brand-400" /> {f}
             </span>

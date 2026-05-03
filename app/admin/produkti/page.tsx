@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, XCircle, Percent, Edit3 } from "lucide-react";
+import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, XCircle, Percent, Edit3, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ type Listing = {
   status: "active" | "paused" | "sold_out" | "pending_review" | "rejected";
   storage_type: "frozen" | "chilled" | null;
   created_at: string;
+  seller_id: string;
   seller_name: string;
   commission_rate: number | null;
   commission_status: "proposed" | "approved" | "rejected" | null;
@@ -34,10 +36,26 @@ const statusLabel: Record<string, { label: string; cls: string }> = {
 type Tab = "pending" | "all";
 
 export default function AdminProduktisPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+      </div>
+    }>
+      <AdminProduktisInner />
+    </Suspense>
+  );
+}
+
+function AdminProduktisInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sellerFilter = searchParams.get("seller");
+  const statusFilter = searchParams.get("status");
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<Tab>("pending");
+  const [tab, setTab] = useState<Tab>(statusFilter === "pending" ? "pending" : "pending");
   const [acting, setActing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -45,6 +63,14 @@ export default function AdminProduktisPage() {
   const [commissionDraft, setCommissionDraft] = useState<string>("");
 
   useEffect(() => { load(); }, []);
+
+  function clearSellerFilter() {
+    router.push("/admin/produkti");
+  }
+
+  const filteredSellerName = sellerFilter
+    ? items.find((i) => i.seller_id === sellerFilter)?.seller_name ?? "—"
+    : null;
 
   async function load() {
     const { data, error } = await supabase
@@ -129,8 +155,9 @@ export default function AdminProduktisPage() {
     setConfirmDelete(null);
   }
 
-  const pending = items.filter((i) => i.status === "pending_review");
-  const visible = (tab === "pending" ? pending : items).filter((i) => {
+  const sellerScoped = sellerFilter ? items.filter((i) => i.seller_id === sellerFilter) : items;
+  const pending = sellerScoped.filter((i) => i.status === "pending_review");
+  const visible = (tab === "pending" ? pending : sellerScoped).filter((i) => {
     const q = search.toLowerCase();
     return !q || i.title.toLowerCase().includes(q) || i.seller_name.toLowerCase().includes(q);
   });
@@ -145,8 +172,29 @@ export default function AdminProduktisPage() {
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">Produkti</h1>
-        <p className="mt-0.5 text-sm text-gray-500">{items.length} kopā</p>
+        <p className="mt-0.5 text-sm text-gray-500">
+          {sellerFilter
+            ? `${sellerScoped.length} no ${items.length} (filtrēts pa ražotāju)`
+            : `${items.length} kopā`}
+        </p>
       </div>
+
+      {/* Active seller filter banner */}
+      {sellerFilter && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Filter size={14} className="text-brand-700" />
+            <span className="text-brand-800">Filtrēts pa ražotāju:</span>
+            <span className="font-bold text-brand-900">{filteredSellerName}</span>
+          </div>
+          <button
+            onClick={clearSellerFilter}
+            className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition"
+          >
+            <X size={11} /> Notīrīt
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mb-5 flex gap-2">

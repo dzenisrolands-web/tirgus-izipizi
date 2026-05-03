@@ -2,40 +2,21 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Search, Menu, X, ShoppingBag, ShoppingCart, Flame } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
-import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { AISearch } from "./ai-search";
 
 export function Nav() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
   const { count } = useCart();
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setAuthed(!!s));
     return () => subscription.unsubscribe();
   }, []);
-
-  // Sync the search input with the URL — when the user lands on /catalog?q=foo
-  // (or navigates between catalog queries), the input should reflect that.
-  // Outside /catalog the input clears. We read window.location (not
-  // useSearchParams) so the Nav, which lives in the root layout, doesn't drag
-  // every page into a CSR bailout.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (pathname === "/catalog") {
-      const q = new URLSearchParams(window.location.search).get("q") ?? "";
-      setSearchQuery(q);
-    } else {
-      setSearchQuery("");
-    }
-  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
@@ -57,49 +38,11 @@ export function Nav() {
             </span>
           </Link>
 
-          {/* Search bar */}
-          <form
-            className="flex flex-1 items-center"
-            action="/catalog"
-            method="get"
-            onSubmit={(e) => {
-              if (!searchQuery.trim()) {
-                e.preventDefault();
-                return;
-              }
-              e.preventDefault();
-              router.push(`/catalog?q=${encodeURIComponent(searchQuery.trim())}`);
-            }}
-          >
-            <div className="relative w-full max-w-xl">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="search"
-                name="q"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Meklēt produktus..."
-                enterKeyHint="search"
-                autoComplete="off"
-                className={cn(
-                  "input pl-10 pr-10",
-                  "rounded-full border-gray-200 bg-gray-50 py-2 text-sm"
-                )}
-              />
-              {searchQuery.trim() && (
-                <button
-                  type="submit"
-                  aria-label="Meklēt"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-[#192635] text-white transition active:scale-90 hover:brightness-110"
-                >
-                  <Search size={13} />
-                </button>
-              )}
-            </div>
-          </form>
+          {/* AI search — replaces the old keyword search.
+              Click opens a chat overlay with product search + Q&A. */}
+          <div className="flex flex-1 items-center">
+            <AISearch />
+          </div>
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-2 md:flex">

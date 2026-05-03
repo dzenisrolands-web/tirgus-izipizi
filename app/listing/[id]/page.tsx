@@ -11,6 +11,7 @@ import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSectionDb } from "@/components/reviews-section-db";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { VariantSelector } from "@/components/variant-selector";
+import { ShareButton } from "@/components/share-button";
 
 export const dynamicParams = true;
 
@@ -88,7 +89,15 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">{listing.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-extrabold text-gray-900 sm:text-2xl">{listing.title}</h1>
+              <ShareButton
+                title={listing.title}
+                sellerName={listing.seller.farmName}
+                price={listing.price}
+                unit={listing.unit}
+              />
+            </div>
             {!listing.variants?.length && (
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-gray-900 sm:text-3xl">{formatPrice(listing.price)}</span>
@@ -131,6 +140,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               title={listing.title}
               image={listing.image}
               sellerName={listing.seller.farmName}
+              sellerId={listing.sellerId}
               storageType={getStorageType(listing)}
               variants={listing.variants}
             />
@@ -142,6 +152,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               unit={listing.unit}
               image={listing.image}
               sellerName={listing.seller.farmName}
+              sellerId={listing.sellerId}
               storageType={getStorageType(listing)}
             />
           )}

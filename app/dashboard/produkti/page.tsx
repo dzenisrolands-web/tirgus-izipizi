@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X, Star, Clock, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,33 @@ type Listing = {
   created_at: string;
 };
 
+type FeaturedEntry = {
+  id: string;
+  listing_id: string;
+  status: "pending" | "active" | "rejected" | "expired";
+  starts_at: string;
+  ends_at: string;
+};
+
+function nextWeeks(count: number): { starts_at: string; ends_at: string; label: string }[] {
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - day + 1 + 7); // next Monday
+  const out = [];
+  const m = ["jan", "feb", "mar", "apr", "mai", "jūn", "jūl", "aug", "sep", "okt", "nov", "dec"];
+  for (let i = 0; i < count; i++) {
+    const start = new Date(monday); start.setDate(monday.getDate() + i * 7);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    out.push({
+      starts_at: start.toISOString().split("T")[0],
+      ends_at: end.toISOString().split("T")[0],
+      label: `${start.getDate()}. ${m[start.getMonth()]} – ${end.getDate()}. ${m[end.getMonth()]}`,
+    });
+  }
+  return out;
+}
+
 const statusLabel: Record<string, { label: string; cls: string }> = {
   active:         { label: "Aktīvs",             cls: "bg-green-100 text-green-700" },
   paused:         { label: "Pauzēts",             cls: "bg-gray-100 text-gray-500" },
@@ -30,9 +57,12 @@ const statusLabel: Record<string, { label: string; cls: string }> = {
 
 export default function ProduktisPage() {
   const [items, setItems] = useState<Listing[]>([]);
+  const [featured, setFeatured] = useState<FeaturedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [featuredModal, setFeaturedModal] = useState<Listing | null>(null);
+  const [submittingFeatured, setSubmittingFeatured] = useState(false);
 
   const LOW_STOCK = 3;
 
@@ -45,7 +75,48 @@ export default function ProduktisPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setItems(data ?? []);
+
+    const listingIds = (data ?? []).map((d) => d.id);
+    if (listingIds.length > 0) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: f } = await supabase
+        .from("weekly_featured")
+        .select("id, listing_id, status, starts_at, ends_at")
+        .in("listing_id", listingIds)
+        .gte("ends_at", today);
+      setFeatured((f as FeaturedEntry[] | null) ?? []);
+    }
+
     setLoading(false);
+  }
+
+  function getFeaturedFor(listingId: string): FeaturedEntry | undefined {
+    return featured.find((f) => f.listing_id === listingId && (f.status === "active" || f.status === "pending"));
+  }
+
+  async function applyForFeatured(listing: Listing, week: { starts_at: string; ends_at: string }) {
+    setSubmittingFeatured(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: seller } = await supabase
+      .from("sellers")
+      .select("id")
+      .eq("user_id", user?.id ?? "")
+      .single();
+    const { error } = await supabase.from("weekly_featured").insert({
+      listing_id: listing.id,
+      seller_id: seller?.id ?? null,
+      position: 1, // admin assigns final position
+      starts_at: week.starts_at,
+      ends_at: week.ends_at,
+      status: "pending",
+    });
+    setSubmittingFeatured(false);
+    if (error) {
+      alert(`Kļūda: ${error.message}`);
+      return;
+    }
+    setFeaturedModal(null);
+    await load();
   }
 
   useEffect(() => { load(); }, []);
@@ -146,7 +217,23 @@ export default function ProduktisPage() {
 
                   {/* Title */}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">{item.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-gray-900">{item.title}</p>
+                      {(() => {
+                        const f = getFeaturedFor(item.id);
+                        if (!f) return null;
+                        if (f.status === "active") return (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700" title="Šobrīd Nedēļas piedāvājumā">
+                            <Star size={9} fill="currentColor" /> Nedēļa
+                          </span>
+                        );
+                        return (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-600" title="Pieteikts, gaida apstiprinājumu">
+                            <Clock size={9} /> Gaida
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <p className="text-xs text-gray-400">{item.quantity} gab. · {item.unit}</p>
                     {/* Mobile only: category + price + status */}
                     <div className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">
@@ -190,6 +277,12 @@ export default function ProduktisPage() {
                       </div>
                     ) : (
                       <>
+                        {item.status === "active" && !getFeaturedFor(item.id) && (
+                          <button onClick={() => setFeaturedModal(item)} title="Pieteikt nedēļas piedāvājumam"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition">
+                            <Star size={15} />
+                          </button>
+                        )}
                         {(item.status === "active" || item.status === "paused") && (
                           <button onClick={() => toggleStatus(item)} title={item.status === "active" ? "Pauzēt" : "Aktivizēt"}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition">
@@ -210,6 +303,48 @@ export default function ProduktisPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Featured weekly modal */}
+      {featuredModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setFeaturedModal(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <Star size={20} className="text-amber-600" fill="currentColor" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900">Pieteikt Nedēļas piedāvājumam</h3>
+                <p className="mt-0.5 text-sm text-gray-500 truncate">{featuredModal.title}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-gray-600 leading-relaxed">
+              Tavs produkts parādīsies sākumlapā <strong>"Nedēļas piedāvājums"</strong> sekcijā.
+              Admins apstiprina pieteikumus pēc kārtības — tev paziņos, kad apstiprināts.
+              <br /><br />
+              Izvēlies, kuru nedēļu vēlies pieteikt:
+            </p>
+            <div className="mt-4 space-y-2">
+              {nextWeeks(4).map((w) => (
+                <button
+                  key={w.starts_at}
+                  onClick={() => applyForFeatured(featuredModal, w)}
+                  disabled={submittingFeatured}
+                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-2.5 text-left text-sm hover:border-amber-400 hover:bg-amber-50 transition disabled:opacity-50"
+                >
+                  <span className="font-semibold text-gray-900">{w.label}</span>
+                  <span className="text-xs text-amber-600 font-bold">Pieteikt →</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setFeaturedModal(null)}
+              className="mt-4 w-full rounded-lg py-2 text-sm text-gray-500 hover:bg-gray-50"
+            >
+              Atcelt
+            </button>
           </div>
         </div>
       )}

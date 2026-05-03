@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Pencil, Check, X, Plus, Trash2, Loader2, CheckCircle, AlertCircle,
   MapPin, Star, Globe, Facebook, Instagram, Youtube,
-  Quote, Award, Calendar, Video, Save, Send, FileText,
+  Quote, Award, Calendar, Video, Save, Send, FileText, Package, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,15 @@ type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
 
 const SELF_BILLING_VERSION = "1.0";
+
+const LOCKERS = [
+  { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
+  { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
+  { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
+  { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
+  { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
+  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
+];
 
 type Profile = LegalData & {
   id?: string;
@@ -39,6 +48,8 @@ type Profile = LegalData & {
   milestones: string[];
   events: Event[];
   status: string;
+  home_locker_ids: string[];
+  courier_pickup_address: string;
 };
 
 const EMPTY: Profile = {
@@ -46,6 +57,7 @@ const EMPTY: Profile = {
   avatar_url: "", cover_url: "", youtube_video_url: "", youtube_channel: "",
   website: "", facebook: "", instagram: "",
   facts: [], milestones: [], events: [], status: "draft",
+  home_locker_ids: [], courier_pickup_address: "",
   ...EMPTY_LEGAL,
 };
 
@@ -74,6 +86,8 @@ export function DashboardProfileEditor() {
           facts: data.facts ?? [],
           milestones: data.milestones ?? [],
           events: data.events ?? [],
+          home_locker_ids: data.home_locker_ids ?? [],
+          courier_pickup_address: data.courier_pickup_address ?? "",
         };
         setProfile(p);
         setSaved(p);
@@ -121,6 +135,15 @@ export function DashboardProfileEditor() {
   }
 
   async function submit() {
+    // Validate: at least one drop-off location must be set
+    const hasLocker = profile.home_locker_ids && profile.home_locker_ids.length > 0;
+    const hasPickupAddress = !!profile.courier_pickup_address?.trim();
+    if (!hasLocker && !hasPickupAddress) {
+      setSaveError("Pirms apstiprināšanas obligāti jāatzīmē vismaz viens pakomāts vai jānorāda kurjera saņemšanas adrese sadaļā “Nodošanas vietas”.");
+      setEditSection("dropoff");
+      return;
+    }
+    setSaveError("");
     setSubmitting(true);
     await save();
     await supabase.from("sellers").update({ status: "pending" }).eq("id", profile.id);
@@ -328,6 +351,119 @@ export function DashboardProfileEditor() {
             </div>
           );
         })()}
+
+        {/* ── NODOŠANAS VIETAS — pakomāti + kurjera saņemšanas adrese ── */}
+        <div className="px-4 py-4 sm:px-6 lg:px-8 mt-4">
+          <EditableSection
+            id="dropoff"
+            editSection={editSection}
+            setEditSection={setEditSection}
+            label="Nodošanas vietas — pakomāti un kurjera saņemšana"
+            required={profile.home_locker_ids.length === 0 && !profile.courier_pickup_address}
+            editContent={
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pakomāti, kurus izmanto produktu ielikšanai
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Atzīmē pakomātus, kuros pats vari ielikt produktus. Pircēji redzēs šos pakomātus kā nosūtīšanas vietas.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {LOCKERS.map((l) => {
+                      const active = profile.home_locker_ids.includes(l.id);
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => {
+                            const next = active
+                              ? profile.home_locker_ids.filter((id) => id !== l.id)
+                              : [...profile.home_locker_ids, l.id];
+                            set("home_locker_ids", next);
+                          }}
+                          className={cn(
+                            "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition",
+                            active
+                              ? "border-brand-400 bg-brand-50"
+                              : "border-gray-200 bg-white hover:border-gray-300"
+                          )}
+                        >
+                          <div className={cn(
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                            active ? "bg-brand-100" : "bg-gray-100"
+                          )}>
+                            <Package size={16} className={active ? "text-brand-700" : "text-gray-500"} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={cn("font-semibold text-sm", active ? "text-brand-900" : "text-gray-900")}>
+                              {l.name}
+                            </p>
+                            <p className="text-[11px] text-gray-500 truncate">{l.address}</p>
+                            <p className="text-[10px] text-gray-400">{l.city}</p>
+                          </div>
+                          {active && <CheckCircle size={16} className="mt-1 shrink-0 text-brand-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Kurjera saņemšanas adrese <span className="text-gray-400 font-normal">(neobligāti)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ja vēlies, lai kurjers paņem produktus tieši no tevis. Ja atstāj tukšu, kurjers paņems no tava izvēlētā pakomāta vai juridiskās adreses.
+                  </p>
+                  <textarea
+                    value={profile.courier_pickup_address}
+                    onChange={(e) => set("courier_pickup_address", e.target.value)}
+                    placeholder="Piem., &quot;Brīvības iela 100, Rīga, LV-1011&quot; vai &quot;Sazināties iepriekš par precīzu adresi&quot;"
+                    rows={2}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+            }
+          >
+            <div>
+              <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                <Truck size={13} /> Nodošanas vietas
+              </h2>
+              {profile.home_locker_ids.length > 0 || profile.courier_pickup_address ? (
+                <div className="mt-3 space-y-2">
+                  {profile.home_locker_ids.length > 0 && (
+                    <div className="rounded-xl bg-gray-50 px-3 py-2.5">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                        <Package size={10} className="inline mr-1" /> Pakomāti ({profile.home_locker_ids.length})
+                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5">
+                        {profile.home_locker_ids
+                          .map((id) => LOCKERS.find((l) => l.id === id)?.name ?? id)
+                          .join(", ")}
+                      </p>
+                    </div>
+                  )}
+                  {profile.courier_pickup_address && (
+                    <div className="rounded-xl bg-gray-50 px-3 py-2.5">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                        <Truck size={10} className="inline mr-1" /> Kurjera saņemšanas adrese
+                      </p>
+                      <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-line">
+                        {profile.courier_pickup_address}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm italic text-gray-300">
+                  + Norādi, kuros pakomātos liksi produktus vai kurjera saņemšanas adresi
+                </p>
+              )}
+            </div>
+          </EditableSection>
+        </div>
 
         <div className="grid gap-10 lg:grid-cols-5 mt-4">
 

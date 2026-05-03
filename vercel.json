@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/expire-drops",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/cron/generate-invoices",

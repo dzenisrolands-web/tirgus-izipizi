@@ -2,13 +2,22 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X, FileText } from "lucide-react";
+import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X, FileText, Truck, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 
-const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Juridiskā info"];
+const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Nodošana", "Juridiskā info"];
 const SELF_BILLING_VERSION = "1.0";
+
+const LOCKERS = [
+  { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
+  { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
+  { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
+  { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
+  { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
+  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
+];
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -55,8 +64,19 @@ export function OnboardingForm() {
     facebook: "",
     instagram: "",
     youtube_channel: "",
+    home_locker_ids: [] as string[],
+    courier_pickup_address: "",
     ...EMPTY_LEGAL,
   });
+
+  function toggleLocker(id: string) {
+    setForm((f) => ({
+      ...f,
+      home_locker_ids: f.home_locker_ids.includes(id)
+        ? f.home_locker_ids.filter((x) => x !== id)
+        : [...f.home_locker_ids, id],
+    }));
+  }
 
   function set(field: string, value: string | boolean) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -70,16 +90,22 @@ export function OnboardingForm() {
     if (step === 0) return form.name.trim() && form.location.trim();
     if (step === 1) return form.description.trim() && form.short_desc.trim();
     if (step === 2) return form.youtube_video_url.trim();
-    if (step === 4) return validateLegal(form).length === 0;
+    if (step === 4) return form.home_locker_ids.length > 0 || !!form.courier_pickup_address.trim();
+    if (step === 5) return validateLegal(form).length === 0;
     return true;
   }
 
   async function handleSubmit() {
     setError("");
+    if (form.home_locker_ids.length === 0 && !form.courier_pickup_address.trim()) {
+      setError("Atzīmē vismaz vienu pakomātu vai norādi kurjera saņemšanas adresi sadaļā “Nodošana”.");
+      setStep(4);
+      return;
+    }
     const legalErrors = validateLegal(form);
     if (legalErrors.length > 0) {
       setError(legalErrors[0]);
-      setStep(4);
+      setStep(5);
       return;
     }
     setLoading(true);
@@ -282,6 +308,70 @@ export function OnboardingForm() {
         )}
 
         {step === 4 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
+              <Truck size={16} className="text-brand-600" /> Nodošanas vietas *
+            </div>
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+              No šejienes pircēji saņems tavus produktus un tiks aprēķināta piegādes cena. <strong>Obligāti — vismaz viens pakomāts vai kurjera adrese.</strong>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pakomāti, kuros liksi produktus
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {LOCKERS.map((l) => {
+                  const active = form.home_locker_ids.includes(l.id);
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => toggleLocker(l.id)}
+                      className={cn(
+                        "flex items-start gap-2.5 rounded-xl border-2 p-2.5 text-left transition",
+                        active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        active ? "bg-brand-100" : "bg-gray-100"
+                      )}>
+                        <Package size={14} className={active ? "text-brand-700" : "text-gray-500"} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("font-semibold text-xs", active ? "text-brand-900" : "text-gray-900")}>
+                          {l.name}
+                        </p>
+                        <p className="text-[10px] text-gray-500 truncate">{l.address}</p>
+                        <p className="text-[10px] text-gray-400">{l.city}</p>
+                      </div>
+                      {active && <CheckCircle size={14} className="mt-1 shrink-0 text-brand-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vai kurjera saņemšanas adrese
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Ja kurjers brauc pie tevis paņemt produktus, ievadi adresi. Vari aizpildīt arī papildus pakomātam.
+              </p>
+              <textarea
+                value={form.courier_pickup_address}
+                onChange={(e) => set("courier_pickup_address", e.target.value)}
+                placeholder="Piem., Brīvības iela 100, Rīga, LV-1011"
+                rows={2}
+                className="input w-full"
+              />
+            </div>
+          </div>
+        )}
+
+        {step === 5 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
               <FileText size={16} className="text-brand-600" /> Juridiskā informācija

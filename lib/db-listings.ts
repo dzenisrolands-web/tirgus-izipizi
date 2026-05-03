@@ -29,7 +29,7 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
       id: (s?.id as string) ?? "",
       name: (s?.name as string) ?? "",
       farmName: (s?.farm_name as string) ?? (s?.name as string) ?? "",
-      avatar: (s?.avatar_url as string) ?? "",
+      avatar: (s?.logo_url as string) || (s?.avatar_url as string) || "",
       verified: s?.status === "approved",
       rating: 5.0,
       reviewCount: 0,
@@ -53,12 +53,94 @@ export async function fetchActiveListings(): Promise<Listing[]> {
   const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
   const { data: sellersData } = await supabase
     .from("sellers")
-    .select("id, name, farm_name, avatar_url, status, location")
+    .select("id, name, farm_name, avatar_url, logo_url, status, location")
     .in("id", sellerIds);
 
   const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
 
   return rows.map((item) => mapRow(item, sellersMap[item.seller_id] ?? null));
+}
+
+/**
+ * Best sellers — listings with most paid orders in last 7 days.
+ * Falls back to active listings sorted by rating if no orders.
+ */
+export async function fetchBestSellers(limit = 6): Promise<Listing[]> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("items")
+    .eq("payment_status", "paid")
+    .gte("paid_at", sevenDaysAgo);
+
+  // Count item appearances
+  const counts = new Map<string, number>();
+  for (const o of orders ?? []) {
+    const items = o.items as Array<{ id?: string; quantity?: number }> | null;
+    for (const it of items ?? []) {
+      if (!it.id) continue;
+      counts.set(it.id, (counts.get(it.id) ?? 0) + (it.quantity ?? 1));
+    }
+  }
+
+  const all = await fetchActiveListings();
+  // Sort by sales count desc, then by rating
+  const sorted = [...all].sort((a, b) => {
+    const aCount = counts.get(a.id) ?? 0;
+    const bCount = counts.get(b.id) ?? 0;
+    if (aCount !== bCount) return bCount - aCount;
+    return (b.seller.rating ?? 0) - (a.seller.rating ?? 0);
+  });
+  return sorted.slice(0, limit);
+}
+
+/**
+ * Newest listings — most recently added active products.
+ */
+export async function fetchNewestListings(limit = 6): Promise<Listing[]> {
+  const all = await fetchActiveListings();
+  // fetchActiveListings already orders by created_at desc
+  return all.slice(0, limit);
+}
+
+/**
+ * Weekly featured — listings selected for current week's spotlight.
+ */
+export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
+  const today = new Date().toISOString().split("T")[0];
+  const { data: featured } = await supabase
+    .from("weekly_featured")
+    .select("listing_id, position")
+    .eq("status", "active")
+    .lte("starts_at", today)
+    .gte("ends_at", today)
+    .order("position", { ascending: true })
+    .limit(limit);
+
+  if (!featured || featured.length === 0) return [];
+
+  const listingIds = featured.map((f) => f.listing_id);
+  const { data: rows } = await supabase
+    .from("listings")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at")
+    .in("id", listingIds)
+    .eq("status", "active");
+
+  if (!rows) return [];
+
+  const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
+  const { data: sellersData } = await supabase
+    .from("sellers")
+    .select("id, name, farm_name, avatar_url, logo_url, status, location")
+    .in("id", sellerIds);
+  const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
+
+  // Order by featured position
+  const positionMap = new Map(featured.map((f) => [f.listing_id, f.position]));
+  const mapped = rows.map((item) => mapRow(item, sellersMap[item.seller_id] ?? null));
+  return mapped.sort((a, b) =>
+    (positionMap.get(a.id) ?? 99) - (positionMap.get(b.id) ?? 99)
+  );
 }
 
 export async function fetchListingById(id: string): Promise<Listing | null> {
@@ -69,7 +151,7 @@ export async function fetchListingById(id: string): Promise<Listing | null> {
     .single();
   if (error || !item) return null;
   const { data: s } = await supabase
-    .from("sellers").select("id, name, farm_name, avatar_url, status, location").eq("id", item.seller_id).single();
+    .from("sellers").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
   return mapRow(item, s);
 }
 
@@ -79,7 +161,7 @@ export type DbSellerProfile = {
   listings: Listing[];
 };
 
-const SELLER_COLS = "id, name, farm_name, avatar_url, cover_url, status, location, description, short_desc, website, facebook, instagram, youtube_channel, youtube_video_url, quote_text, quote_author, facts, milestones, events";
+const SELLER_COLS = "id, name, farm_name, avatar_url, logo_url, cover_url, status, location, description, short_desc, website, facebook, instagram, youtube_channel, youtube_video_url, quote_text, quote_author, facts, milestones, events";
 
 function mapSellerMeta(s: Record<string, unknown>): SellerMeta {
   return {
@@ -104,7 +186,7 @@ function mapSellerRecord(s: Record<string, unknown>): Seller {
     id: s.id as string,
     name: (s.name as string) ?? "",
     farmName: (s.farm_name as string) ?? (s.name as string) ?? "",
-    avatar: (s.avatar_url as string) ?? "",
+    avatar: (s.logo_url as string) || (s.avatar_url as string) || "",
     verified: s.status === "approved",
     rating: 5.0,
     reviewCount: 0,
