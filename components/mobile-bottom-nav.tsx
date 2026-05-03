@@ -63,13 +63,16 @@ export function MobileBottomNav() {
                 <X size={18} className="text-gray-500" />
               </button>
             </div>
-            <form onSubmit={handleSearch} className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <form onSubmit={handleSearch} action="/catalog" method="get" className="relative">
+              <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 ref={inputRef}
+                name="q"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Meklēt produktus, ražotājus..."
+                enterKeyHint="search"
+                autoComplete="off"
                 className="input w-full rounded-2xl pl-10 pr-12 py-3 text-base"
               />
               {query.trim() && (
