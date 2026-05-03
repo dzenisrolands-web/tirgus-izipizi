@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="lv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bez interneta · tirgus.izipizi.lv</title>
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="theme-color" content="#192635" />
+  <style>
+    *,*::before,*::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #192635;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      padding: 24px;
+      text-align: center;
+    }
+    .card { max-width: 360px; }
+    .icon {
+      width: 72px; height: 72px;
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: rgba(83, 243, 164, 0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+    }
+    h1 { font-size: 22px; margin: 0 0 8px; font-weight: 800; }
+    p  { font-size: 14px; line-height: 1.5; margin: 0 0 20px; color: rgba(255,255,255,0.7); }
+    button {
+      background: #53F3A4; color: #192635;
+      border: 0; border-radius: 14px;
+      padding: 12px 24px; font-size: 14px; font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(95%); }
+    .small { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>Nav interneta</h1>
+    <p>Šī lapa nav saglabāta lokāli. Pārbaudi savienojumu un mēģini vēlreiz — tirgus tevi gaida.</p>
+    <button onclick="location.reload()">Mēģināt vēlreiz</button>
+    <p class="small">tirgus.izipizi.lv</p>
+  </div>
+</body>
+</html>

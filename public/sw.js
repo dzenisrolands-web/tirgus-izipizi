@@ -1,31 +1,47 @@
 // Service worker for tirgus.izipizi.lv PWA.
-// Two responsibilities:
+// Responsibilities:
 //   1. Web Push notifications (existing — used by hot drops)
-//   2. Network-first fetch handler so the SW counts as "active" for
-//      Chrome's PWA install criteria. We don't aggressively cache yet
-//      (catalog data should always be fresh) — just pass-through.
-const CACHE_VERSION = "v1";
+//   2. Network-first fetch handler with offline fallback page
+//      so the SW qualifies as "active" for the install prompt AND
+//      can show /offline.html when the user goes off-grid.
+const CACHE_VERSION = "v2";
+const OFFLINE_CACHE = `tirgus-offline-${CACHE_VERSION}`;
+const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  // Skip waiting so updated SW takes over the next page load
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL)),
+  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      // Drop old offline caches
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k.startsWith("tirgus-offline-") && k !== OFFLINE_CACHE).map((k) => caches.delete(k))),
+      ),
+      self.clients.claim(),
+    ]),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  // Only handle GET — POSTs / mutations must always hit network
   if (req.method !== "GET") return;
-  // Skip cross-origin and non-http(s)
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (!url.protocol.startsWith("http")) return;
 
-  // Network-first with no caching for now. Just being a registered SW
-  // with a fetch handler is enough for the install prompt.
+  // Navigation requests (HTML pages): network-first, fall back to /offline.html
+  if (req.mode === "navigate") {
+    event.respondWith(
+      fetch(req).catch(() => caches.match(OFFLINE_URL).then((r) => r ?? Response.error())),
+    );
+    return;
+  }
+  // Everything else: pass-through, no caching (catalog data must stay fresh).
   event.respondWith(fetch(req).catch(() => Response.error()));
 });
 

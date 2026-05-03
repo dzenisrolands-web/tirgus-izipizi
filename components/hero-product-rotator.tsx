@@ -40,7 +40,7 @@ export function HeroProductRotator({ products }: { products: HeroProduct[] }) {
           100% { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0); }
         }
       `}</style>
-      <div className="hidden grid-cols-2 gap-3 lg:grid">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {visible.map((p, i) => (
           <Link
             key={`${groupIdx}-${i}`}
@@ -51,7 +51,7 @@ export function HeroProductRotator({ products }: { products: HeroProduct[] }) {
               willChange: "transform, opacity, filter",
             }}
           >
-            <div className="relative h-36 overflow-hidden bg-gray-800">
+            <div className="relative h-28 overflow-hidden bg-gray-800 sm:h-36">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={p.image}

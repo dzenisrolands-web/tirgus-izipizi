@@ -13,6 +13,7 @@ import { CookieConsent } from "@/components/cookie-consent";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { PWAInstallTracker } from "@/components/pwa-install-tracker";
+import { PWAInstallButton } from "@/components/pwa-install-button";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -169,6 +170,7 @@ export default function RootLayout({
                 <PageTransition>{children}</PageTransition>
               </main>
               <MobileBottomNav />
+              <PWAInstallButton />
             </StorageTypesProvider>
           </BuyerAddressProvider>
         </CartProvider>

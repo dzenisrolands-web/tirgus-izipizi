@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -8,25 +8,34 @@ import {
   ChevronRight, Loader2, CheckCircle, Tag, Package, Truck, Zap, AlertCircle,
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { useBuyerAddress } from "@/lib/buyer-address-context";
 import { listings, lockers } from "@/lib/mock-data";
 import { formatPrice, getStorageType, LOCKER_FEE } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { lookupPostalCode } from "@/lib/postal-zones";
+import { lookupPostalCode, effectiveCourierZone, pricingForZone } from "@/lib/postal-zones";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
+
+type SellerInfo = {
+  id: string;
+  name: string;
+  home_locker_ids: string[];
+  courier_pickup_address: string | null;
+};
 
 type DeliveryMethod = "locker" | "courier" | "express";
 type Step = "cart" | "delivery" | "confirm";
 
 export function CartPage() {
   const { items, updateQty, removeItem, total, count } = useCart();
+  const { address: buyerCtxAddress } = useBuyerAddress();
   const [step, setStep] = useState<Step>("cart");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("locker");
   const [lockerId, setLockerId] = useState("");
-  const [postalCode, setPostalCode] = useState("");
+  const [postalCode, setPostalCode] = useState(buyerCtxAddress?.postalCode ?? "");
   const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [addressSearch, setAddressSearch] = useState(""); // autocomplete input
+  const [city, setCity] = useState(buyerCtxAddress?.city ?? "");
+  const [addressSearch, setAddressSearch] = useState(buyerCtxAddress?.fullText ?? ""); // autocomplete input
   const [apartment, setApartment] = useState("");
   const [floor, setFloor] = useState("");
   const [entryCode, setEntryCode] = useState("");
@@ -75,7 +84,77 @@ export function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
 
-  // Cabinet count: 1 if all items are same temp zone, 2 if mix of frozen + non-frozen.
+  // Fetch seller info (drop-off lockers, courier pickup address) for items in cart
+  const [sellersById, setSellersById] = useState<Map<string, SellerInfo>>(new Map());
+  useEffect(() => {
+    const ids = [...new Set(items.map((i) => i.sellerId).filter(Boolean) as string[])];
+    if (ids.length === 0) { setSellersById(new Map()); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("sellers")
+        .select("id, name, home_locker_ids, courier_pickup_address")
+        .in("id", ids);
+      const m = new Map<string, SellerInfo>();
+      for (const s of data ?? []) {
+        m.set(s.id, {
+          id: s.id,
+          name: s.name,
+          home_locker_ids: s.home_locker_ids ?? [],
+          courier_pickup_address: s.courier_pickup_address ?? null,
+        });
+      }
+      setSellersById(m);
+    })();
+  }, [items]);
+
+  // Postal code → zone lookup (for courier and express)
+  const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
+  const zonePricing = zoneResult.found ? zoneResult.pricing : null;
+  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null;
+
+  // Group items by seller and compute per-seller delivery fees
+  const sellerGroups = useMemo(() => {
+    const groups = new Map<string, typeof items>();
+    for (const item of items) {
+      const key = item.sellerId ?? `name:${item.sellerName}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
+    return Array.from(groups.entries()).map(([key, sellerItems]) => {
+      const sellerId = sellerItems[0].sellerId;
+      const sellerName = sellerItems[0].sellerName;
+      const tempZones = new Set(
+        sellerItems.map((i) => (i.storageType === "frozen" ? "frozen" : "chilled"))
+      );
+      const cabinetCount = Math.max(1, tempZones.size);
+      const isDualTemp = cabinetCount === 2;
+      const sellerInfo = sellerId ? sellersById.get(sellerId) : undefined;
+      // Compute effective zone for THIS seller: MAX(seller drop-off zone, buyer zone)
+      const sellerLockerId = sellerInfo?.home_locker_ids?.[0];
+      const effZone = effectiveCourierZone(sellerLockerId, zonePricing?.zone);
+      const effPricing = pricingForZone(effZone);
+      const lockerFee = LOCKER_FEE * cabinetCount;
+      const courierFee = effPricing
+        ? (isDualTemp ? effPricing.dualTemp : effPricing.singleTemp)
+        : 0;
+      const expressFee = effPricing && effPricing.expressSingle !== null && effPricing.expressDual !== null
+        ? (isDualTemp ? effPricing.expressDual! : effPricing.expressSingle!)
+        : 0;
+      let activeFee = 0;
+      if (deliveryMethod === "locker") activeFee = lockerFee;
+      else if (deliveryMethod === "courier") activeFee = courierFee;
+      else if (deliveryMethod === "express") activeFee = expressFee;
+      const subtotal = sellerItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      return {
+        key, sellerId, sellerName,
+        items: sellerItems, cabinetCount, isDualTemp,
+        lockerFee, courierFee, expressFee, activeFee, subtotal,
+        sellerInfo, effZone,
+      };
+    });
+  }, [items, deliveryMethod, zonePricing, sellersById]);
+
+  // Aggregate cabinet count (max across sellers — for displaying delivery options)
   const cabinetCount = useMemo(() => {
     if (items.length === 0) return 1;
     const zones = new Set(
@@ -83,34 +162,19 @@ export function CartPage() {
     );
     return Math.max(1, zones.size);
   }, [items]);
-
   const isDualTemp = cabinetCount === 2;
 
-  // Postal code → zone lookup (for courier and express)
-  const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
-  const zonePricing = zoneResult.found ? zoneResult.pricing : null;
+  // Total delivery fee = sum of all sellers' active fees
+  const deliveryFee = sellerGroups.reduce((s, g) => s + g.activeFee, 0);
 
-  // Compute delivery fee per chosen method
-  const lockerFee = LOCKER_FEE * cabinetCount;
-  const courierFee = zonePricing
-    ? (isDualTemp ? zonePricing.dualTemp : zonePricing.singleTemp)
-    : 0;
-  const expressFee = zonePricing && zonePricing.expressSingle !== null && zonePricing.expressDual !== null
-    ? (isDualTemp ? zonePricing.expressDual! : zonePricing.expressSingle!)
-    : 0;
-  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null;
+  // Per-method totals (for displaying option pills)
+  const lockerFee = sellerGroups.reduce((s, g) => s + g.lockerFee, 0);
+  const courierFee = sellerGroups.reduce((s, g) => s + g.courierFee, 0);
+  const expressFee = sellerGroups.reduce((s, g) => s + g.expressFee, 0);
 
   // Now that zonePricing is defined, compute available time slots
   const availableTimeSlots = getTimeSlots(zonePricing?.zone ?? null, deliveryMethod);
 
-  let deliveryFee = 0;
-  if (deliveryMethod === "locker") {
-    deliveryFee = lockerFee;
-  } else if (deliveryMethod === "courier") {
-    deliveryFee = courierFee;
-  } else if (deliveryMethod === "express") {
-    deliveryFee = expressFee;
-  }
   const grandTotal = total + deliveryFee;
 
   const cartItemIds = new Set(items.map((i) => i.id));
@@ -167,8 +231,11 @@ export function CartPage() {
     setSubmitting(true);
     setPayError("");
     try {
+      // Prefer sellerId from cart item; fall back to mock data lookup for legacy items
       const uniqueSellerIds = [...new Set(
-        items.map((i) => listings.find((l) => l.id === i.id)?.sellerId).filter(Boolean) as string[]
+        items
+          .map((i) => i.sellerId ?? listings.find((l) => l.id === i.id)?.sellerId)
+          .filter(Boolean) as string[]
       )];
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -209,7 +276,7 @@ export function CartPage() {
         body: JSON.stringify({
           items: items.map((i) => ({
             id: i.id, title: i.title, price: i.price, quantity: i.quantity,
-            unit: i.unit, sellerName: i.sellerName,
+            unit: i.unit, sellerName: i.sellerName, sellerId: i.sellerId ?? null,
           })),
           deliveryType: deliveryMethod,
           deliveryInfo,
@@ -266,6 +333,19 @@ export function CartPage() {
         })}
       </div>
 
+      {submitting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#192635]/95 backdrop-blur-sm">
+          <div className="relative">
+            <div className="h-16 w-16 rounded-full border-4 border-white/10 border-t-[#53F3A4] animate-spin" />
+          </div>
+          <p className="mt-6 text-lg font-bold text-white">Notiek pāradresācija uz Paysera...</p>
+          <p className="mt-1 text-sm text-white/60">Lūdzu, neaizver pārlūku</p>
+          <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+            🔒 Drošs maksājums caur Paysera
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* LEFT — main content */}
         <div className="lg:col-span-2 space-y-6">
@@ -278,11 +358,31 @@ export function CartPage() {
               </h1>
 
               {items.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-                  <ShoppingCart size={40} className="mx-auto text-gray-300" />
-                  <p className="mt-3 text-sm text-gray-500">Grozs ir tukšs</p>
-                  <Link href="/catalog" className="btn-primary mt-4 inline-block text-sm">
-                    Iepirkties
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-50">
+                    <ShoppingCart size={28} className="text-gray-300" />
+                  </div>
+                  <h2 className="mt-4 text-lg font-bold text-gray-900">Grozs vēl tukšs</h2>
+                  <p className="mt-1 text-sm text-gray-500 max-w-xs mx-auto">
+                    Sāc no kategorijām vai apskaties, ko šonedēļ piedāvā mūsu ražotāji.
+                  </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
+                    {[
+                      { label: "🥩 Gaļa", slug: "Gaļa" },
+                      { label: "🥟 Saldēta", slug: "Saldēta pārtika" },
+                      { label: "🥚 Olas", slug: "Olas" },
+                      { label: "🥦 Dārzeņi", slug: "Dārzeņi" },
+                      { label: "🍰 Konditorija", slug: "Konditorija" },
+                    ].map((c) => (
+                      <Link key={c.slug}
+                        href={`/catalog?category=${encodeURIComponent(c.slug)}`}
+                        className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 hover:border-gray-400 hover:bg-gray-50">
+                        {c.label}
+                      </Link>
+                    ))}
+                  </div>
+                  <Link href="/catalog" className="btn-primary mt-6 inline-block text-sm">
+                    Pārlūkot visu katalogu
                   </Link>
                 </div>
               ) : (
@@ -326,7 +426,9 @@ export function CartPage() {
                   onSelect={() => setDeliveryMethod("locker")}
                   icon={<Package size={18} />}
                   label="Pakomāts"
-                  price={`${LOCKER_FEE.toFixed(2)} €/skapītis`}
+                  price={sellerGroups.length > 0
+                    ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
+                    : `${LOCKER_FEE.toFixed(2)} €/skapītis`}
                   hint="24/7 piekļuve · Lētākais"
                   highlight
                 />
@@ -337,7 +439,7 @@ export function CartPage() {
                   icon={<Truck size={18} />}
                   label="Kurjers"
                   price={zonePricing
-                    ? `${(isDualTemp ? zonePricing.dualTemp : zonePricing.singleTemp).toFixed(2)} €`
+                    ? `${courierFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : "no 5.45 €"}
                   hint="Mājas durvīs"
                 />
@@ -348,7 +450,7 @@ export function CartPage() {
                   icon={<Zap size={18} />}
                   label="Eksprespiegāde"
                   price={zonePricing && expressAvailable
-                    ? `${(isDualTemp ? expressFee : expressFee).toFixed(2)} €`
+                    ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : "no 6.66 €"}
                   hint="2–5h Rīgā"
                 />
@@ -703,26 +805,76 @@ export function CartPage() {
                   <span>Piegādes maksu redzēsi nākamajā solī</span>
                 </div>
               ) : (
-                <div className="flex justify-between text-gray-600">
-                  <span>
-                    Piegāde
-                    {deliveryMethod === "locker" && cabinetCount > 1 && (
-                      <span className="ml-1 text-xs text-gray-400">
-                        ({cabinetCount} skapīši × {LOCKER_FEE}€)
+                <>
+                  {/* Per-seller breakdown when multiple sellers OR locker delivery */}
+                  {sellerGroups.length > 0 && deliveryFee > 0 ? (
+                    <>
+                      {sellerGroups.length > 1 && (
+                        <div className="text-xs text-gray-400 italic">
+                          Piegāde tiek aprēķināta atsevišķi katram ražotājam:
+                        </div>
+                      )}
+                      {sellerGroups.map((g) => {
+                        const tempLabels = Array.from(new Set(
+                          g.items.map((i) => i.storageType === "frozen" ? "saldēts" : "dzesēts")
+                        )).join(" + ");
+                        return (
+                          <div key={g.key} className="space-y-0.5 pl-1">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span className="truncate font-semibold text-gray-700">
+                                {g.sellerName}
+                              </span>
+                              <span className="font-mono text-gray-700">{formatPrice(g.activeFee)}</span>
+                            </div>
+                            {deliveryMethod === "locker" && (
+                              <p className="text-[10px] text-gray-400 leading-tight">
+                                {g.cabinetCount} {g.cabinetCount === 1 ? "skapītis" : "skapīši"}
+                                {" · "}{tempLabels}
+                                {g.cabinetCount > 1 && (
+                                  <span> ({LOCKER_FEE.toFixed(2)} € × {g.cabinetCount})</span>
+                                )}
+                              </p>
+                            )}
+                            {(deliveryMethod === "courier" || deliveryMethod === "express") && (
+                              <p className="text-[10px] text-gray-400 leading-tight">
+                                {g.cabinetCount === 1 ? "1 temp." : "2 temp."}
+                                {" · "}{tempLabels}
+                                {typeof g.effZone === "number" && (
+                                  <span> · Zona {g.effZone}</span>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between text-gray-700 font-semibold border-t border-gray-50 pt-1.5">
+                        <span>Piegāde kopā</span>
+                        <span>{formatPrice(deliveryFee)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-gray-600">
+                      <span>
+                        Piegāde
+                        {deliveryMethod === "locker" && cabinetCount > 1 && (
+                          <span className="ml-1 text-xs text-gray-400">
+                            ({cabinetCount} skapīši × {LOCKER_FEE}€)
+                          </span>
+                        )}
+                        {deliveryMethod === "courier" && zonePricing && (
+                          <span className="ml-1 text-xs text-gray-400">(Kurjers · Z{zonePricing.zone})</span>
+                        )}
+                        {deliveryMethod === "express" && zonePricing && (
+                          <span className="ml-1 text-xs text-gray-400">(Ekspres · Z{zonePricing.zone})</span>
+                        )}
                       </span>
-                    )}
-                    {deliveryMethod === "courier" && zonePricing && (
-                      <span className="ml-1 text-xs text-gray-400">(Kurjers · Z{zonePricing.zone})</span>
-                    )}
-                    {deliveryMethod === "express" && zonePricing && (
-                      <span className="ml-1 text-xs text-gray-400">(Ekspres · Z{zonePricing.zone})</span>
-                    )}
-                  </span>
-                  {deliveryFee === 0
-                    ? <span className="text-gray-400 text-xs">norādīt zemāk</span>
-                    : <span>{formatPrice(deliveryFee)}</span>
-                  }
-                </div>
+                      {deliveryFee === 0
+                        ? <span className="text-gray-400 text-xs">norādīt zemāk</span>
+                        : <span>{formatPrice(deliveryFee)}</span>
+                      }
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="border-t border-gray-100 pt-2 flex justify-between font-extrabold text-gray-900 text-base">

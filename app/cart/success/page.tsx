@@ -1,12 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, MapPin, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle, MapPin, Loader2, AlertCircle, Package } from "lucide-react";
+import confetti from "canvas-confetti";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
+
+type OrderItem = { id?: string; title?: string; price?: number; quantity?: number; unit?: string };
 
 type Order = {
   id: string;
@@ -26,6 +29,7 @@ type Order = {
     method?: string;
     zone?: number;
   };
+  items: OrderItem[] | null;
   total_cents: number;
 };
 
@@ -50,12 +54,34 @@ function CartSuccessContent() {
   const [loading, setLoading] = useState(true);
   const [pollAttempt, setPollAttempt] = useState(0);
   const { clear } = useCart();
+  const confettiFiredRef = useRef(false);
 
   // Clear cart on first render
   useEffect(() => {
     clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Confetti burst the first time we see payment_status = paid
+  useEffect(() => {
+    if (!order || order.payment_status !== "paid" || confettiFiredRef.current) return;
+    confettiFiredRef.current = true;
+    const fire = (originX: number, angle: number) =>
+      confetti({
+        particleCount: 60,
+        spread: 70,
+        startVelocity: 45,
+        ticks: 250,
+        origin: { x: originX, y: 0.55 },
+        angle,
+        colors: ["#53F3A4", "#AD47FF", "#fbbf24", "#ffffff"],
+        scalar: 0.9,
+        zIndex: 9999,
+      });
+    fire(0.2, 60);
+    fire(0.8, 120);
+    setTimeout(() => fire(0.5, 90), 250);
+  }, [order]);
 
   // Fetch order; poll a few times in case Paysera callback hasn't landed yet
   useEffect(() => {
@@ -65,7 +91,7 @@ function CartSuccessContent() {
     async function fetch() {
       const { data } = await supabase
         .from("orders")
-        .select("id, order_number, status, payment_status, buyer_name, buyer_email, delivery_info, total_cents")
+        .select("id, order_number, status, payment_status, buyer_name, buyer_email, delivery_info, items, total_cents")
         .eq("order_number", orderNumber)
         .single();
       if (cancelled) return;
@@ -191,6 +217,33 @@ function CartSuccessContent() {
           </div>
         </div>
       </div>
+
+      {order.items && order.items.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+            <Package size={15} className="text-gray-400" />
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Pasūtītie produkti ({order.items.length})
+            </p>
+          </div>
+          <ul className="divide-y divide-gray-50">
+            {order.items.map((it, idx) => (
+              <li key={`${it.id ?? idx}`} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-gray-900">{it.title ?? "(produkts)"}</p>
+                  <p className="text-xs text-gray-400">
+                    {it.quantity ?? 1} × {formatPrice(it.price ?? 0)}
+                    {it.unit ? ` / ${it.unit}` : ""}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
+                  {formatPrice((it.price ?? 0) * (it.quantity ?? 1))}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-6 rounded-2xl bg-gray-50 p-5">
         <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-400">Kas notiek tālāk?</p>
