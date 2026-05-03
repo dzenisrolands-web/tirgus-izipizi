@@ -14,11 +14,9 @@ export function AISearch() {
     setOpen(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit() {
     const value = text.trim();
     if (!value) {
-      // Empty submit → open dialog with no seed (shows suggestions)
       openWith();
     } else {
       openWith(value);
@@ -26,13 +24,20 @@ export function AISearch() {
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  // Note: deliberately NOT a <form>. iOS Safari with React 19 has shown
+  // submit-without-preventDefault behaviour that reloaded the page before
+  // onSubmit could fire. Using a plain <div> + button onClick + input
+  // onKeyDown removes any chance of a native submit.
   return (
     <>
-      {/* Real input form — taps focus the field directly so the mobile
-          keyboard opens immediately. Submit (Enter / Send button) opens
-          the AI dialog with the typed query as the first message. */}
-      <form
-        onSubmit={handleSubmit}
+      <div
         className="group relative flex w-full max-w-xl items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm transition focus-within:shadow-md hover:shadow-md"
         style={{
           backgroundImage: "linear-gradient(white,white), linear-gradient(90deg,#53F3A4,#AD47FF)",
@@ -53,18 +58,20 @@ export function AISearch() {
 
         <input
           type="text"
-          name="q"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Jautā AI asistentam..."
           enterKeyHint="send"
           autoComplete="off"
+          inputMode="search"
           className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
         />
 
         {text.trim() ? (
           <button
-            type="submit"
+            type="button"
+            onClick={submit}
             aria-label="Sūtīt"
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#192635] text-white transition active:scale-90"
           >
@@ -75,7 +82,7 @@ export function AISearch() {
             AI
           </span>
         )}
-      </form>
+      </div>
 
       <AISearchDialog
         open={open}
