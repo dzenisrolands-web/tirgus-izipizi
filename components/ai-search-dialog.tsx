@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles, Send, X, Loader2, ArrowUpRight, Plus, Check } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
@@ -183,8 +184,14 @@ export function AISearchDialog({
   }
 
   if (!open) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
+  // Portal to <body> — the Nav header has backdrop-filter, which creates a
+  // containing block for fixed-positioned descendants. Without the portal,
+  // `position: fixed` becomes relative to the header (~64px), so the dialog
+  // shrinks to a tiny gray rectangle inside the nav. Rendering at body level
+  // restores normal viewport-relative fixed positioning.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/40 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
       <div className="absolute inset-0" onClick={onClose} aria-label="Aizvērt" />
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[85vh] sm:max-h-[720px] sm:w-full sm:max-w-2xl sm:rounded-3xl">
@@ -295,7 +302,8 @@ export function AISearchDialog({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
