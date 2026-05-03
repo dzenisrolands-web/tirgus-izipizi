@@ -44,28 +44,44 @@ export function Nav() {
           {/* Search bar */}
           <form
             className="flex flex-1 items-center"
+            action="/catalog"
+            method="get"
             onSubmit={(e) => {
-              e.preventDefault();
-              if (searchQuery.trim()) {
-                router.push(`/catalog?q=${encodeURIComponent(searchQuery)}`);
+              if (!searchQuery.trim()) {
+                e.preventDefault();
+                return;
               }
+              e.preventDefault();
+              router.push(`/catalog?q=${encodeURIComponent(searchQuery.trim())}`);
             }}
           >
             <div className="relative w-full max-w-xl">
               <Search
                 size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 type="search"
+                name="q"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Meklēt produktus..."
+                enterKeyHint="search"
+                autoComplete="off"
                 className={cn(
-                  "input pl-10",
+                  "input pl-10 pr-10",
                   "rounded-full border-gray-200 bg-gray-50 py-2 text-sm"
                 )}
               />
+              {searchQuery.trim() && (
+                <button
+                  type="submit"
+                  aria-label="Meklēt"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-[#192635] text-white transition active:scale-90 hover:brightness-110"
+                >
+                  <Search size={13} />
+                </button>
+              )}
             </div>
           </form>
 
