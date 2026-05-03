@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { SlidersHorizontal, X, Star } from "lucide-react";
 import { sellers, type Listing } from "@/lib/mock-data";
 import { ListingCard } from "@/components/listing-card";
@@ -17,16 +17,35 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
-export function CatalogClient({ listings, weeklyFeatured = [] }: { listings: Listing[]; weeklyFeatured?: Listing[] }) {
+export function CatalogClient({
+  listings,
+  weeklyFeatured = [],
+  initialQuery = "",
+}: {
+  listings: Listing[];
+  weeklyFeatured?: Listing[];
+  initialQuery?: string;
+}) {
   const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const storageTypes = useStorageTypes();
+
+  function clearQuery() {
+    const next = new URLSearchParams(params.toString());
+    next.delete("q");
+    const qs = next.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }
 
   const [filters, setFilters] = useState<Filters>(() => ({
     ...DEFAULT_FILTERS,
     seller: params.get("seller") ?? "",
     category: params.get("category") ?? "Visi",
   }));
-  const [query, setQuery] = useState(params.get("q") ?? "");
+  // Query state mirrors the URL — server already filtered `listings` by `q`,
+  // so this is for the active-search chip + clear button only.
+  const [query, setQuery] = useState(initialQuery);
   const [sort, setSort] = useState("newest");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -40,16 +59,6 @@ export function CatalogClient({ listings, weeklyFeatured = [] }: { listings: Lis
 
   const filtered = useMemo(() => {
     let result = [...listings];
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      result = result.filter((l) =>
-        l.title.toLowerCase().includes(q) ||
-        l.description.toLowerCase().includes(q) ||
-        l.category.toLowerCase().includes(q) ||
-        l.seller.farmName.toLowerCase().includes(q) ||
-        l.seller.name.toLowerCase().includes(q)
-      );
-    }
     if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
     if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
     if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
@@ -139,7 +148,7 @@ export function CatalogClient({ listings, weeklyFeatured = [] }: { listings: Lis
           {query.trim() && (
             <span className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-sm text-gray-700">
               Meklēts: <strong>{query}</strong>
-              <button onClick={() => setQuery("")}><X size={14} /></button>
+              <button onClick={clearQuery}><X size={14} /></button>
             </span>
           )}
           {activeSeller && (
@@ -198,7 +207,7 @@ export function CatalogClient({ listings, weeklyFeatured = [] }: { listings: Lis
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-lg font-semibold text-gray-500">Nav atrasts neviens produkts</p>
               <p className="mt-1 text-sm text-gray-400">Mēģini mainīt filtrus</p>
-              <button className="btn-outline mt-4" onClick={() => { setFilters(DEFAULT_FILTERS); setQuery(""); }}>Notīrīt filtrus</button>
+              <button className="btn-outline mt-4" onClick={() => { setFilters(DEFAULT_FILTERS); clearQuery(); }}>Notīrīt filtrus</button>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
