@@ -89,6 +89,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#192635",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };
@@ -135,6 +136,8 @@ export default function RootLayout({
   return (
     <html lang="lv" className={inter.variable}>
       <head>
+        {/* Disable Android Chrome's "Auto Dark Theme" — site is light-mode by design */}
+        <meta name="color-scheme" content="light" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

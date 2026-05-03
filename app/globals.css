@@ -5,6 +5,15 @@
 @layer base {
   :root {
     --font-inter: "Inter", system-ui, sans-serif;
+    /* Force light mode at the document level. Without this, Android Chrome
+       applies "Auto Dark Theme" on devices with system dark mode and ours
+       turns into a black/grey site that doesn't match the brand. */
+    color-scheme: light;
+  }
+
+  html {
+    color-scheme: light;
+    background: #ffffff;
   }
 
   * {
