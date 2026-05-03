@@ -136,10 +136,11 @@ export async function POST(req: NextRequest) {
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    // gemini-2.0-flash gives 200 requests/day on free tier vs gemini-2.5-flash's
-    // 20 RPD. For production scale, enable billing in Google AI Studio and
-    // consider switching back to 2.5-flash for better tool-use accuracy.
-    model: "gemini-2.0-flash",
+    // Free tier daily limits as of 2026: 2.5-flash = 20 RPD,
+    // 2.0-flash = 0 (some keys), 2.5-flash-lite = 1000 RPD.
+    // Lite is the best free option for testing pre-launch.
+    // For production, enable billing on Google AI Studio.
+    model: "gemini-2.5-flash-lite",
     systemInstruction: SYSTEM_INSTRUCTION,
     tools: [toGeminiTools()],
   });
