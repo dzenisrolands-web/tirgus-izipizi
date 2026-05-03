@@ -108,12 +108,24 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "Tukšs ziņojums" }), { status: 400 });
   }
 
-  // Keep only last 10 messages to bound token cost
-  const trimmed = messages.slice(-10);
+  // Keep only last 10 messages to bound token cost. Drop empty-content
+  // messages — Gemini rejects parts whose text is "".
+  const trimmed = messages
+    .slice(-10)
+    .filter((m) => typeof m.content === "string" && m.content.trim().length > 0);
+  if (!trimmed.length) {
+    return new Response(JSON.stringify({ error: "Tukšs ziņojums" }), { status: 400 });
+  }
 
-  // Convert client-format messages into Gemini history format.
-  // Last message is the user's current query; everything before is history.
-  const history: Content[] = trimmed.slice(0, -1).map((m) => ({
+  // Build a valid Gemini history: it MUST start with role "user". If the
+  // client's stored history begins with model messages (e.g. a stale
+  // localStorage from an older build, or an error chain), strip them.
+  let historyMsgs = trimmed.slice(0, -1);
+  while (historyMsgs.length > 0 && historyMsgs[0].role !== "user") {
+    historyMsgs = historyMsgs.slice(1);
+  }
+
+  const history: Content[] = historyMsgs.map((m) => ({
     role: m.role === "user" ? "user" : "model",
     parts: [{ text: m.content }] as Part[],
   }));

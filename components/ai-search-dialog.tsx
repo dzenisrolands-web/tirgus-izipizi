@@ -23,6 +23,9 @@ type Message = {
   role: "user" | "model";
   content: string;
   products?: Product[];
+  // Error messages are kept in the visible thread but are NOT sent back to
+  // the API as conversation history (they would poison the next turn).
+  error?: true;
 };
 
 const SUGGESTIONS = [
@@ -111,7 +114,10 @@ export function AISearchDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // Send only role+content to keep payload lean; products live client-side.
-          messages: next.map((m) => ({ role: m.role, content: m.content })),
+          // Skip error messages — they would poison the next turn's history.
+          messages: next
+            .filter((m) => !m.error)
+            .map((m) => ({ role: m.role, content: m.content })),
         }),
       });
       if (!res.body) {
@@ -157,7 +163,10 @@ export function AISearchDialog({
             setActiveTool(null);
           } else if (eventName === "error") {
             const e = JSON.parse(data) as { message: string };
-            setMessages((prev) => [...prev, { role: "model", content: `Kļūda: ${e.message}` }]);
+            setMessages((prev) => [
+              ...prev,
+              { role: "model", content: `Kļūda: ${e.message}`, error: true },
+            ]);
             setStreamingText("");
             setStreamingProducts(null);
             setActiveTool(null);
@@ -165,7 +174,10 @@ export function AISearchDialog({
         }
       }
     } catch {
-      setMessages((prev) => [...prev, { role: "model", content: "Savienojums neizdevās. Pamēģini vēlreiz." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "model", content: "Savienojums neizdevās. Pamēģini vēlreiz.", error: true },
+      ]);
     } finally {
       setLoading(false);
       setActiveTool(null);
@@ -251,7 +263,9 @@ export function AISearchDialog({
               role={m.role}
               content={m.content}
               products={m.products}
+              error={m.error}
               onProductLink={onClose}
+              onReset={reset}
             />
           ))}
           {streamingText && (
@@ -312,26 +326,37 @@ function MessageBubble({
   content,
   products,
   streaming,
+  error,
   onProductLink,
+  onReset,
 }: {
   role: "user" | "model";
   content: string;
   products?: Product[];
   streaming?: boolean;
+  error?: boolean;
   onProductLink?: () => void;
+  onReset?: () => void;
 }) {
   const isUser = role === "user";
+  const bubbleClass = isUser
+    ? "max-w-[80%] rounded-2xl rounded-br-md bg-[#192635] px-4 py-2.5 text-sm text-white"
+    : error
+      ? "max-w-[90%] rounded-2xl rounded-bl-md bg-red-50 border border-red-200 px-4 py-2.5 text-sm leading-relaxed text-red-700"
+      : "max-w-[90%] rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-sm leading-relaxed text-gray-900";
   return (
     <div className={`mb-3 flex flex-col ${isUser ? "items-end" : "items-start"}`}>
-      <div
-        className={
-          isUser
-            ? "max-w-[80%] rounded-2xl rounded-br-md bg-[#192635] px-4 py-2.5 text-sm text-white"
-            : "max-w-[90%] rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-sm leading-relaxed text-gray-900"
-        }
-      >
+      <div className={bubbleClass}>
         <FormattedText text={content} />
         {streaming && <span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-gray-500 align-middle" />}
+        {error && onReset && (
+          <button
+            onClick={onReset}
+            className="mt-2 inline-flex rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-red-700"
+          >
+            Sākt sarunu no jauna
+          </button>
+        )}
       </div>
       {products && products.length > 0 && (
         <div className="mt-2 grid w-full grid-cols-2 gap-2">
