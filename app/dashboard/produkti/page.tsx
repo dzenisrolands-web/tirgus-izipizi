@@ -124,6 +124,12 @@ export default function ProduktisPage() {
   async function toggleStatus(item: Listing) {
     if (item.status !== "active" && item.status !== "paused") return;
     const next = item.status === "active" ? "paused" : "active";
+    // Block activation when price is missing — the public catalog would
+    // show €0.00 which is broken UX. Send the seller to the edit page.
+    if (next === "active" && (!item.price || item.price === 0)) {
+      alert("Lai aktivizētu produktu, vispirms norādi cenu (lielāku par 0 €).");
+      return;
+    }
     await supabase.from("listings").update({ status: next }).eq("id", item.id);
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: next } : i));
   }
@@ -162,6 +168,20 @@ export default function ProduktisPage() {
           <Plus size={16} /> Pievienot
         </Link>
       </div>
+
+      {/* Missing-price banner — blocking. These products are auto-paused; the
+          seller must set a price before they can be activated again. */}
+      {items.some(i => !i.price || i.price === 0) && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-600" />
+          <div className="flex-1 text-sm text-red-800">
+            <strong>Cena nav norādīta:</strong>{" "}
+            {items.filter(i => !i.price || i.price === 0).map(i => i.title).join(", ")}
+            {" "}— šie produkti ir pauzēti un netiek rādīti pircējiem. Atver
+            produktu, ievadi cenu un saglabā, lai aktivizētu.
+          </div>
+        </div>
+      )}
 
       {/* Low stock banner */}
       {items.some(i => i.quantity <= LOW_STOCK && i.status === "active") && (
@@ -219,6 +239,15 @@ export default function ProduktisPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-semibold text-gray-900">{item.title}</p>
+                      {(!item.price || item.price === 0) && (
+                        <Link
+                          href={`/dashboard/produkti/${item.id}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700 hover:bg-red-200"
+                          title="Cena nav norādīta — klikšķini lai labotu"
+                        >
+                          <AlertTriangle size={9} /> Cena!
+                        </Link>
+                      )}
                       {(() => {
                         const f = getFeaturedFor(item.id);
                         if (!f) return null;
