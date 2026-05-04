@@ -5,12 +5,14 @@ import Link from "next/link";
 import {
   CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X, FileText, AlertTriangle,
   Package, ShoppingBag, ExternalLink, MessageSquare, ChevronDown, ChevronUp, Mail, Loader2,
+  LinkIcon, Send,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Seller = {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  email: string | null;
   name: string;
   description: string | null;
   location: string | null;
@@ -74,6 +76,9 @@ export default function AdminRazotajiPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [reminderSending, setReminderSending] = useState<string | null>(null);
   const [reminderResult, setReminderResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+  const [linkInputs, setLinkInputs] = useState<Record<string, string>>({});
+  const [linking, setLinking] = useState<string | null>(null);
+  const [linkResult, setLinkResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
 
   async function load() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
@@ -206,6 +211,42 @@ export default function AdminRazotajiPage() {
     }
     setReminderSending(null);
     setTimeout(() => setReminderResult(null), 5000);
+  }
+
+  async function linkSeller(sellerId: string) {
+    const email = (linkInputs[sellerId] ?? "").trim();
+    if (!email) return;
+    setLinking(sellerId);
+    setLinkResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/link-seller", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ sellerId, email }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const msg = data.mode === "existing-user"
+          ? `Saistīts ar esošu kontu (${email})`
+          : data.mode === "invited"
+            ? `Invite e-pasts nosūtīts uz ${email} — pirmajā ielogošanās brīdī tiks automātiski piesaistīts`
+            : `OK (${data.mode})`;
+        setLinkResult({ id: sellerId, ok: true, msg });
+        // Refresh sellers list to reflect new email/user_id
+        await load();
+      } else {
+        setLinkResult({ id: sellerId, ok: false, msg: data.error ?? "Nezināma kļūda" });
+      }
+    } catch (e) {
+      setLinkResult({ id: sellerId, ok: false, msg: e instanceof Error ? e.message : "Tīkla kļūda" });
+    }
+    setLinking(null);
+    setTimeout(() => setLinkResult(null), 6000);
   }
 
   async function toggleHomeLocker(sellerId: string, lockerId: string) {
@@ -425,6 +466,57 @@ export default function AdminRazotajiPage() {
                             {c.done ? "✓" : ""}
                           </span>
                         ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Auth link form — sellers without auth user_id need
+                    an email so they can log in and the trigger from
+                    migration 0022 can attach this row to their account. */}
+                {!seller.user_id && (
+                  <div className="border-t border-gray-50 bg-blue-50/60 px-5 py-3 text-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-200 text-blue-700">
+                        <LinkIcon size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-blue-900">Nav saistīts ar lietotāja kontu</p>
+                        <p className="mt-0.5 text-[11px] text-blue-800">
+                          Šis ražotājs ir importēts no vecās lapas un vēl nav reģistrējies tirgus.izipizi.lv. Ievadi viņa e-pastu — sistēma sūtīs magic-link, un pirmajā ielogošanās brīdī šis profils tiks automātiski piesaistīts.
+                        </p>
+                        {seller.email && (
+                          <p className="mt-1 text-[11px] text-blue-700">
+                            Pašreizējais e-pasts: <span className="font-mono font-bold">{seller.email}</span> — vēl gaida pirmo ielogošanos.
+                          </p>
+                        )}
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            type="email"
+                            placeholder={seller.email ?? "razotajs@example.com"}
+                            value={linkInputs[seller.id] ?? ""}
+                            onChange={(e) => setLinkInputs((prev) => ({ ...prev, [seller.id]: e.target.value }))}
+                            disabled={linking === seller.id}
+                            className="flex-1 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          />
+                          <button
+                            onClick={() => linkSeller(seller.id)}
+                            disabled={linking === seller.id || !(linkInputs[seller.id] ?? "").trim()}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-700 transition disabled:opacity-50"
+                          >
+                            {linking === seller.id
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : <Send size={11} />}
+                            {seller.email ? "Pārsūtīt invite" : "Saistīt + sūtīt invite"}
+                          </button>
+                        </div>
+                        {linkResult && linkResult.id === seller.id && (
+                          <div className={`mt-2 rounded-lg px-2.5 py-1.5 text-[11px] ${
+                            linkResult.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
+                          }`}>
+                            {linkResult.ok ? "✓ " : "✗ "}{linkResult.msg}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

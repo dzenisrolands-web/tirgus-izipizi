@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 type SellerRow = {
   id: string;
   user_id: string | null;
+  email: string | null;
   name: string | null;
   farm_name: string | null;
   status: string;
@@ -53,7 +54,7 @@ function computeMissing(s: SellerRow): string[] {
   const hasLocker = (s.home_locker_ids?.length ?? 0) > 0;
   const hasPickup = !!s.courier_pickup_address?.trim();
   if (!hasLocker && !hasPickup) m.push("Nodošanas vieta");
-  if (!s.user_id) m.push("Nav reģistrēts (auth konts)");
+  if (!s.user_id) m.push(s.email ? "Gaida ielogošanos (invite nosūtīts)" : "Nav e-pasta + auth konta");
   return m;
 }
 
@@ -80,7 +81,7 @@ export default function AdminPage() {
         supabase.from("listings").select("*", { count: "exact", head: true }),
         supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("sellers").select("id,name,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(5),
-        supabase.from("sellers").select("id,user_id,name,farm_name,status,description,legal_name,registration_number,is_vat_registered,vat_number,legal_address,bank_iban,self_billing_agreed,home_locker_ids,courier_pickup_address,created_at"),
+        supabase.from("sellers").select("id,user_id,email,name,farm_name,status,description,legal_name,registration_number,is_vat_registered,vat_number,legal_address,bank_iban,self_billing_agreed,home_locker_ids,courier_pickup_address,created_at"),
         supabase.from("listings").select("id, title, image_url, price, seller_id").eq("status", "paused"),
       ]);
 
