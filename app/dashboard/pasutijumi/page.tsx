@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -116,12 +116,57 @@ export default function DashboardPasutijumiPage() {
     </div>
   );
 
+  // Orders waiting for the seller to flip paid → processing.
+  // Auto-cancel kicks in 24 h after paid_at (see /api/cron/order-reminders).
+  const pendingConfirm = orders.filter((o) => o.status === "paid");
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">Pasūtījumi</h1>
         <p className="mt-0.5 text-sm text-gray-500">{orders.length} kopā</p>
       </div>
+
+      {pendingConfirm.length > 0 && (
+        <div className="mb-5 rounded-2xl border-2 border-red-300 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-200 text-red-700">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-red-900">
+                {pendingConfirm.length} {pendingConfirm.length === 1 ? "pasūtījums gaida" : "pasūtījumi gaida"} apstiprinājumu
+              </p>
+              <p className="mt-0.5 text-sm text-red-800">
+                Apstiprini katru pasūtījumu pēc iespējas ātrāk. <strong>Ja netiek apstiprināts 24h laikā, pasūtījums tiks automātiski atcelts</strong> un nauda atgriezta pircējam.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-3 space-y-1.5">
+            {pendingConfirm.map((o) => {
+              const paidAt = o.paid_at ? new Date(o.paid_at).getTime() : Date.now();
+              const hoursLeft = Math.max(0, 24 - (Date.now() - paidAt) / 3_600_000);
+              const isUrgent = hoursLeft < 6;
+              return (
+                <li key={o.id}>
+                  <button
+                    onClick={() => setExpanded(o.id)}
+                    className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-2 text-left ring-1 ring-red-200 hover:ring-red-400 transition"
+                  >
+                    <span className="font-mono text-xs font-bold text-red-700">{o.order_number}</span>
+                    <span className="flex-1 truncate text-sm text-gray-700">{o.buyer_name}</span>
+                    <span className={`shrink-0 text-xs font-semibold ${isUrgent ? "text-red-600" : "text-amber-700"}`}>
+                      {hoursLeft < 1
+                        ? `${Math.round(hoursLeft * 60)} min līdz atcelšanai`
+                        : `${Math.round(hoursLeft)}h līdz atcelšanai`}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-16 text-center">

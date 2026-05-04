@@ -47,6 +47,9 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? {};
+  // Order pushes must persist (requireInteraction) and vibrate so the seller
+  // actually notices a new paid order. Hot drop / generic pushes stay soft.
+  const isOrder = typeof data.tag === "string" && data.tag.startsWith("order_");
   event.waitUntil(
     self.registration.showNotification(data.title ?? "Jauns drops!", {
       body: data.body ?? "",
@@ -54,6 +57,8 @@ self.addEventListener("push", (event) => {
       badge: "/icon-192.png",
       tag: data.tag ?? "drop",
       renotify: true,
+      requireInteraction: data.requireInteraction === true || isOrder,
+      vibrate: isOrder ? [200, 100, 200, 100, 200] : undefined,
       data: { url: data.url ?? "/keriens" },
     })
   );

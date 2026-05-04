@@ -4,6 +4,10 @@ export type PushPayload = {
   title: string;
   body: string;
   url: string;
+  /** SW uses this to dedupe re-sent notifications (same tag replaces previous). */
+  tag?: string;
+  /** When true, notification stays on screen until the user clicks it. */
+  requireInteraction?: boolean;
 };
 
 export type PushSub = {
