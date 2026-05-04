@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    alternates: { canonical: `/receptes/${slug}` },
     openGraph: {
       title,
       description,
@@ -77,9 +78,20 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
     })),
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Sākums", item: "https://tirgus.izipizi.lv" },
+      { "@type": "ListItem", position: 2, name: "Receptes", item: "https://tirgus.izipizi.lv/receptes" },
+      { "@type": "ListItem", position: 3, name: recipe.title, item: `https://tirgus.izipizi.lv/receptes/${slug}` },
+    ],
+  };
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(recipeJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
 
       {/* Back */}
       <Link href="/receptes" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">

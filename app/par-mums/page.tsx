@@ -7,6 +7,13 @@ export const metadata: Metadata = {
   title: "Par mums un mūsu misija",
   description:
     "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika. Jo tuvāk — jo labāk. tirgus.izipizi.lv savieno Latvijas ražotājus ar pircējiem un atbalsta vietīgāku, zaļāku Latviju.",
+  alternates: { canonical: "/par-mums" },
+  openGraph: {
+    title: "Par mums un mūsu misija | tirgus.izipizi.lv",
+    description: "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika.",
+    url: "https://tirgus.izipizi.lv/par-mums",
+    type: "website",
+  },
 };
 
 export default function ParMumsPage() {

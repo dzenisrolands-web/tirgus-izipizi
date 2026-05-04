@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     keywords: meta?.keywords?.join(", "),
+    alternates: { canonical: `/seller/${id}` },
     openGraph: {
       title,
       description,
@@ -66,10 +67,22 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
   const jsonLd = {
     "@context": "https://schema.org", "@type": "FoodEstablishment",
     name: seller.name, description: meta?.shortDesc,
-    image: meta?.cover || seller.avatar, url: meta?.website,
+    image: meta?.cover || seller.avatar, url: meta?.website ?? `https://tirgus.izipizi.lv/seller/${id}`,
     address: { "@type": "PostalAddress", addressLocality: seller.location, addressCountry: "LV" },
-    aggregateRating: { "@type": "AggregateRating", ratingValue: seller.rating, reviewCount: seller.reviewCount },
+    aggregateRating: seller.reviewCount > 0
+      ? { "@type": "AggregateRating", ratingValue: seller.rating, reviewCount: seller.reviewCount, bestRating: 5, worstRating: 1 }
+      : undefined,
     sameAs: [meta?.facebook, meta?.instagram, meta?.website].filter(Boolean),
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Sākums", item: "https://tirgus.izipizi.lv" },
+      { "@type": "ListItem", position: 2, name: "Ražotāji", item: "https://tirgus.izipizi.lv/razotaji" },
+      { "@type": "ListItem", position: 3, name: seller.name, item: `https://tirgus.izipizi.lv/seller/${id}` },
+    ],
   };
 
   const galleryImages = sellerListings.filter((l) => l.image).slice(0, 6).map((l) => ({ src: l.image, title: l.title }));
@@ -77,6 +90,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <article>
         <div className="relative h-64 w-full sm:h-80"
           style={{ background: meta?.cover ? `url(${meta.cover}) center/cover no-repeat` : "linear-gradient(135deg, #192635 0%, #2d1f45 100%)" }}>

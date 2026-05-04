@@ -65,6 +65,10 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: BASE_URL,
+    languages: {
+      "lv-LV": BASE_URL,
+      "x-default": BASE_URL,
+    },
   },
   verification: {
     other: {

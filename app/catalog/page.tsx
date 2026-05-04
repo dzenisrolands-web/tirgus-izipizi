@@ -8,9 +8,11 @@ export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
   description: "Pārlūko svaigus produktus no Latvijas ražotājiem. Filtrē pēc kategorijas, pilsētas un uzglabāšanas veida. Saņem pasūtījumu izipizi pakomātā.",
   keywords: ["latvijas ražotāji", "svaigi produkti", "pakomāts", "bioloģiski", "vietējā pārtika"],
+  alternates: { canonical: "/catalog" },
   openGraph: {
     title: "Produktu katalogs — tirgus.izipizi.lv",
     description: "Pārlūko svaigus produktus no Latvijas ražotājiem.",
+    url: "https://tirgus.izipizi.lv/catalog",
     type: "website" as const,
     siteName: "tirgus.izipizi.lv",
   },

@@ -8,6 +8,32 @@ import {
 export const metadata: Metadata = {
   title: "Kā tas strādā | tirgus.izipizi.lv",
   description: "Uzzini kā darbojas tirgus.izipizi.lv — no reģistrācijas līdz pasūtījuma saņemšanai.",
+  alternates: { canonical: "/how-it-works" },
+  openGraph: {
+    title: "Kā tas strādā | tirgus.izipizi.lv",
+    description: "Uzzini kā darbojas tirgus.izipizi.lv — no reģistrācijas līdz pasūtījuma saņemšanai.",
+    url: "https://tirgus.izipizi.lv/how-it-works",
+    type: "website",
+  },
+};
+
+const FAQ_HOW = [
+  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
+  { q: "Kādā termiņā produkti jāizņem no pakomāta?", a: "Produkti pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam." },
+  { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "Pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
+  { q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?", a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas." },
+  { q: "Vai var pārdot arī saldētas preces?", a: "Jā — IziPizi pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C." },
+  { q: "Kāda ir komisija pārdevējiem?", a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas)." },
+];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ_HOW.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
 };
 
 const buyerSteps = [
@@ -66,6 +92,7 @@ const features = [
 export default function HowItWorksPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       {/* Header */}
       <div className="text-center">

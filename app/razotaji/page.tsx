@@ -16,6 +16,14 @@ export const metadata: Metadata = {
     "ikri latvija",
     "konditorejas izstrādājumi",
   ],
+  alternates: { canonical: "/razotaji" },
+  openGraph: {
+    title: "Ražotāji — Vietējie pārtikas ražotāji | tirgus.izipizi.lv",
+    description: "Iepazīsties ar vietējiem Latvijas pārtikas ražotājiem.",
+    url: "https://tirgus.izipizi.lv/razotaji",
+    type: "website",
+    siteName: "tirgus.izipizi.lv",
+  },
 };
 
 export default async function RazotajiPage() {

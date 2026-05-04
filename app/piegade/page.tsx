@@ -10,6 +10,7 @@ import { PostalZoneLookup } from "@/components/postal-zone-lookup";
 export const metadata: Metadata = {
   title: "Piegāde — pārtikas pakomāts, kurjers, ekspres",
   description: "Visas piegādes iespējas — IziPizi pārtikas pakomāts 24/7, standarta kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
+  alternates: { canonical: "/piegade" },
   openGraph: {
     title: "Piegāde | tirgus.izipizi.lv",
     description: "IziPizi pārtikas pakomāts 24/7, kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
@@ -45,9 +46,20 @@ const FAQ = [
   },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 export default function PiegadePage() {
   return (
     <div className="bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       {/* ── HERO ── */}
       <div className="relative overflow-hidden bg-[#192635] px-4 py-16 text-white sm:px-6 lg:px-8">

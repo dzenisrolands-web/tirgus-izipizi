@@ -30,9 +30,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
+    alternates: { canonical: `/listing/${id}` },
     openGraph: {
       title,
       description,
+      url: `https://tirgus.izipizi.lv/listing/${id}`,
       images: [{ url: listing.image, alt: listing.title }],
       type: "website",
       siteName: "tirgus.izipizi.lv",
@@ -54,26 +56,50 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
 
-  const jsonLd = {
+  const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: listing.title,
     description: listing.description,
     image: listing.image,
+    category: listing.category,
     offers: {
       "@type": "Offer",
       price: listing.price,
       priceCurrency: "EUR",
       availability: listing.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      seller: { "@type": "Organization", name: listing.seller.farmName },
+      itemCondition: "https://schema.org/NewCondition",
+      url: `https://tirgus.izipizi.lv/listing/${listing.id}`,
+      seller: {
+        "@type": "Organization",
+        name: listing.seller.farmName,
+        url: `https://tirgus.izipizi.lv/seller/${listing.sellerId}`,
+      },
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "LV", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 14, returnMethod: "https://schema.org/ReturnByMail" },
+      shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 3, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
     },
-    brand: { "@type": "Brand", name: listing.seller.farmName },
-    aggregateRating: undefined,
+    brand: {
+      "@type": "Brand",
+      name: listing.seller.farmName,
+      logo: listing.seller.avatar,
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Sākums", item: "https://tirgus.izipizi.lv" },
+      { "@type": "ListItem", position: 2, name: "Katalogs", item: "https://tirgus.izipizi.lv/catalog" },
+      { "@type": "ListItem", position: 3, name: listing.category, item: `https://tirgus.izipizi.lv/catalog?category=${encodeURIComponent(listing.category)}` },
+      { "@type": "ListItem", position: 4, name: listing.title, item: `https://tirgus.izipizi.lv/listing/${listing.id}` },
+    ],
   };
 
   return (
     <>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link href="/catalog" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
