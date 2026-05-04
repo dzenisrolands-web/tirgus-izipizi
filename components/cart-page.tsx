@@ -368,11 +368,11 @@ export function CartPage() {
                   </p>
                   <div className="mt-5 flex flex-wrap justify-center gap-2">
                     {[
-                      { label: "🥩 Gaļa", slug: "Gaļa" },
+                      { label: "🥩 Gaļa", slug: "Gaļa & medījumi" },
                       { label: "🥟 Saldēta", slug: "Saldēta pārtika" },
-                      { label: "🥚 Olas", slug: "Olas" },
-                      { label: "🥦 Dārzeņi", slug: "Dārzeņi" },
-                      { label: "🍰 Konditorija", slug: "Konditorija" },
+                      { label: "🐟 Jūras veltes", slug: "Zivis & jūras veltes" },
+                      { label: "🥬 Dārzeņi", slug: "Dārzeņi, augļi & ogas" },
+                      { label: "🍰 Konditoreja", slug: "Maize & konditoreja" },
                     ].map((c) => (
                       <Link key={c.slug}
                         href={`/catalog?category=${encodeURIComponent(c.slug)}`}

@@ -320,16 +320,17 @@ export const reviews: Review[] = [
   },
 ];
 
+// Phase 1 taxonomy — 9 top-levels. Order roughly matches expected product
+// volume so the most-stocked sections appear first in the filter sidebar.
 export const categories = [
   "Visi",
-  "Dzērieni",
-  "Dārzeņi",
-  "Eļļas",
-  "Gaļa",
-  "Jūras veltes",
-  "Konditorija",
-  "Konservi",
-  "Olas",
+  "Gaļa & medījumi",
   "Saldēta pārtika",
-  "Uztura bagātinātāji"
+  "Zivis & jūras veltes",
+  "Maize & konditoreja",
+  "Iepakotā pārtika",
+  "Dzērieni",
+  "Dārzeņi, augļi & ogas",
+  "Olas & piena produkti",
+  "Uztura bagātinātāji",
 ];

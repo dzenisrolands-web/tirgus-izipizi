@@ -41,18 +41,18 @@ export const metadata: Metadata = {
   },
 };
 
+// Phase 1 taxonomy — must match `categories` in lib/mock-data.ts and the
+// `category` values written by scripts/migrations/0016_recategorize.sql.
 const CATEGORIES = [
-  { label: "Saldēta pārtika", emoji: "🥟", slug: "Saldēta pārtika" },
-  { label: "Gaļa",            emoji: "🥩", slug: "Gaļa" },
-  { label: "Dzērieni",        emoji: "🥤", slug: "Dzērieni" },
-  { label: "Olas",            emoji: "🥚", slug: "Olas" },
-  { label: "Garšaugi",        emoji: "🌿", slug: "Garšaugi" },
-  { label: "Konservi",        emoji: "🥫", slug: "Konservi" },
-  { label: "Dārzeņi",         emoji: "🥦", slug: "Dārzeņi" },
-  { label: "Jūras veltes",    emoji: "🐟", slug: "Jūras veltes" },
-  { label: "Konditorija",     emoji: "🍰", slug: "Konditorija" },
-  { label: "Mērces",          emoji: "🥣", slug: "Mērces" },
-  { label: "Medus",           emoji: "🍯", slug: "Medus" },
+  { label: "Gaļa & medījumi",       emoji: "🥩", slug: "Gaļa & medījumi" },
+  { label: "Saldēta pārtika",        emoji: "🥟", slug: "Saldēta pārtika" },
+  { label: "Zivis & jūras veltes",   emoji: "🐟", slug: "Zivis & jūras veltes" },
+  { label: "Maize & konditoreja",    emoji: "🍰", slug: "Maize & konditoreja" },
+  { label: "Iepakotā pārtika",       emoji: "🍯", slug: "Iepakotā pārtika" },
+  { label: "Dzērieni",               emoji: "🥤", slug: "Dzērieni" },
+  { label: "Dārzeņi, augļi & ogas",  emoji: "🥬", slug: "Dārzeņi, augļi & ogas" },
+  { label: "Olas & piena produkti",  emoji: "🥚", slug: "Olas & piena produkti" },
+  { label: "Uztura bagātinātāji",    emoji: "💊", slug: "Uztura bagātinātāji" },
 ];
 
 // Old static hero mosaic — replaced by <HeroProductRotator/> with live DB data.
