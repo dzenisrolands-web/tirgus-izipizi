@@ -26,9 +26,10 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPA
 const PLAN = [
   { match: "Bujums",       locker: "agenskalna" },
   { match: "Oranžās",      locker: "agenskalna" },
-  { match: "WILD",         locker: "agenskalna" }, // already covered by 0019, idempotent
+  { match: "WILD",         locker: "agenskalna" },
   { match: "Ekoloģisks",   locker: "brivibas"   },
-  { match: "Dabas",        locker: "brivibas"   }, // may not exist in DB
+  { match: "Cake Break",   locker: "brivibas"   },
+  { match: "Dabas",        locker: "brivibas"   }, // NOT in DB — we still emit a no-op comment
   // Buržujs: courier pickup at Berga bazārs (Dzirnavu iela 67, Rīga) — Z0,
   // so locker_id = 'brivibas' for pricing purposes; pickup address goes in
   // sellers.courier_pickup_address.

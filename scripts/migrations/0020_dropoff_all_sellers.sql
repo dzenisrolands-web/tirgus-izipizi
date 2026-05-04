@@ -26,6 +26,12 @@ UPDATE listings SET locker_id = 'brivibas'
 UPDATE sellers SET home_locker_ids = ARRAY['brivibas']
   WHERE id = '626ac3b7-1546-4099-8061-fb9d0c4f92a3';
 
+-- Cake Break (caa3bad0-2689-4feb-b365-93bda00ab429) → brivibas
+UPDATE listings SET locker_id = 'brivibas'
+  WHERE seller_id = 'caa3bad0-2689-4feb-b365-93bda00ab429' AND locker_id IS DISTINCT FROM 'brivibas';
+UPDATE sellers SET home_locker_ids = ARRAY['brivibas']
+  WHERE id = 'caa3bad0-2689-4feb-b365-93bda00ab429';
+
 -- "Dabas" not found in sellers table — skipped.
 
 -- austeru bārs BURŽUJS (1210d7d7-bb2b-4c0c-a581-c8890667717e) → brivibas
