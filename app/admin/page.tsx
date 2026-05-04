@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Users, Package, ShoppingBag, TrendingUp, Clock, CheckCircle, XCircle,
   AlertCircle, AlertTriangle, ImageOff, EuroIcon, ChevronRight, Pause,
+  Mail, Send, Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -327,6 +328,133 @@ export default function AdminPage() {
             <p className="mt-0.5 text-sm text-gray-500">{item.desc}</p>
           </Link>
         ))}
+      </div>
+
+      <EmailTestPanel />
+    </div>
+  );
+}
+
+type TestEnv = {
+  resendKey: boolean;
+  emailFrom: string | null;
+  emailReplyTo: string | null;
+  siteUrl: string | null;
+};
+
+function EmailTestPanel() {
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [env, setEnv] = useState<TestEnv | null>(null);
+  const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+
+  async function runTest(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setMsg({ tone: "err", text: "Nav sesijas — pārlogojies." });
+        return;
+      }
+      const res = await fetch("/api/admin/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ to }),
+      });
+      const json = await res.json() as {
+        ok: boolean;
+        env?: TestEnv;
+        sent?: { id: string };
+        error?: string;
+      };
+      if (json.env) setEnv(json.env);
+      if (json.ok) {
+        setMsg({ tone: "ok", text: `Nosūtīts uz ${to}${json.sent?.id ? ` · id ${json.sent.id}` : ""}` });
+      } else {
+        setMsg({ tone: "err", text: json.error ?? "Nezināma kļūda" });
+      }
+    } catch (err) {
+      setMsg({ tone: "err", text: err instanceof Error ? err.message : "Tīkla kļūda" });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const allGood = env && env.resendKey && !!env.emailFrom;
+
+  return (
+    <section className="mt-8">
+      <div className="mb-4 flex items-center gap-2">
+        <Mail size={18} className="text-gray-700" />
+        <h2 className="text-lg font-bold text-gray-900">E-pasta sistēma (Resend)</h2>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        {env && (
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            <EnvRow ok={env.resendKey} label="RESEND_API_KEY" value={env.resendKey ? "iestatīts" : "nav iestatīts"} />
+            <EnvRow ok={!!env.emailFrom} label="EMAIL_FROM" value={env.emailFrom ?? "nav iestatīts"} />
+            <EnvRow ok={true} label="EMAIL_REPLY_TO" value={env.emailReplyTo ?? "(nav)"} />
+            <EnvRow ok={!!env.siteUrl} label="NEXT_PUBLIC_SITE_URL" value={env.siteUrl ?? "(nav)"} />
+          </div>
+        )}
+
+        <form onSubmit={runTest} className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <input
+            type="email"
+            required
+            placeholder="tava-adrese@example.com"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={sending || !to}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#192635] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {sending ? "Sūta..." : "Nosūtīt testu"}
+          </button>
+        </form>
+
+        {msg && (
+          <div className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+            msg.tone === "ok"
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}>
+            {msg.tone === "ok" ? <CheckCircle size={14} className="inline mr-1.5 -mt-0.5" /> : <XCircle size={14} className="inline mr-1.5 -mt-0.5" />}
+            {msg.text}
+          </div>
+        )}
+
+        {env && !allGood && (
+          <p className="mt-3 text-xs text-gray-500">
+            Lai sāktu sūtīt e-pastus: pievieno <code className="bg-gray-100 px-1 rounded">RESEND_API_KEY</code> un{" "}
+            <code className="bg-gray-100 px-1 rounded">EMAIL_FROM</code> Vercel Project Settings → Environment Variables.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function EnvRow({ ok, label, value }: { ok: boolean; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <span className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
+        ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+      }`}>
+        {ok ? <CheckCircle size={10} /> : <XCircle size={10} />}
+      </span>
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-gray-400">{label}</p>
+        <p className="font-medium text-gray-700 break-all">{value}</p>
       </div>
     </div>
   );
