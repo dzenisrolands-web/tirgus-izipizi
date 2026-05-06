@@ -175,7 +175,7 @@ export default function HowItWorksPage() {
           ))}
         </ol>
         <div className="mt-5 flex justify-center">
-          <Link href="/register?role=seller" className="btn-primary flex items-center gap-2">
+          <Link href="/register/razotajs" className="btn-primary flex items-center gap-2">
             Kļūt par pārdevēju <ArrowRight size={15} />
           </Link>
         </div>
@@ -230,7 +230,7 @@ export default function HowItWorksPage() {
           <Link href="/catalog" className="btn-primary">
             Skatīt produktus
           </Link>
-          <Link href="/register?role=seller"
+          <Link href="/register/razotajs"
             className="inline-flex items-center justify-center rounded-full border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10">
             Kļūt par pārdevēju
           </Link>

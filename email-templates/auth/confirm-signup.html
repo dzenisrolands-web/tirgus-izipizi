@@ -13,18 +13,26 @@
         tirgus.izipizi.lv
       </td>
     </tr>
+
+    {{ if eq .Data.role "seller" }}
+    <!-- ============================================ -->
+    <!-- SELLER (RAŽOTĀJS) variant                    -->
+    <!-- ============================================ -->
     <tr>
       <td style="padding:32px 28px 8px;">
-        <h1 style="margin:0 0 12px 0;font-size:22px;font-weight:800;color:#192635;line-height:1.3;">
-          Apstiprini savu e-pastu
+        <span style="display:inline-block;background:#192635;color:#53F3A4;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">
+          Ražotāja konts
+        </span>
+        <h1 style="margin:12px 0 12px 0;font-size:22px;font-weight:800;color:#192635;line-height:1.3;">
+          Apstiprini ražotāja kontu
         </h1>
         <p style="margin:0 0 8px 0;font-size:15px;line-height:1.6;color:#444;">
           Sveiks!
         </p>
         <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#444;">
-          Tu reģistrēji kontu vietnē <strong>tirgus.izipizi.lv</strong> — Latvijas ražotāju tirgus vietā.
-          Lai pabeigtu reģistrāciju un sāktu iepirkties tieši no vietējiem zemniekiem un mājražotājiem,
-          apstiprini savu e-pasta adresi:
+          Tu pieteicies kā <strong>ražotājs</strong> vietnē <strong>tirgus.izipizi.lv</strong>.
+          Apstiprini savu e-pasta adresi, lai pabeigtu reģistrāciju un sāktu izvietot savus produktus
+          Latvijas pakomātu tīklā:
         </p>
       </td>
     </tr>
@@ -36,6 +44,64 @@
         </a>
       </td>
     </tr>
+    <tr>
+      <td style="padding:0 28px 8px;">
+        <p style="margin:0 0 12px 0;font-size:13px;line-height:1.6;color:#666;font-weight:600;">
+          Pēc apstiprināšanas:
+        </p>
+        <ul style="margin:0 0 20px 0;padding:0 0 0 20px;font-size:13px;line-height:1.8;color:#555;">
+          <li>Aizpildi saimniecības profilu (nosaukums, apraksts, foto)</li>
+          <li>Norādi nodošanas vietu (pakomāts vai kurjera adrese)</li>
+          <li>Pievieno juridisko info (PVN, IBAN — vajag rēķiniem)</li>
+          <li>Gaidi mūsu apstiprinājumu — līdz 24 stundām</li>
+        </ul>
+      </td>
+    </tr>
+    {{ else }}
+    <!-- ============================================ -->
+    <!-- BUYER (PIRCĒJS) variant — default            -->
+    <!-- ============================================ -->
+    <tr>
+      <td style="padding:32px 28px 8px;">
+        <span style="display:inline-block;background:#e7faf0;color:#0e7a4a;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">
+          Pircēja konts
+        </span>
+        <h1 style="margin:12px 0 12px 0;font-size:22px;font-weight:800;color:#192635;line-height:1.3;">
+          Laipni lūgti tirgū!
+        </h1>
+        <p style="margin:0 0 8px 0;font-size:15px;line-height:1.6;color:#444;">
+          Sveiks!
+        </p>
+        <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#444;">
+          Tu reģistrēji pircēja kontu vietnē <strong>tirgus.izipizi.lv</strong> — Latvijas ražotāju
+          tirgus vietā. Apstiprini savu e-pasta adresi un sāc iepirkties tieši no vietējiem zemniekiem
+          un mājražotājiem:
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:8px 28px 24px;">
+        <a href="{{ .ConfirmationURL }}"
+           style="display:inline-block;background:#192635;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;letter-spacing:-0.01em;">
+          Apstiprināt e-pastu
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 28px 8px;">
+        <p style="margin:0 0 12px 0;font-size:13px;line-height:1.6;color:#666;font-weight:600;">
+          Reģistrētiem pircējiem:
+        </p>
+        <ul style="margin:0 0 20px 0;padding:0 0 0 20px;font-size:13px;line-height:1.8;color:#555;">
+          <li>Bonusi un īpaši piedāvājumi par pasūtījumiem</li>
+          <li>Iespēja sekot iemīļotiem ražotājiem un saņemt paziņojumus</li>
+          <li>Saglabātas piegādes adreses — ātrāka kase</li>
+          <li>Pasūtījumu vēsture vienuviet</li>
+        </ul>
+      </td>
+    </tr>
+    {{ end }}
+
     <tr>
       <td style="padding:0 28px 24px;">
         <p style="margin:0 0 12px 0;font-size:13px;line-height:1.6;color:#666;">

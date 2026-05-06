@@ -61,7 +61,7 @@ export default function SellPage() {
           visā Latvijā — bez tirgus telts un bez gaidīšanas.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link href="/register?role=seller" className="btn-primary">
+          <Link href="/register/razotajs" className="btn-primary">
             Pieteikties kā pārdevējs
             <ArrowRight size={16} className="ml-2" />
           </Link>
@@ -103,7 +103,7 @@ export default function SellPage() {
       <div className="mt-12 rounded-2xl bg-[#192635] px-8 py-10 text-center text-white">
         <h2 className="text-xl font-bold">Gatavs sākt?</h2>
         <p className="mt-2 text-gray-300">Reģistrācija ir bezmaksas. Komisija tikai no pārdošanas.</p>
-        <Link href="/register?role=seller" className="btn-primary mt-5 bg-white text-brand-700 hover:bg-brand-50">
+        <Link href="/register/razotajs" className="btn-primary mt-5 bg-white text-brand-700 hover:bg-brand-50">
           Pieteikties tagad <ArrowRight size={16} className="ml-2" />
         </Link>
         <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-300">

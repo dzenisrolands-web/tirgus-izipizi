@@ -7,7 +7,7 @@ Latviešu valodā ar tirgus.izipizi.lv branding (`#192635` header, `#53F3A4` akc
 
 | Šablons | Kad sūta | Subject (kopēt Supabase paneļā) |
 |---|---|---|
-| `confirm-signup.html` | Lietotājs reģistrējas | `Apstiprini reģistrāciju — tirgus.izipizi.lv` |
+| `confirm-signup.html` | Lietotājs reģistrējas (role-aware: pircējs/ražotājs) | `Apstiprini reģistrāciju — tirgus.izipizi.lv` |
 | `magic-link.html` | Lietotājs lūdz magic-link ielogošanos | `Tava ielogošanās saite — tirgus.izipizi.lv` |
 | `reset-password.html` | Lietotājs lūdz paroles atjaunošanu | `Paroles atjaunošana — tirgus.izipizi.lv` |
 | `change-email.html` | Lietotājs maina e-pastu profilā | `Apstiprini e-pasta maiņu — tirgus.izipizi.lv` |
@@ -52,8 +52,15 @@ Spied **Save**. Pēc saglabāšanas Supabase nosūtīs testa e-pastu uz tavu adm
 - `{{ .ConfirmationURL }}` — pilna saite ar token (galvenais)
 - `{{ .Email }}` — lietotāja pašreizējā e-pasta adrese (tikai change-email)
 - `{{ .NewEmail }}` — jaunā e-pasta adrese (tikai change-email)
+- `{{ .Data.role }}` — lietotāja loma no signup metadata (`buyer` vai `seller`)
 
 Nemaini sintaksi `{{ .Variable }}` — tā ir Supabase rezervēta.
+
+### Role-aware šabloni
+
+`confirm-signup.html` ir role-aware: izmanto `{{ if eq .Data.role "seller" }}...{{ else }}...{{ end }}`,
+lai pircējam un ražotājam parādītu atšķirīgu tekstu un uzdevumu sarakstu pēc apstiprināšanas.
+Tas darbojas, jo `/register/pircejs` un `/register/razotajs` formās role tiek nodota signup metadata laukā.
 
 ## Pārbaude
 
