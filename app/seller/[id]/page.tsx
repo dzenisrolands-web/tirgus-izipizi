@@ -10,7 +10,6 @@ import { sellers, listings } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
-import { FollowSellerButton } from "@/components/follow-seller-button";
 import { hasValidImage } from "@/lib/utils";
 
 export const dynamicParams = true;
@@ -122,7 +121,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
-            <FollowSellerButton sellerId={id} sellerName={seller.name} />
+            {/* Follow / push subscribe button paslēpts līdz hot drops feature publicē — saglabāts components/follow-seller-button.tsx */}
             {meta?.website && <a href={meta.website} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-gray-400 hover:text-gray-900"><Globe size={16} /></a>}
             {meta?.facebook && <a href={meta.facebook} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-blue-500 hover:text-blue-600"><Facebook size={16} /></a>}
             {meta?.instagram && <a href={meta.instagram} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-pink-500 hover:text-pink-600"><Instagram size={16} /></a>}

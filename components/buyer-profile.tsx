@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ShoppingBag, Heart, Gift, Settings, LogOut, ChevronRight,
+  ShoppingBag, Gift, Settings, LogOut, ChevronRight,
   Loader2, Package, MapPin, Bell,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -12,14 +12,13 @@ import { supabase } from "@/lib/supabase";
 type Stats = {
   orderCount: number;
   pendingCount: number;
-  followingCount: number;
 };
 
 export function BuyerProfile() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0 });
+  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,17 +48,14 @@ export function BuyerProfile() {
       const [
         { count: orderCount },
         { count: pendingCount },
-        { count: followingCount },
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("buyer_email", userEmail),
         supabase.from("orders").select("*", { count: "exact", head: true })
           .eq("buyer_email", userEmail).in("status", ["pending", "paid", "processing", "shipped"]),
-        supabase.from("seller_followers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
       ]);
       setStats({
         orderCount: orderCount ?? 0,
         pendingCount: pendingCount ?? 0,
-        followingCount: followingCount ?? 0,
       });
       setLoading(false);
     }
@@ -100,7 +96,7 @@ export function BuyerProfile() {
           </div>
 
           {/* Stats */}
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-2 gap-3">
             <Stat
               icon={<Package size={16} />}
               value={stats.orderCount}
@@ -112,12 +108,6 @@ export function BuyerProfile() {
               value={stats.pendingCount}
               label="Aktīvi"
               tone="amber"
-            />
-            <Stat
-              icon={<Heart size={16} />}
-              value={stats.followingCount}
-              label="Sekoju"
-              tone="pink"
             />
           </div>
         </div>
@@ -132,11 +122,10 @@ export function BuyerProfile() {
             badge={stats.pendingCount > 0 ? stats.pendingCount : undefined}
           />
           <NavCard
-            href="/razotaji"
-            icon={<Heart size={18} className="text-pink-500" />}
-            title="Sekoju ražotājiem"
-            desc="Saņem paziņojumus par jauniem produktiem"
-            badge={stats.followingCount > 0 ? stats.followingCount : undefined}
+            href="/cart"
+            icon={<ShoppingBag size={18} className="text-amber-600" />}
+            title="Mans grozs"
+            desc="Pabeidz pirkumu vai pārbaudi saturu"
           />
           <NavCard
             href="#"
@@ -146,10 +135,10 @@ export function BuyerProfile() {
             disabled
           />
           <NavCard
-            href="/cart"
-            icon={<ShoppingBag size={18} className="text-amber-600" />}
-            title="Mans grozs"
-            desc="Pabeidz pirkumu vai pārbaudi saturu"
+            href="/catalog"
+            icon={<Package size={18} className="text-green-600" />}
+            title="Atrast produktus"
+            desc="Pārlūko visus Latvijas ražotāju produktus"
           />
         </div>
 
@@ -210,12 +199,11 @@ function Stat({
   icon: React.ReactNode;
   value: number;
   label: string;
-  tone: "blue" | "amber" | "pink";
+  tone: "blue" | "amber";
 }) {
   const palette = {
     blue: "bg-blue-50 text-blue-700",
     amber: "bg-amber-50 text-amber-700",
-    pink: "bg-pink-50 text-pink-700",
   }[tone];
   return (
     <div className="rounded-2xl bg-gray-50 p-3 text-center">
