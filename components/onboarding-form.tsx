@@ -6,6 +6,7 @@ import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Vide
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
+import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
 
 const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Nodošana", "Juridiskā info"];
 const SELF_BILLING_VERSION = "1.0";
@@ -360,12 +361,11 @@ export function OnboardingForm() {
               <p className="text-xs text-gray-500 mb-2">
                 Ja kurjers brauc pie tevis paņemt produktus, ievadi adresi. Vari aizpildīt arī papildus pakomātam.
               </p>
-              <textarea
+              <LvAddressAutocomplete
                 value={form.courier_pickup_address}
-                onChange={(e) => set("courier_pickup_address", e.target.value)}
-                placeholder="Piem., Brīvības iela 100, Rīga, LV-1011"
-                rows={2}
-                className="input w-full"
+                onChange={(v) => set("courier_pickup_address", v)}
+                onSelect={(parsed) => set("courier_pickup_address", parsed.fullText)}
+                placeholder="Sāc rakstīt adresi (piem., Brīvības 100, Rīga)"
               />
             </div>
           </div>

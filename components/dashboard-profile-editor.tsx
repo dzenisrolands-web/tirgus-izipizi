@@ -15,6 +15,7 @@ import {
   validateLegal,
   type LegalData,
 } from "@/components/seller-legal-section";
+import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
 
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
@@ -416,12 +417,11 @@ export function DashboardProfileEditor() {
                   <p className="text-xs text-gray-500 mb-3">
                     Ja vēlies, lai kurjers paņem produktus tieši no tevis. Ja atstāj tukšu, kurjers paņems no tava izvēlētā pakomāta vai juridiskās adreses.
                   </p>
-                  <textarea
+                  <LvAddressAutocomplete
                     value={profile.courier_pickup_address}
-                    onChange={(e) => set("courier_pickup_address", e.target.value)}
-                    placeholder="Piem., &quot;Brīvības iela 100, Rīga, LV-1011&quot; vai &quot;Sazināties iepriekš par precīzu adresi&quot;"
-                    rows={2}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                    onChange={(v) => set("courier_pickup_address", v)}
+                    onSelect={(parsed) => set("courier_pickup_address", parsed.fullText)}
+                    placeholder="Sāc rakstīt adresi (piem., Brīvības 100, Rīga)"
                   />
                 </div>
               </div>
