@@ -18,7 +18,7 @@ type Stats = {
 export function BuyerProfile() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +30,18 @@ export function BuyerProfile() {
         return;
       }
       setEmail(user.email ?? "");
-      setName(user.user_metadata?.name ?? user.email?.split("@")[0] ?? "");
+      // Show first name only, in greeting. Order of preference:
+      //   1. user_metadata.first_name (set by our buyer signup form)
+      //   2. user_metadata.full_name (set by Google OAuth) → first token
+      //   3. user_metadata.name → first token
+      // No email fallback — "dzenis.rolands" greeting feels robotic.
+      const meta = user.user_metadata ?? {};
+      const candidate =
+        (typeof meta.first_name === "string" && meta.first_name) ||
+        (typeof meta.full_name === "string" && meta.full_name.split(" ")[0]) ||
+        (typeof meta.name === "string" && meta.name.split(" ")[0]) ||
+        null;
+      setFirstName(candidate ? candidate.trim() : null);
 
       // Pull buyer's order count by their email (buyer-side queries by email,
       // not by user_id, since guest checkouts use email only).
@@ -75,14 +86,14 @@ export function BuyerProfile() {
         <div className="rounded-3xl bg-white p-7 shadow-sm ring-1 ring-brand-100">
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 text-2xl font-extrabold">
-              {name.charAt(0).toUpperCase()}
+              {(firstName?.charAt(0) ?? email.charAt(0) ?? "?").toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">
                 Pircēja konts
               </p>
               <h1 className="mt-0.5 truncate text-xl font-extrabold text-gray-900">
-                Sveiks, {name}!
+                {firstName ? `Sveiks, ${firstName}!` : "Sveiks!"}
               </h1>
               <p className="truncate text-xs text-gray-500">{email}</p>
             </div>

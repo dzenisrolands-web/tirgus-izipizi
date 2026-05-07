@@ -6,6 +6,7 @@ import { Loader2, Store, ArrowLeft, Truck, Percent, Shield } from "lucide-react"
 import { supabase } from "@/lib/supabase";
 
 export function SellerSignupForm() {
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,11 +33,15 @@ export function SellerSignupForm() {
     }
     setLoading(true);
     try {
+      const trimmedName = firstName.trim();
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { role: "seller" },
+          data: {
+            role: "seller",
+            ...(trimmedName ? { first_name: trimmedName } : {}),
+          },
           emailRedirectTo: `${location.origin}/auth/callback?role=seller&next=/dashboard/onboarding`,
         },
       });
@@ -118,11 +123,21 @@ export function SellerSignupForm() {
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
             )}
             <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="input w-full"
+              placeholder="Vārds (kontaktpersona)"
+              autoComplete="given-name"
+              required
+            />
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input w-full"
               placeholder="E-pasts"
+              autoComplete="email"
               required
             />
             <input
@@ -131,6 +146,7 @@ export function SellerSignupForm() {
               onChange={(e) => setPassword(e.target.value)}
               className="input w-full"
               placeholder="Parole (min. 8 rakstzīmes)"
+              autoComplete="new-password"
               required
             />
             <button

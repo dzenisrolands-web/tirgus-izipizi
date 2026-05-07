@@ -6,6 +6,7 @@ import { Loader2, ShoppingBag, ArrowLeft, Gift, MapPin, Heart } from "lucide-rea
 import { supabase } from "@/lib/supabase";
 
 export function BuyerSignupForm() {
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,11 +33,15 @@ export function BuyerSignupForm() {
     }
     setLoading(true);
     try {
+      const trimmedName = firstName.trim();
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { role: "buyer" },
+          data: {
+            role: "buyer",
+            ...(trimmedName ? { first_name: trimmedName } : {}),
+          },
           emailRedirectTo: `${location.origin}/auth/callback?role=buyer&next=/`,
         },
       });
@@ -118,11 +123,21 @@ export function BuyerSignupForm() {
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
             )}
             <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="input w-full"
+              placeholder="Vārds"
+              autoComplete="given-name"
+              required
+            />
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input w-full"
               placeholder="E-pasts"
+              autoComplete="email"
               required
             />
             <input
@@ -131,6 +146,7 @@ export function BuyerSignupForm() {
               onChange={(e) => setPassword(e.target.value)}
               className="input w-full"
               placeholder="Parole (min. 8 rakstzīmes)"
+              autoComplete="new-password"
               required
             />
             <button
