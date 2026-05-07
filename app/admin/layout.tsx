@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
-  Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3,
+  Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3, UserCog,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/admin/nedelas-piedavajums",  label: "Nedēļas piedāvājums", icon: Star },
   { href: "/admin/pasutijumi",           label: "Pasūtījumi",          icon: ShoppingBag },
   { href: "/admin/pirceji",              label: "Pircēji",             icon: UserCheck },
+  { href: "/admin/komanda",              label: "Komanda",             icon: UserCog },
 ];
 
 function SidebarContent({

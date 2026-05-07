@@ -10,13 +10,28 @@ import { AISearch } from "./ai-search";
 export function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const { count } = useCart();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setAuthed(!!s));
+    async function loadRole(userId: string) {
+      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
+      setRole(data?.role ?? "buyer");
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      setAuthed(!!data.session);
+      if (data.session?.user) loadRole(data.session.user.id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+      setAuthed(!!s);
+      if (s?.user) loadRole(s.user.id); else setRole(null);
+    });
     return () => subscription.unsubscribe();
   }, []);
+
+  const accountHref = role === "super_admin" ? "/admin"
+    : role === "seller" ? "/dashboard"
+    : "/profils";
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
@@ -70,7 +85,7 @@ export function Nav() {
               )}
             </Link>
             {authed ? (
-              <Link href="/dashboard" className="btn-outline text-sm">
+              <Link href={accountHref} className="btn-outline text-sm">
                 Konts
               </Link>
             ) : (
@@ -137,7 +152,7 @@ export function Nav() {
               Piegāde
             </Link>
             {authed ? (
-              <Link href="/dashboard" className="mt-2 btn-outline text-center text-sm"
+              <Link href={accountHref} className="mt-2 btn-outline text-center text-sm"
                 onClick={() => setMobileOpen(false)}>
                 Konts
               </Link>
