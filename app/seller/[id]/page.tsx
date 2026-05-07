@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Star, CheckCircle, MapPin, Package,
-  Globe, Youtube, Instagram, Facebook,
   Calendar, Award, Quote,
 } from "lucide-react";
 import { sellers, listings } from "@/lib/mock-data";
@@ -120,13 +119,12 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
-            {/* Follow / push subscribe button paslēpts līdz hot drops feature publicē — saglabāts components/follow-seller-button.tsx */}
-            {meta?.website && <a href={meta.website} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-gray-400 hover:text-gray-900"><Globe size={16} /></a>}
-            {meta?.facebook && <a href={meta.facebook} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-blue-500 hover:text-blue-600"><Facebook size={16} /></a>}
-            {meta?.instagram && <a href={meta.instagram} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-pink-500 hover:text-pink-600"><Instagram size={16} /></a>}
-            {meta?.youtubeChannel && <a href={meta.youtubeChannel} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-red-500 hover:text-red-600"><Youtube size={16} /></a>}
-          </div>
+          {/*
+            Sociālo tīklu ikonas un follow poga noņemtas no klientiem redzamā
+            profila — Dzenis 2026-05-08: nevedam pircēja uzmanību prom no
+            tirgus. Onboardingā joprojām vācam social handles, lai vēlāk
+            tos varētu izmantot mārketinga modulim.
+          */}
 
           <div className="grid gap-10 lg:grid-cols-5">
             <div className="space-y-8 lg:col-span-2">

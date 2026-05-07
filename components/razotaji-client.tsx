@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Star, MapPin, CheckCircle, Package, Globe, Facebook, Instagram, Youtube } from "lucide-react";
+import { Search, Star, MapPin, CheckCircle, Package } from "lucide-react";
 import { type Seller, type Listing } from "@/lib/mock-data";
 import { type SellerMeta } from "@/lib/sellers-meta";
 import type { DbSellerProfile } from "@/lib/db-listings";
@@ -123,15 +123,6 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
             {seller.meta.shortDesc || seller.meta.description}
           </Link>
         )}
-
-        <div className="mt-2 flex items-center gap-2">
-          {seller.meta.website && <a href={seller.meta.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-700 transition"><Globe size={13} /></a>}
-          {seller.meta.facebook && <a href={seller.meta.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition"><Facebook size={13} /></a>}
-          {seller.meta.instagram && <a href={seller.meta.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition"><Instagram size={13} /></a>}
-          {(seller.meta.youtubeChannel || seller.meta.youtubeVideoId) && (
-            <a href={seller.meta.youtubeChannel || `https://youtube.com/watch?v=${seller.meta.youtubeVideoId}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-red-600 transition"><Youtube size={13} /></a>
-          )}
-        </div>
 
         <div className="mt-3 flex flex-wrap gap-1">
           {seller.categories.slice(0, 4).map((cat) => (
