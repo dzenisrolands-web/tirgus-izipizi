@@ -77,34 +77,31 @@ export function RazotajiClient({ dbSellers = [] }: { dbSellers?: DbSellerProfile
 }
 
 function SellerCard({ seller }: { seller: EnrichedSeller }) {
+  const profileHref = `/seller/${seller.id}`;
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md hover:border-brand-200">
-      {/* Card-wide link covers everything except social icons (which sit above with relative z-10) */}
-      <Link
-        href={`/seller/${seller.id}`}
-        aria-label={`Skatīt ${seller.name} profilu`}
-        className="absolute inset-0 z-0"
-      />
-
-      <div className="relative h-32 w-full overflow-hidden bg-gray-100">
-        {seller.meta.cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={seller.meta.cover} alt={seller.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-brand-950 to-brand-800" />
-        )}
-        <div className="absolute bottom-0 left-4 translate-y-1/2">
-          <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-white bg-white shadow-md">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={seller.avatar} alt={seller.name} className="h-full w-full object-contain p-1" />
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:shadow-md hover:border-brand-200">
+      {/* Hero is its own Link → clicking image/avatar/name navigates to profile */}
+      <Link href={profileHref} aria-label={`Skatīt ${seller.name} profilu`} className="block">
+        <div className="relative h-32 w-full overflow-hidden bg-gray-100">
+          {seller.meta.cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={seller.meta.cover} alt={seller.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-brand-950 to-brand-800" />
+          )}
+          <div className="absolute bottom-0 left-4 translate-y-1/2">
+            <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-white bg-white shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={seller.avatar} alt={seller.name} className="h-full w-full object-contain p-1" />
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pb-2 pt-6 px-4">
+            <p className="text-sm font-bold text-white drop-shadow ml-[4.5rem] leading-tight line-clamp-1">{seller.name}</p>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pb-2 pt-6 px-4">
-          <p className="text-sm font-bold text-white drop-shadow ml-[4.5rem] leading-tight line-clamp-1">{seller.name}</p>
-        </div>
-      </div>
+      </Link>
 
-      <div className="relative flex flex-1 flex-col p-4 pt-10">
+      <div className="flex flex-1 flex-col p-4 pt-10">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             {seller.verified && (
@@ -122,13 +119,12 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
         </div>
 
         {(seller.meta.shortDesc || seller.meta.description) && (
-          <p className="mt-3 text-xs text-gray-500 line-clamp-2 leading-relaxed">
+          <Link href={profileHref} className="mt-3 block text-xs text-gray-500 line-clamp-2 leading-relaxed hover:text-gray-700">
             {seller.meta.shortDesc || seller.meta.description}
-          </p>
+          </Link>
         )}
 
-        {/* Social icons need higher z-index to be clickable above the cover link */}
-        <div className="relative z-10 mt-2 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-2">
           {seller.meta.website && <a href={seller.meta.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-700 transition"><Globe size={13} /></a>}
           {seller.meta.facebook && <a href={seller.meta.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition"><Facebook size={13} /></a>}
           {seller.meta.instagram && <a href={seller.meta.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition"><Instagram size={13} /></a>}
@@ -146,7 +142,7 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
 
         <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-3">
           <span className="flex items-center gap-1 text-xs text-gray-400"><Package size={12} />{seller.listings.length} produkti</span>
-          <span className="rounded-full bg-brand-700 px-4 py-1.5 text-xs font-semibold text-white group-hover:bg-brand-800 transition">Skatīt profilu →</span>
+          <Link href={profileHref} className="rounded-full bg-brand-700 px-4 py-1.5 text-xs font-semibold text-white group-hover:bg-brand-800 transition">Skatīt profilu →</Link>
         </div>
       </div>
     </div>
