@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Star, CheckCircle, MapPin, Package,
+  CheckCircle, MapPin, Package,
   Calendar, Award, Quote,
 } from "lucide-react";
 import { sellers, listings } from "@/lib/mock-data";
@@ -112,7 +112,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
                   <span className="flex items-center gap-1"><MapPin size={13} /> {seller.location}</span>
                   <span className="flex items-center gap-1"><Package size={13} /> {sellerListings.length} produkti</span>
-                  <span className="flex items-center gap-1"><Star size={13} fill="currentColor" className="text-amber-400" /> {seller.rating} ({seller.reviewCount})</span>
+                  {/* Reitings + atsauksmju skaits paslēpts pirms launch — atgriezts, kad būs atsauksmju lapa */}
                 </div>
               </div>
             </div>

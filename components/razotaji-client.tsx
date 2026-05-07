@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, Star, MapPin, CheckCircle, Package } from "lucide-react";
+import { Search, MapPin, CheckCircle, Package } from "lucide-react";
 import { type Seller, type Listing } from "@/lib/mock-data";
 import { type SellerMeta } from "@/lib/sellers-meta";
 import type { DbSellerProfile } from "@/lib/db-listings";
@@ -111,11 +111,7 @@ function SellerCard({ seller }: { seller: EnrichedSeller }) {
             )}
             <span className="flex items-center gap-0.5 text-xs text-gray-500"><MapPin size={11} />{seller.location}</span>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Star size={11} fill="currentColor" className="text-amber-400" />
-            <span className="text-xs text-amber-600 font-semibold">{seller.rating}</span>
-            <span className="text-xs text-gray-400">({seller.reviewCount})</span>
-          </div>
+          {/* Reitings + atsauksmju skaits paslēpts pirms launch — atgriezts, kad būs atsauksmju lapa */}
         </div>
 
         {(seller.meta.shortDesc || seller.meta.description) && (
