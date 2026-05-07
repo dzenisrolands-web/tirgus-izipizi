@@ -9,6 +9,7 @@ import { sellers, listings } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
+import { FollowSellerButton } from "@/components/follow-seller-button";
 import { hasValidImage } from "@/lib/utils";
 
 export const dynamicParams = true;
@@ -120,11 +121,12 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           {/*
-            Sociālo tīklu ikonas un follow poga noņemtas no klientiem redzamā
-            profila — Dzenis 2026-05-08: nevedam pircēja uzmanību prom no
-            tirgus. Onboardingā joprojām vācam social handles, lai vēlāk
-            tos varētu izmantot mārketinga modulim.
+            Sociālo tīklu ikonas paslēptas pirms launch — onboardingā lauiem
+            joprojām vācam (skat. project_marketing_module.md atmiņā).
           */}
+          <div className="mb-8 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
+            <FollowSellerButton sellerId={id} sellerName={seller.name} />
+          </div>
 
           <div className="grid gap-10 lg:grid-cols-5">
             <div className="space-y-8 lg:col-span-2">

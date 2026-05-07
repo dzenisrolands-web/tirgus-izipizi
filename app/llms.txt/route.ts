@@ -58,14 +58,13 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 - Homepage: https://tirgus.izipizi.lv/
 - Catalog: https://tirgus.izipizi.lv/catalog
 - Producers: https://tirgus.izipizi.lv/razotaji
-- Recipes: https://tirgus.izipizi.lv/receptes
 - How it works: https://tirgus.izipizi.lv/how-it-works
 - Delivery & pricing: https://tirgus.izipizi.lv/piegade
 - Sell with us: https://tirgus.izipizi.lv/sell
 
 ## Optional: structured data
 
-Each product page (https://tirgus.izipizi.lv/listing/{id}) carries Product JSON-LD with offer, price, brand, availability. Each producer page (/seller/{id}) carries FoodEstablishment JSON-LD with aggregateRating. Recipe pages (/receptes/{slug}) carry Recipe JSON-LD with ingredients, instructions, nutrition.
+Each product page (https://tirgus.izipizi.lv/listing/{id}) carries Product JSON-LD with offer, price, brand, availability. Each producer page (/seller/{id}) carries FoodEstablishment JSON-LD with aggregateRating.
 
 ## Contact
 

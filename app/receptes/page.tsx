@@ -10,6 +10,9 @@ export const metadata = {
   description:
     "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi pakomātu.",
   alternates: { canonical: "/receptes" },
+  // Pirms launch saturs vēl nav sakārtots → izņemts no nav/footer/sitemap
+  // un noindexēts. Atjaunot, kad teksti, bildes un produktu saites būs pareizi.
+  robots: { index: false, follow: false },
   openGraph: {
     title: "IziPizi RECEPTE — tirgus.izipizi.lv",
     description: "Receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas.",

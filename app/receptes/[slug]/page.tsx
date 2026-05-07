@@ -22,6 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     alternates: { canonical: `/receptes/${slug}` },
+    // Receptes paslēptas pirms launch — saturs vēl jāsakārto
+    robots: { index: false, follow: false },
     openGraph: {
       title,
       description,

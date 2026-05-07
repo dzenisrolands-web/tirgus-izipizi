@@ -11,7 +11,6 @@ import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
 import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
 import { HeroProductRotator } from "@/components/hero-product-rotator";
-import { recipes } from "@/lib/recipes-data";
 import {
   fetchActiveListings,
   fetchApprovedSellers,
@@ -591,40 +590,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── RECIPES ──────────────────────────────────────────── */}
-      <section className="bg-gray-50 px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-7 flex items-end justify-between">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-brand-600">Iedvesma virtuvē</span>
-              <h2 className="mt-1 text-2xl font-extrabold text-gray-900">IziPizi RECEPTE</h2>
-            </div>
-            <Link href="/receptes"
-              className="hidden items-center gap-1 text-sm font-medium text-brand-600 hover:underline sm:flex">
-              Visas receptes <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {recipes.slice(0, 3).map((r) => (
-              <Link key={r.slug} href={`/receptes/${r.slug}`}
-                className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition">
-                <div className="relative h-44 overflow-hidden bg-gray-100">
-                  <Image src={r.image} alt={r.title} fill
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, 33vw" />
-                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-gray-700 backdrop-blur-sm">
-                    {r.category}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-gray-900 group-hover:text-brand-600 transition">{r.title}</h3>
-                  <p className="mt-1 line-clamp-2 text-xs text-gray-500">{r.shortDesc}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── RECIPES paslēptas pirms launch — saturs jāsakārto (teksti, bildes, darbības)
+            skat. project_recipes_cleanup.md atmiņā ─────────── */}
 
       {/* ── SELLER CTA ───────────────────────────────────────── */}
       <section className="px-4 py-14 sm:px-6 lg:px-8">

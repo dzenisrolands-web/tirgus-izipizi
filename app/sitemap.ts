@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
-import { recipes } from "@/lib/recipes-data";
 
 const BASE = "https://tirgus.izipizi.lv";
 
@@ -14,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/catalog`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     // { url: `${BASE}/keriens`, lastModified: now, changeFrequency: "hourly", priority: 0.9 }, // Sludinājumu dēlis paslēpts līdz launch
     { url: `${BASE}/razotaji`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${BASE}/receptes`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    // /receptes paslēpts pirms launch — saturs jāsakārto, skat. project_recipes_cleanup.md
     { url: `${BASE}/piegade`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/par-mums`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
@@ -33,17 +32,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (url && key) {
     try {
       const supabase = createClient(url, key);
-      const [listingsRes, sellersRes, recipePages] = await Promise.all([
+      const [listingsRes, sellersRes] = await Promise.all([
         supabase.from("listings").select("id, updated_at").eq("status", "active"),
         supabase.from("sellers").select("id, updated_at").eq("status", "approved"),
-        Promise.resolve(
-          recipes.map((r) => ({
-            url: `${BASE}/receptes/${r.slug}`,
-            lastModified: now,
-            changeFrequency: "monthly" as const,
-            priority: 0.6,
-          })),
-        ),
       ]);
 
       const listingPages: MetadataRoute.Sitemap = (listingsRes.data ?? []).map((l) => ({
@@ -60,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
       }));
 
-      dbPages = [...listingPages, ...sellerPages, ...recipePages];
+      dbPages = [...listingPages, ...sellerPages];
     } catch (err) {
       console.error("[sitemap] DB query failed, falling back to static only:", err);
     }

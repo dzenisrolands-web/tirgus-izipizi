@@ -200,7 +200,7 @@ export default function RootLayout({
                 <ul className="mt-3 space-y-2">
                   <li><a href="/catalog" className="text-sm text-gray-600 hover:text-brand-600">Produkti</a></li>
                   <li><a href="/razotaji" className="text-sm text-gray-600 hover:text-brand-600">Ražotāji</a></li>
-                  <li><a href="/receptes" className="text-sm text-gray-600 hover:text-brand-600">IziPizi RECEPTE</a></li>
+                  {/* "IziPizi RECEPTE" paslēpta pirms launch — saturs jāsakārto, skat. project_recipes_cleanup.md atmiņā */}
                   {/* <li><a href="/keriens" className="text-sm font-medium text-orange-600 hover:text-orange-700">🔥 Sludinājumu dēlis</a></li> */}
                   <li><a href="/sell" className="text-sm text-gray-600 hover:text-brand-600">Sākt pārdot</a></li>
                 </ul>
