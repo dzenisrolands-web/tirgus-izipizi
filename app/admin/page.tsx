@@ -164,24 +164,31 @@ export default function AdminPage() {
         <p className="mt-0.5 text-sm text-gray-500">Platformas pārskats un darbības</p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — every card links somewhere meaningful so taps don't dead-end */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { icon: <AlertTriangle size={20} />, label: "Brīdinājumi", value: totalAlerts, color: "text-red-600 bg-red-50", urgent: totalAlerts > 0 },
-          { icon: <Users size={20} />, label: "Ražotāji kopā", value: stats.sellers, color: "text-blue-600 bg-blue-50" },
-          { icon: <Clock size={20} />, label: "Gaida apstiprinājumu", value: stats.pendingSellers, color: "text-amber-600 bg-amber-50", urgent: stats.pendingSellers > 0 },
-          { icon: <Package size={20} />, label: "Produkti kopā", value: stats.listings, color: "text-purple-600 bg-purple-50" },
-          { icon: <TrendingUp size={20} />, label: "Aktīvie produkti", value: stats.activeListings, color: "text-green-600 bg-green-50" },
+          { icon: <AlertTriangle size={20} />, label: "Brīdinājumi", value: totalAlerts, color: "text-red-600 bg-red-50", urgent: totalAlerts > 0, href: "#brīdinājumi" },
+          { icon: <Users size={20} />, label: "Ražotāji kopā", value: stats.sellers, color: "text-blue-600 bg-blue-50", href: "/admin/razotaji" },
+          { icon: <Clock size={20} />, label: "Gaida apstiprinājumu", value: stats.pendingSellers, color: "text-amber-600 bg-amber-50", urgent: stats.pendingSellers > 0, href: "/admin/razotaji?status=pending" },
+          { icon: <Package size={20} />, label: "Produkti kopā", value: stats.listings, color: "text-purple-600 bg-purple-50", href: "/admin/produkti" },
+          { icon: <TrendingUp size={20} />, label: "Aktīvie produkti", value: stats.activeListings, color: "text-green-600 bg-green-50", href: "/admin/produkti?status=active" },
         ].map((s) => (
-          <div key={s.label} className={`rounded-2xl border bg-white p-5 shadow-sm ${s.urgent ? "border-red-200 ring-1 ring-red-200" : "border-gray-100"}`}>
+          <Link
+            key={s.label}
+            href={s.href}
+            className={`group rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${s.urgent ? "border-red-200 ring-1 ring-red-200 hover:border-red-300" : "border-gray-100 hover:border-brand-200"}`}
+          >
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.color}`}>
               {s.icon}
             </div>
             <p className="mt-3 text-2xl font-extrabold text-gray-900">{s.value}</p>
-            <p className="mt-0.5 text-sm text-gray-500">{s.label}</p>
-          </div>
+            <p className="mt-0.5 text-sm text-gray-500 group-hover:text-gray-700">{s.label}</p>
+          </Link>
         ))}
       </div>
+
+      {/* Anchor target for the Brīdinājumi stat card link */}
+      <div id="brīdinājumi" className="scroll-mt-20" />
 
       {/* Auto-paused listings */}
       {pausedListings.length > 0 && (
