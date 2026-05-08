@@ -101,9 +101,9 @@ async function checkRoute(route, opts = {}) {
     return;
   }
 
-  if (opts.expectRedirect && res.url === url) {
-    add(route, "warn", "no-redirect", `Auth route returned ${res.status} but URL didn't change — expected redirect to /login`);
-  }
+  // Auth-walled pages are intentionally client-side (loading shell + JS
+  // redirect). We accept that as long as the shell carries robots noindex —
+  // that check happens after parsing the HTML below.
 
   // Don't parse robots.txt / sitemap.xml / llms.txt as HTML
   const ct = res.headers.get("content-type") ?? "";
@@ -116,8 +116,20 @@ async function checkRoute(route, opts = {}) {
 
   const $ = load(html);
 
+  // Detect noindex / nofollow — auth-walled pages should be marked noindex.
+  // We then suppress h1 / redirect warnings for those pages since they're
+  // intentional client-side shells.
+  const robotsMeta = $('meta[name="robots"]').attr("content")?.toLowerCase() ?? "";
+  const isNoindex = robotsMeta.includes("noindex");
+
+  if (opts.expectRedirect && !isNoindex) {
+    add(route, "warn", "auth-no-noindex", "Auth-walled page rendered without noindex meta — Google might index the loading shell");
+  }
+
   // ── Metadata checks ──
-  const title = $("title").text().trim();
+  // Use `head > title` so we don't accidentally pick up SVG <title> elements
+  // (which cheerio would otherwise concatenate, blowing up the length).
+  const title = $("head > title").first().text().trim();
   if (!title) add(route, "warn", "missing-title", "<title> empty");
   else if (title.length < 10) add(route, "warn", "short-title", `Title too short: "${title}"`);
   else if (title.length > 70) add(route, "info", "long-title", `Title may be truncated by Google (${title.length} chars)`);
@@ -133,10 +145,12 @@ async function checkRoute(route, opts = {}) {
   const ogTitle = $('meta[property="og:title"]').attr("content");
   if (!ogTitle) add(route, "info", "missing-og", "<meta property=og:title> missing");
 
-  // ── H1 check ──
+  // ── H1 check ── (skip noindex pages — they're auth shells, h1 renders client-side)
   const h1Count = $("h1").length;
-  if (h1Count === 0) add(route, "warn", "no-h1", "No <h1> on page");
-  else if (h1Count > 1) add(route, "info", "multiple-h1", `Found ${h1Count} <h1> tags (SEO recommends 1)`);
+  if (!isNoindex) {
+    if (h1Count === 0) add(route, "warn", "no-h1", "No <h1> on page");
+    else if (h1Count > 1) add(route, "info", "multiple-h1", `Found ${h1Count} <h1> tags (SEO recommends 1)`);
+  }
 
   // ── Lang attribute ──
   const lang = $("html").attr("lang");
