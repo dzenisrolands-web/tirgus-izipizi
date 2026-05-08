@@ -154,7 +154,7 @@ export default function RootLayout({
   const dateToday = new Date();
   const todayFullDate = dateToday.getDate() + '-' + (dateToday.getMonth() + 1) + '-' + dateToday.getFullYear();
   script.src = 'https://bank.paysera.com/js/compiled/quality-sign.js?v=' + todayFullDate;
-  script.setAttribute('data-paysera-project-id', 256875);
+  script.setAttribute('data-paysera-project-id', 138034);
   script.setAttribute('data-lang', 'lv');
   script.async = true;
   document.head.appendChild(script);
