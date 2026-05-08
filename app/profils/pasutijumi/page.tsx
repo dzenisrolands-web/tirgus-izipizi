@@ -3,7 +3,7 @@ import { BuyerOrders } from "@/components/buyer-orders";
 
 export const metadata: Metadata = {
   title: "Mani pasūtījumi — tirgus.izipizi.lv",
-  description: "Tavu pasūtījumu vēsture un statusi.",
+  description: "Tavu pasūtījumu vēsture, statusi un piegādes informācija — tirgus.izipizi.lv pircēja konts.",
   robots: { index: false, follow: false },
 };
 

@@ -6,7 +6,7 @@ import { operatorInfo } from "@/lib/operator-info";
 export const metadata: Metadata = {
   title: "Par mums un mūsu misija",
   description:
-    "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika. Jo tuvāk — jo labāk. tirgus.izipizi.lv savieno Latvijas ražotājus ar pircējiem un atbalsta vietīgāku, zaļāku Latviju.",
+    "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika. tirgus.izipizi.lv savieno Latvijas ražotājus ar pircējiem un atbalsta zaļāku Latviju.",
   alternates: { canonical: "/par-mums" },
   openGraph: {
     title: "Par mums un mūsu misija | tirgus.izipizi.lv",

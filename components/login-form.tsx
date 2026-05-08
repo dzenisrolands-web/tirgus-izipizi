@@ -53,10 +53,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-center text-2xl font-extrabold text-gray-900">Pieslēgties</h1>
-
+    <>
         {/* Google */}
         <button onClick={handleGoogle} disabled={googleLoading}
           className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition disabled:opacity-50">
@@ -95,7 +92,6 @@ export function LoginForm() {
           Nav konta?{" "}
           <Link href="/register" className="font-medium text-brand-600 hover:underline">Reģistrēties</Link>
         </p>
-      </div>
-    </div>
+    </>
   );
 }

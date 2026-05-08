@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "qa:crawl": "node scripts/qa-crawl.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "autoprefixer": "^10",
+    "cheerio": "^1.2.0",
     "eslint": "^9",
     "eslint-config-next": "^16.2.4",
     "postcss": "^8",

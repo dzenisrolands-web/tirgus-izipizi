@@ -4,9 +4,9 @@ import { RazotajiClient } from "@/components/razotaji-client";
 import { fetchApprovedSellers } from "@/lib/db-listings";
 
 export const metadata: Metadata = {
-  title: "Ražotāji — Vietējie pārtikas ražotāji | tirgus.izipizi.lv",
+  title: "Ražotāji — vietējie pārtikas ražotāji",
   description:
-    "Iepazīsties ar vietējiem Latvijas pārtikas ražotājiem — bio dārzeņi, savvaļas gaļa, jūras veltes, konditorejas izstrādājumi un daudz kas cits. Pasūti un saņem IziPizi pakomātā.",
+    "Latvijas pārtikas ražotāji vienuviet — bio dārzeņi, gaļa, jūras veltes, konditoreja un mājražotāju produkti. Pasūti un saņem IziPizi pakomātā.",
   keywords: [
     "latvijas ražotāji",
     "vietējā pārtika",
