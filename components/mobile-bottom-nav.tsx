@@ -3,26 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Grid2X2, ShoppingCart, User, Sparkles } from "lucide-react";
+import { Home, Grid2X2, ShoppingCart, User, Search } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { AISearchDialog } from "./ai-search-dialog";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { count } = useCart();
   const [userHref, setUserHref] = useState("/login");
-  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserHref("/dashboard");
     });
   }, []);
-
-  // Close AI dialog on navigation
-  useEffect(() => { setAiOpen(false); }, [pathname]);
 
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) return null;
 
@@ -36,43 +31,32 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <>
-      <AISearchDialog open={aiOpen} onClose={() => setAiOpen(false)} />
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-sm md:hidden">
+      <div className="grid grid-cols-5 items-end pb-1">
+        {leftItems.map(({ href, icon: Icon, label }) => {
+          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <NavItem key={href} href={href} label={label} active={active}>
+              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+            </NavItem>
+          );
+        })}
 
-      {/* Bottom bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-sm md:hidden">
-        <div className="grid grid-cols-5 items-end pb-1">
-          {leftItems.map(({ href, icon: Icon, label }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return (
-              <NavItem key={href} href={href} label={label} active={active}>
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-              </NavItem>
-            );
-          })}
+        {/* Search — center button */}
+        <NavItem href="/catalog" label="Meklēt" active={false}>
+          <Search size={20} strokeWidth={1.8} />
+        </NavItem>
 
-          {/* AI assistant — center hero button */}
-          <button
-            onClick={() => setAiOpen(true)}
-            className="flex flex-col items-center pb-1 active:scale-90 transition-transform"
-            aria-label="AI asistents">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95"
-              style={{ background: "linear-gradient(135deg, #53F3A4, #AD47FF)" }}>
-              <Sparkles size={20} strokeWidth={2.4} className="text-[#192635]" />
-            </div>
-          </button>
-
-          {rightItems.map(({ href, icon: Icon, label, badge }) => {
-            const active = pathname.startsWith(href) && href !== "/login";
-            return (
-              <NavItem key={href} href={href} label={label} active={active} badge={badge}>
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-              </NavItem>
-            );
-          })}
-        </div>
-      </nav>
-    </>
+        {rightItems.map(({ href, icon: Icon, label, badge }) => {
+          const active = pathname.startsWith(href) && href !== "/login";
+          return (
+            <NavItem key={href} href={href} label={label} active={active} badge={badge}>
+              <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+            </NavItem>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

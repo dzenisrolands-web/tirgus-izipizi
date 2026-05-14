@@ -18,14 +18,35 @@ export const metadata = {
   },
 };
 
+/** Strip Latvian diacritics so "burkans" matches "Burkāns", "kipiloks" matches "Ķīploks" etc. */
+function stripDiacritics(s: string): string {
+  return s
+    .replace(/[āĀ]/g, "a")
+    .replace(/[čČ]/g, "c")
+    .replace(/[ēĒ]/g, "e")
+    .replace(/[ģĢ]/g, "g")
+    .replace(/[īĪ]/g, "i")
+    .replace(/[ķĶ]/g, "k")
+    .replace(/[ļĻ]/g, "l")
+    .replace(/[ņŅ]/g, "n")
+    .replace(/[šŠ]/g, "s")
+    .replace(/[ūŪ]/g, "u")
+    .replace(/[žŽ]/g, "z");
+}
+
 function matchesQuery(l: Listing, q: string): boolean {
-  return (
-    l.title.toLowerCase().includes(q) ||
-    l.description.toLowerCase().includes(q) ||
-    l.category.toLowerCase().includes(q) ||
-    l.seller.farmName.toLowerCase().includes(q) ||
-    l.seller.name.toLowerCase().includes(q)
-  );
+  const normalizedQ = stripDiacritics(q);
+  const fields = [
+    l.title,
+    l.description,
+    l.category,
+    l.seller.farmName,
+    l.seller.name,
+  ];
+  // Match each search word independently — "burk sula" matches if both words appear
+  const words = normalizedQ.split(/\s+/).filter(Boolean);
+  const haystack = fields.map(f => stripDiacritics(f.toLowerCase())).join(" ");
+  return words.every(word => haystack.includes(word));
 }
 
 export default async function CatalogPage({
