@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Mail, Phone, ShoppingBag, TrendingUp, Search } from "lucide-react";
+import { Users, Mail, Phone, ShoppingBag, TrendingUp, Search, LogIn, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ export default function AdminPircejIPage() {
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [impersonating, setImpersonating] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -47,6 +48,31 @@ export default function AdminPircejIPage() {
         setLoading(false);
       });
   }, []);
+
+  async function impersonate(email: string) {
+    setImpersonating(email);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        alert(data.error ?? "Neizdevās ģenerēt saiti");
+      }
+    } catch {
+      alert("Tīkla kļūda");
+    }
+    setImpersonating(null);
+  }
 
   const visible = buyers.filter(b =>
     b.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,16 +129,17 @@ export default function AdminPircejIPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_80px_100px_100px] gap-3 border-b border-gray-100 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <div className="hidden sm:grid grid-cols-[1fr_1fr_80px_100px_100px_40px] gap-3 border-b border-gray-100 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
             <span>Pircējs</span>
             <span>Kontakti</span>
             <span className="text-center">Pasūtījumi</span>
             <span className="text-right">Kopā iztērēts</span>
             <span className="text-right">Pēdējais</span>
+            <span></span>
           </div>
           <div className="divide-y divide-gray-50">
             {visible.map(b => (
-              <div key={b.email} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px_100px_100px] items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition">
+              <div key={b.email} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_80px_100px_100px_40px] items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{b.name}</p>
                   <p className="text-xs text-gray-400 sm:hidden">{b.email}</p>
@@ -134,6 +161,20 @@ export default function AdminPircejIPage() {
                 <p className="text-right text-xs text-gray-400">
                   {new Intl.DateTimeFormat("lv-LV", { day: "numeric", month: "short" }).format(new Date(b.lastOrder))}
                 </p>
+                <div className="text-right">
+                  {b.email !== "—" && (
+                    <button
+                      onClick={() => impersonate(b.email)}
+                      disabled={impersonating === b.email}
+                      className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 transition disabled:opacity-50"
+                      title={`Ieiet kā ${b.name}`}
+                    >
+                      {impersonating === b.email
+                        ? <Loader2 size={10} className="animate-spin" />
+                        : <LogIn size={10} />}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

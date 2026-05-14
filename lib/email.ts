@@ -199,6 +199,229 @@ export async function sendOrderConfirmationByOrderId(orderId: string): Promise<S
   });
 }
 
+/**
+ * Notify a seller (by email) about a new paid order.
+ */
+export async function sendSellerNewOrderEmail(p: {
+  sellerEmail: string;
+  sellerName: string;
+  orderNumber: string;
+  buyerName: string;
+  items: OrderItem[];
+  totalCents: number;
+  deliveryType: string;
+  deliveryInfo: Record<string, unknown> | null;
+}): Promise<SendEmailResult> {
+  const total = (p.totalCents / 100).toFixed(2);
+  const deliveryLabel =
+    p.deliveryType === "locker"  ? "Pakomāts" :
+    p.deliveryType === "courier" ? "Kurjers" :
+    p.deliveryType === "express" ? "Ekspres piegāde" :
+    p.deliveryType;
+  const deliveryDetails = formatDeliveryInfo(p.deliveryType, p.deliveryInfo);
+
+  const itemsRows = p.items.map((it) => {
+    const lineTotal = (it.price * it.quantity).toFixed(2);
+    return `<tr>
+      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">${escapeHtml(it.title)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;color:#555;">${it.quantity}${it.unit ? " " + escapeHtml(it.unit) : ""}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums;">${lineTotal}€</td>
+    </tr>`;
+  }).join("");
+
+  const html = `<!doctype html>
+<html lang="lv">
+<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <tr>
+          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
+            tirgus.izipizi.lv
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px;">
+            <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">🛒 Jauns apmaksāts pasūtījums!</h1>
+            <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+              Sveiki, <strong>${escapeHtml(p.sellerName)}</strong>!<br>
+              Pircējs <strong>${escapeHtml(p.buyerName)}</strong> ir apmaksājis pasūtījumu <strong>${escapeHtml(p.orderNumber)}</strong>.
+              Lūdzu apstipriniet un sagatavojiet to nosūtīšanai.
+            </p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">
+              ${itemsRows}
+              <tr>
+                <td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td>
+                <td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td>
+              </tr>
+            </table>
+
+            <div style="background:#f6f7f8;border-radius:12px;padding:16px;margin:16px 0;">
+              <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#888;margin-bottom:6px;">Piegāde</div>
+              <div style="font-weight:600;">${escapeHtml(deliveryLabel)}</div>
+              ${deliveryDetails ? `<div style="margin-top:4px;color:#555;font-size:13px;">${deliveryDetails}</div>` : ""}
+            </div>
+
+            <div style="text-align:center;margin:24px 0 0 0;">
+              <a href="${escapeHtml(siteUrl())}/dashboard/pasutijumi" style="display:inline-block;background:#192635;color:#53F3A4;padding:12px 32px;border-radius:12px;font-weight:700;text-decoration:none;font-size:14px;">Apskatīt pasūtījumus →</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
+            SIA Svaigi · Reģ. nr. 40103915568 · tirgus.izipizi.lv
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  return sendEmail({
+    to: p.sellerEmail,
+    subject: `Jauns pasūtījums ${p.orderNumber} — tirgus.izipizi.lv`,
+    html,
+  });
+}
+
+/**
+ * Send admin copy of every paid order to tirgus@izipizi.lv.
+ */
+export async function sendAdminOrderCopy(o: OrderEmailData): Promise<SendEmailResult> {
+  const total = (o.totalCents / 100).toFixed(2);
+  const deliveryLabel =
+    o.deliveryType === "locker"  ? "Pakomāts" :
+    o.deliveryType === "courier" ? "Kurjers" :
+    o.deliveryType === "express" ? "Ekspres piegāde" :
+    o.deliveryType;
+  const deliveryDetails = formatDeliveryInfo(o.deliveryType, o.deliveryInfo);
+
+  const itemsList = o.items.map((it) =>
+    `${escapeHtml(it.title)} × ${it.quantity} = ${(it.price * it.quantity).toFixed(2)}€`
+  ).join("<br>");
+
+  const html = `<!doctype html>
+<html lang="lv">
+<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <tr>
+          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
+            tirgus.izipizi.lv — Admin
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px;">
+            <h1 style="margin:0 0 8px 0;font-size:18px;font-weight:800;">Jauns pasūtījums ${escapeHtml(o.orderNumber)}</h1>
+            <p style="margin:0 0 12px 0;color:#555;font-size:14px;line-height:1.6;">
+              <strong>Pircējs:</strong> ${escapeHtml(o.buyerName)} (${escapeHtml(o.buyerEmail)})<br>
+              <strong>Piegāde:</strong> ${escapeHtml(deliveryLabel)} ${deliveryDetails ? "— " + deliveryDetails : ""}<br>
+              <strong>Summa:</strong> ${total}€
+            </p>
+            <p style="margin:0;color:#555;font-size:13px;line-height:1.8;">
+              <strong>Preces:</strong><br>${itemsList}
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  return sendEmail({
+    to: "tirgus@izipizi.lv",
+    subject: `[Admin] Jauns pasūtījums ${o.orderNumber} · ${total}€`,
+    html,
+  });
+}
+
+/**
+ * Send all emails for a paid order: buyer confirmation, seller notification, admin copy.
+ * Looks up order + seller data from DB. Used by Paysera webhook.
+ */
+export async function sendAllOrderEmails(orderId: string): Promise<{
+  buyer: SendEmailResult;
+  sellers: SendEmailResult[];
+  admin: SendEmailResult;
+}> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+  );
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("order_number, buyer_name, buyer_email, items, total_cents, delivery_type, delivery_info, seller_ids")
+    .eq("id", orderId)
+    .single<{
+      order_number: string;
+      buyer_name: string | null;
+      buyer_email: string | null;
+      items: OrderItem[] | null;
+      total_cents: number | null;
+      delivery_type: string | null;
+      delivery_info: Record<string, unknown> | null;
+      seller_ids: string[] | null;
+    }>();
+
+  if (!order) {
+    const err: SendEmailResult = { ok: false, error: "order not found" };
+    return { buyer: err, sellers: [], admin: err };
+  }
+
+  const emailData: OrderEmailData = {
+    orderNumber: order.order_number,
+    buyerName: order.buyer_name ?? "Pircējs",
+    buyerEmail: order.buyer_email ?? "",
+    items: order.items ?? [],
+    totalCents: order.total_cents ?? 0,
+    deliveryType: order.delivery_type ?? "locker",
+    deliveryInfo: order.delivery_info,
+  };
+
+  // 1. Buyer confirmation
+  const buyer = order.buyer_email
+    ? await sendOrderConfirmationEmail(emailData)
+    : { ok: false, error: "no buyer_email" } as SendEmailResult;
+
+  // 2. Seller emails
+  const sellerResults: SendEmailResult[] = [];
+  if (order.seller_ids?.length) {
+    const { data: sellers } = await supabase
+      .from("sellers")
+      .select("id, name, email")
+      .in("id", order.seller_ids);
+
+    for (const seller of sellers ?? []) {
+      if (!seller.email) continue;
+      // Filter items for this seller
+      const sellerItems = (order.items ?? []).filter(
+        (it: OrderItem & { seller_id?: string }) => it.seller_id === seller.id
+      );
+      const r = await sendSellerNewOrderEmail({
+        sellerEmail: seller.email,
+        sellerName: seller.name ?? "Ražotāj",
+        orderNumber: order.order_number,
+        buyerName: order.buyer_name ?? "Pircējs",
+        items: sellerItems.length > 0 ? sellerItems : (order.items ?? []),
+        totalCents: order.total_cents ?? 0,
+        deliveryType: order.delivery_type ?? "locker",
+        deliveryInfo: order.delivery_info,
+      });
+      sellerResults.push(r);
+    }
+  }
+
+  // 3. Admin copy
+  const admin = await sendAdminOrderCopy(emailData);
+
+  return { buyer, sellers: sellerResults, admin };
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function siteUrl(): string {

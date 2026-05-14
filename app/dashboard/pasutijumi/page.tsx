@@ -103,6 +103,7 @@ export default function DashboardPasutijumiPage() {
       const { data } = await supabase
         .from("orders").select("*")
         .contains("seller_ids", [seller.id])
+        .neq("payment_status", "awaiting")
         .order("created_at", { ascending: false });
       setOrders(data ?? []);
       setLoading(false);

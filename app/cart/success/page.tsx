@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle, MapPin, Loader2, AlertCircle, Package } from "lucide-react";
 import confetti from "canvas-confetti";
-import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
 
@@ -89,13 +88,12 @@ function CartSuccessContent() {
     let cancelled = false;
 
     async function fetch() {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, order_number, status, payment_status, buyer_name, buyer_email, delivery_info, items, total_cents")
-        .eq("order_number", orderNumber)
-        .single();
+      const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
       if (cancelled) return;
-      if (data) setOrder(data as Order);
+      if (res.ok) {
+        const data = await res.json();
+        setOrder(data as Order);
+      }
       setLoading(false);
     }
 

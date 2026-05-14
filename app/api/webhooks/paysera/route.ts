@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyPayseraCallback, getMode } from "@/lib/paysera";
 import { notifySellersNewOrder } from "@/lib/order-notifications";
-import { sendOrderConfirmationByOrderId } from "@/lib/email";
+import { sendAllOrderEmails } from "@/lib/email";
 
 /**
  * Paysera callback endpoint.
@@ -128,17 +128,21 @@ async function handle(req: Request) {
     }
   }
 
-  // Notify sellers about new paid order (best-effort — don't fail the webhook)
+  // Notify sellers about new paid order via push (best-effort)
   notifySellersNewOrder(order.id).catch((e) =>
     console.error("[paysera] notifySellersNewOrder failed:", e)
   );
 
-  // Email the buyer (best-effort)
-  sendOrderConfirmationByOrderId(order.id)
+  // Email buyer + sellers + admin copy (best-effort)
+  sendAllOrderEmails(order.id)
     .then((r) => {
-      if (!r.ok) console.warn("[paysera] order confirmation email skipped:", r.error);
+      if (!r.buyer.ok) console.warn("[paysera] buyer email skipped:", r.buyer.error);
+      for (const s of r.sellers) {
+        if (!s.ok) console.warn("[paysera] seller email failed:", s.error);
+      }
+      if (!r.admin.ok) console.warn("[paysera] admin email skipped:", r.admin.error);
     })
-    .catch((e) => console.error("[paysera] sendOrderConfirmationByOrderId failed:", e));
+    .catch((e) => console.error("[paysera] sendAllOrderEmails failed:", e));
 
   return new NextResponse("OK", { status: 200 });
 }

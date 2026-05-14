@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X, FileText, AlertTriangle,
   Package, ShoppingBag, ExternalLink, MessageSquare, ChevronDown, ChevronUp, Mail, Loader2,
-  LinkIcon, Send,
+  LinkIcon, Send, LogIn,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -79,6 +79,7 @@ export default function AdminRazotajiPage() {
   const [linkInputs, setLinkInputs] = useState<Record<string, string>>({});
   const [linking, setLinking] = useState<string | null>(null);
   const [linkResult, setLinkResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
 
   async function load() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
@@ -249,6 +250,31 @@ export default function AdminRazotajiPage() {
     setTimeout(() => setLinkResult(null), 6000);
   }
 
+  async function impersonate(email: string, sellerId: string) {
+    setImpersonating(sellerId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        window.open(data.url, "_blank");
+      } else {
+        alert(data.error ?? "Neizdevās ģenerēt saiti");
+      }
+    } catch {
+      alert("Tīkla kļūda");
+    }
+    setImpersonating(null);
+  }
+
   async function toggleHomeLocker(sellerId: string, lockerId: string) {
     const seller = sellers.find(s => s.id === sellerId);
     if (!seller) return;
@@ -389,6 +415,19 @@ export default function AdminRazotajiPage() {
                       <Home size={11} />
                       {homeLockers.length > 0 ? homeLockers.length : <Plus size={10} />}
                     </button>
+                    {seller.email && (
+                      <button
+                        onClick={() => impersonate(seller.email!, seller.id)}
+                        disabled={impersonating === seller.id}
+                        className="flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition disabled:opacity-50"
+                        title={`Ieiet kā ${seller.name}`}
+                      >
+                        {impersonating === seller.id
+                          ? <Loader2 size={11} className="animate-spin" />
+                          : <LogIn size={11} />}
+                        Ieiet kā
+                      </button>
+                    )}
                     {seller.status === "pending" && (
                       <>
                         <button onClick={() => approveSeller(seller.id)}

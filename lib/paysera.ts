@@ -65,7 +65,7 @@ export function buildPayseraRedirectUrl(p: PayseraParams): string {
     country: "LV",
     version: "1.6",
     test: mode === "test" ? "1" : "0",
-    lang: "LIT",
+    lang: "LAT",
     paytext: `Pasūtījums ${p.orderNumber} — tirgus.izipizi.lv`,
     p_email: p.buyerEmail,
     p_firstname: firstName ?? "",

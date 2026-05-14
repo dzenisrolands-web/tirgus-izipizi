@@ -21,6 +21,17 @@ function CallbackHandler() {
         if (!error) { router.replace("/update-password"); return; }
       }
 
+      // OAuth PKCE flow — exchange the code for a session
+      const code = searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error("OAuth code exchange failed:", error.message);
+          router.replace("/login");
+          return;
+        }
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace("/login"); return; }
 
