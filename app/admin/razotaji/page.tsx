@@ -417,19 +417,14 @@ export default function AdminRazotajiPage() {
                       <Home size={11} />
                       {homeLockers.length > 0 ? homeLockers.length : <Plus size={10} />}
                     </button>
-                    {seller.email && (
-                      <button
-                        onClick={() => impersonate(seller.email!, seller.id)}
-                        disabled={impersonating === seller.id}
-                        className="flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition disabled:opacity-50"
-                        title={`Ieiet kā ${seller.name}`}
-                      >
-                        {impersonating === seller.id
-                          ? <Loader2 size={11} className="animate-spin" />
-                          : <LogIn size={11} />}
-                        Ieiet kā
-                      </button>
-                    )}
+                    <Link
+                      href={`/admin/razotajs/${seller.id}`}
+                      className="flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition"
+                      title={`Skatīt ${seller.name} pasūtījumus`}
+                    >
+                      <ShoppingBag size={11} />
+                      Pasūtījumi
+                    </Link>
                     {seller.status === "pending" && (
                       <>
                         <button onClick={() => approveSeller(seller.id)}
