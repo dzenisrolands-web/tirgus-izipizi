@@ -80,6 +80,7 @@ export default function AdminRazotajiPage() {
   const [linking, setLinking] = useState<string | null>(null);
   const [linkResult, setLinkResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonateUrl, setImpersonateUrl] = useState<{ name: string; url: string } | null>(null);
 
   async function load() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
@@ -265,7 +266,8 @@ export default function AdminRazotajiPage() {
       });
       const data = await res.json();
       if (data.ok && data.url) {
-        window.open(data.url, "_blank");
+        const seller = sellers.find(s => s.id === sellerId);
+        setImpersonateUrl({ name: seller?.name ?? email, url: data.url });
       } else {
         alert(data.error ?? "Neizdevās ģenerēt saiti");
       }
@@ -665,6 +667,47 @@ export default function AdminRazotajiPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Impersonate dialog */}
+      {impersonateUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setImpersonateUrl(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                <LogIn size={18} className="text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900">Ieiet kā {impersonateUrl.name}</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Atver šo saiti <strong>incognito / privātajā logā</strong>, lai neizlogotos no admin sesijas.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg bg-gray-50 p-3">
+              <input
+                readOnly
+                value={impersonateUrl.url}
+                className="w-full rounded border border-gray-200 bg-white px-3 py-2 text-xs font-mono text-gray-700 select-all focus:outline-none"
+                onFocus={e => e.target.select()}
+              />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(impersonateUrl.url); }}
+                className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition"
+              >
+                Kopēt saiti
+              </button>
+              <button
+                onClick={() => setImpersonateUrl(null)}
+                className="rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Aizvērt
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
