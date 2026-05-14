@@ -695,7 +695,20 @@ export default function AdminRazotajiPage() {
             </div>
             <div className="mt-4 flex gap-2">
               <button
-                onClick={() => { navigator.clipboard.writeText(impersonateUrl.url); }}
+                onClick={() => {
+                  try {
+                    navigator.clipboard.writeText(impersonateUrl.url);
+                  } catch {
+                    const ta = document.createElement("textarea");
+                    ta.value = impersonateUrl.url;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(ta);
+                  }
+                  const btn = document.activeElement as HTMLButtonElement;
+                  if (btn) { btn.textContent = "✓ Nokopēts!"; setTimeout(() => { btn.textContent = "Kopēt saiti"; }, 2000); }
+                }}
                 className="flex-1 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition"
               >
                 Kopēt saiti

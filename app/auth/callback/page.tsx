@@ -21,6 +21,26 @@ function CallbackHandler() {
         if (!error) { router.replace("/update-password"); return; }
       }
 
+      // Magic link flow (used by admin impersonation & email invites)
+      if (type === "magiclink" && tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+        if (error) {
+          console.error("Magic link verification failed:", error.message);
+          router.replace("/login");
+          return;
+        }
+      }
+
+      // Email invite flow
+      if (type === "invite" && tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
+        if (error) {
+          console.error("Invite verification failed:", error.message);
+          router.replace("/login");
+          return;
+        }
+      }
+
       // OAuth PKCE flow — exchange the code for a session
       const code = searchParams.get("code");
       if (code) {
