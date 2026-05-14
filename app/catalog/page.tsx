@@ -34,6 +34,24 @@ function stripDiacritics(s: string): string {
     .replace(/[žŽ]/g, "z");
 }
 
+/** Score how relevant a listing is to a query. Higher = more relevant.
+ *  Title match = 10 pts per word, category = 5, description/seller = 1 */
+function relevanceScore(l: Listing, q: string): number {
+  const words = stripDiacritics(q).split(/\s+/).filter(Boolean);
+  const title = stripDiacritics(l.title.toLowerCase());
+  const category = stripDiacritics(l.category.toLowerCase());
+  const desc = stripDiacritics(l.description.toLowerCase());
+  let score = 0;
+  for (const w of words) {
+    if (title.includes(w)) score += 10;
+    if (category.includes(w)) score += 5;
+    if (desc.includes(w)) score += 1;
+  }
+  // Bonus if title starts with the query
+  if (title.startsWith(stripDiacritics(q))) score += 20;
+  return score;
+}
+
 function matchesQuery(l: Listing, q: string): boolean {
   const normalizedQ = stripDiacritics(q);
   const fields = [
@@ -66,7 +84,11 @@ export default async function CatalogPage({
   // alongside real products.
   const realListings = dbListings.filter(hasValidImage);
   const baseListings = realListings.length > 0 ? realListings : mockListings.filter(hasValidImage);
-  const allListings = q ? baseListings.filter((l) => matchesQuery(l, q)) : baseListings;
+  const allListings = q
+    ? baseListings
+        .filter((l) => matchesQuery(l, q))
+        .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q))
+    : baseListings;
   const weeklyFeatured = dbWeekly.filter(hasValidImage);
 
   return (
