@@ -251,11 +251,9 @@ export default async function HomePage() {
                 </p>
               */}
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-sm font-semibold text-amber-200">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
-                {freshThisWeekCount > 0
-                  ? `🔥 Šonedēļ pievienoti ${freshThisWeekCount} jauni produkti`
-                  : "Latvijas pārtikas tirgotāju mārketplace"}
+                Latvijas pārtikas tirgotāju marketplace
               </div>
 
               <h1 className="mt-5 text-4xl font-extrabold uppercase leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -265,24 +263,17 @@ export default async function HomePage() {
                 </span>,{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  pārtikas pakomāts
-                </span>,
+                  IziPizi pārtikas pakomāts
+                </span>{" "}
+                <span className="text-white">vai piegāde</span>,
                 <br />
-                <span className="text-white">Tavs galds</span>.
+                <span className="text-white">Tavs galds.</span>
               </h1>
 
               <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
-                {liveSellerNames.length > 0 && (
-                  <>
-                    {liveSellerNames.map((n, i) => (
-                      <span key={n}>
-                        <strong className="text-white">{n}</strong>
-                        {i < liveSellerNames.length - 1 ? ", " : ""}
-                      </span>
-                    ))}
-                    {" un citi — "}
-                  </>
-                )}
+                Austeru bārs <strong className="text-white">BURŽUJS</strong>,{" "}
+                <strong className="text-white">K/S “Ekoloģisks.lv”</strong>,{" "}
+                <strong className="text-white">Cake Break</strong> un citi —{" "}
                 {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
                 Saņem <strong className="text-white">pakomātā</strong> vai ar{" "}
                 <strong className="text-white">piegādi</strong> uz mājām.
