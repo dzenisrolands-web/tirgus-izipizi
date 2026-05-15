@@ -4,10 +4,10 @@ import { CheckCircle, ArrowRight, Clock, Percent, Shield } from "lucide-react";
 export const metadata = {
   title: "Sākt pārdot — pievienojies kā ražotājs",
   description:
-    "Pārdod savus produktus caur IziPizi pakomātu tīklu visā Latvijā. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",
+    "Pārdod savus produktus caur IziPizi pakomātu tīklu. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",
   openGraph: {
     title: "Sākt pārdot tirgus.izipizi.lv — pievienojies kā ražotājs",
-    description: "Pārdod savus produktus caur IziPizi pakomātu tīklu visā Latvijā. Komisija tikai no pārdošanas.",
+    description: "Pārdod savus produktus caur IziPizi pakomātu tīklu. Komisija tikai no pārdošanas.",
     url: "https://tirgus.izipizi.lv/sell",
     type: "website" as const,
   },
@@ -58,7 +58,7 @@ export default function SellPage() {
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-gray-500">
           Reģistrējies kā pārdevējs, izvieto savus produktus un sasniedz klientus
-          visā Latvijā — bez tirgus telts un bez gaidīšanas.
+          bez tirgus telts un bez gaidīšanas.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/register/razotajs" className="btn-primary">

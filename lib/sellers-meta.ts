@@ -82,7 +82,7 @@ export const sellersMeta: Record<string, SellerMeta> = {
       "Papildus piedāvā glamping pieredzi «Keep the wild and free» Latvijas dabā",
     ],
     events: [
-      { title: "Mednieku festivāli", desc: "Regulāri piedalās mednieku un pārtikas festivālos visā Latvijā" },
+      { title: "Mednieku festivāli", desc: "Regulāri piedalās mednieku un pārtikas festivālos Latvijā" },
       { title: "Glamping", desc: "«Keep the wild and free» — nakšņošana Latvijas dabā pie ražotnes" },
     ],
     keywords: [

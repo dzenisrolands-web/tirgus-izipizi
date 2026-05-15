@@ -133,7 +133,7 @@ export async function listCategories() {
 
 const HELP_TOPICS: Record<string, string> = {
   delivery:
-    "Piegāde notiek caur izipizi pakomātiem visā Latvijā. Cena: 3€ par pakomātu (vienreizīga summa, neatkarīgi no produktu skaita no viena ražotāja). " +
+    "Piegāde notiek caur izipizi pakomātiem. Cena: 3€ par pakomātu (vienreizīga summa, neatkarīgi no produktu skaita no viena ražotāja). " +
     "Kurjera piegāde: 4 zonas (Z0–Z3), no 5€ līdz 12€ atkarībā no attāluma. " +
     "Lapa: /piegade.",
   payment:

@@ -109,7 +109,7 @@ export default function ParMumsPage() {
               2026. gadā mēs apvienojām spēkus ar <strong>SIA &quot;IziPizi&quot;</strong>,
               kas operē Latvijas pārtikas pakomātu tīklu. Pateicoties šai sadarbībai, ražotāji
               piegādā produktus uz pakomātiem ar temperatūras kontroli, kā arī izmantojam
-              kurjera un ekspres piegādes pakalpojumus, lai pircēji visā Latvijā saņem svaigu
+              kurjera un ekspres piegādes pakalpojumus, lai pircēji saņem svaigu
               pārtiku tā, kā tiem ērti.
             </p>
           </div>

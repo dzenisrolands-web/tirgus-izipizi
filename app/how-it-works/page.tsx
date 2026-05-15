@@ -98,8 +98,8 @@ export default function HowItWorksPage() {
       <div className="text-center">
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Kā tas strādā?</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-500">
-          tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar klientiem visā Latvijā —
-          ar piegādi pakomātā, kurjeru uz adresi vai ekspres piegādi tajā pašā dienā.
+          tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar pircējiem —
+          ar piegādi pakomātā, kurjeru uz adresi vai ekspres piegādi. Cena atkarīga no attāluma līdz ražotājam.
         </p>
       </div>
 
@@ -236,7 +236,7 @@ export default function HowItWorksPage() {
           </Link>
         </div>
         <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-300">
-          {["Drošs maksājums", "Vietējie produkti", "3 piegādes veidi", "Visā Latvijā"].map((f) => (
+          {["Drošs maksājums", "Vietējie produkti", "3 piegādes veidi", "Pērc no vietējā"].map((f) => (
             <span key={f} className="flex items-center gap-1.5">
               <CheckCircle size={13} className="text-brand-400" /> {f}
             </span>

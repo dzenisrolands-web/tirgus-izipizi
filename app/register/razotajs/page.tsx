@@ -4,7 +4,7 @@ import { SellerSignupForm } from "@/components/seller-signup-form";
 export const metadata: Metadata = {
   title: "Pieteikties kā ražotājs — tirgus.izipizi.lv",
   description:
-    "Izveido ražotāja kontu un sāc pārdot savus produktus caur izipizi pakomātu tīklu visā Latvijā. Komisija tikai no pārdošanas.",
+    "Izveido ražotāja kontu un sāc pārdot savus produktus caur izipizi pakomātu tīklu. Komisija tikai no pārdošanas.",
   alternates: { canonical: "/register/razotajs" },
 };
 

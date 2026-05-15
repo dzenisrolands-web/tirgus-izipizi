@@ -507,7 +507,7 @@ export default async function HomePage() {
           <div className="mt-10 grid gap-3 sm:grid-cols-4">
             {[
               { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Pārlūko katalogu vai izmanto meklēšanu — atrodi ko vēlies." },
-              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "Pakomāts, kurjers vai ekspres — visā Latvijā." },
+              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "Pakomāts, kurjers vai ekspres — cena atkarīga no attāluma līdz ražotājam." },
               { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
               { icon: "✅", step: "04", title: "Saņem ērti", desc: "Pakomātā 24/7, mājās vai dažu stundu laikā." },
             ].map((item, i) => (

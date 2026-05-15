@@ -72,7 +72,7 @@ export default function RegisterChooserPage() {
             </div>
             <h2 className="mt-5 text-2xl font-extrabold">Esmu ražotājs</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-300">
-              Pārdod savus produktus caur izipizi pakomātu tīklu visā Latvijā — bez tirgus telts un bez gaidīšanas.
+              Pārdod savus produktus caur izipizi pakomātu tīklu — bez tirgus telts un bez gaidīšanas.
             </p>
             <ul className="mt-5 space-y-2 text-sm text-gray-200">
               <li className="flex items-center gap-2">

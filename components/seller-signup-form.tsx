@@ -90,7 +90,7 @@ export function SellerSignupForm() {
           </div>
           <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Pieteikties kā ražotājs</h1>
           <p className="mt-2 text-sm text-gray-500">
-            Sāc pārdot savus produktus caur izipizi pakomātu tīklu visā Latvijā.
+            Sāc pārdot savus produktus caur izipizi pakomātu tīklu.
           </p>
 
           {/* Google */}
