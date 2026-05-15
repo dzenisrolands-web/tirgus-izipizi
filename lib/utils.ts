@@ -51,6 +51,16 @@ export function hasValidImage(l: { image?: string | null }): boolean {
   if (/^https?:\/\/[^\/]+\/?$/.test(url)) return false;
   return true;
 }
+
+/** Products with price 0 or missing price should not appear in public catalog. */
+export function hasValidPrice(l: { price?: number | null }): boolean {
+  return typeof l.price === "number" && l.price > 0;
+}
+
+/** Combined check: valid image + valid price — use for public-facing product lists. */
+export function isPublicReady(l: { image?: string | null; price?: number | null }): boolean {
+  return hasValidImage(l) && hasValidPrice(l);
+}
 // Saderība ar veco kodu — abas tagad ir LOCKER_FEE
 export const HOME_LOCKER_FEE = LOCKER_FEE;
 export const TRANSFER_FEE = LOCKER_FEE;

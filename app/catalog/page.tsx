@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { CatalogClient } from "./catalog-client";
 import { fetchActiveListings, fetchWeeklyFeatured } from "@/lib/db-listings";
 import { listings as mockListings, type Listing } from "@/lib/mock-data";
-import { hasValidImage } from "@/lib/utils";
+import { isPublicReady } from "@/lib/utils";
 
 export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
@@ -82,14 +82,14 @@ export default async function CatalogPage({
   // Real DB listings only. Mock data falls back ONLY if the DB returns
   // nothing (dev without a populated DB) — it should never inflate counts
   // alongside real products.
-  const realListings = dbListings.filter(hasValidImage);
-  const baseListings = realListings.length > 0 ? realListings : mockListings.filter(hasValidImage);
+  const realListings = dbListings.filter(isPublicReady);
+  const baseListings = realListings.length > 0 ? realListings : mockListings.filter(isPublicReady);
   const allListings = q
     ? baseListings
         .filter((l) => matchesQuery(l, q))
         .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q))
     : baseListings;
-  const weeklyFeatured = dbWeekly.filter(hasValidImage);
+  const weeklyFeatured = dbWeekly.filter(isPublicReady);
 
   return (
     <Suspense>

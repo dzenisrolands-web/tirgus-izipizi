@@ -18,7 +18,7 @@ import {
   fetchNewestListings,
   fetchWeeklyFeatured,
 } from "@/lib/db-listings";
-import { hasValidImage } from "@/lib/utils";
+import { hasValidImage, isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Pērc no vietējā, saņem ērti — pakomātā vai ar piegādi",
@@ -70,7 +70,7 @@ export default async function HomePage() {
     fetchWeeklyFeatured(7),
     fetchApprovedSellers(),
   ]);
-  const allListings = [...dbListings, ...listings].filter(hasValidImage);
+  const allListings = [...dbListings, ...listings].filter(isPublicReady);
 
   // Hero stats — real data, not hardcoded
   const liveSellerCount = dbApproved.length || sellers.length;
@@ -93,7 +93,7 @@ export default async function HomePage() {
   //   ... (skips sellers who have no Nth product)
   //
   // Stable seller order: by name (deterministic across SSR + client hydration).
-  const realListings = dbListings.filter(hasValidImage);
+  const realListings = dbListings.filter(isPublicReady);
   const bySeller = new Map<string, typeof realListings>();
   for (const l of realListings) {
     const key = l.sellerId || l.seller?.name || "unknown";
@@ -171,20 +171,20 @@ export default async function HomePage() {
   // Both sections pull diverse-by-seller picks until real signal arrives.
   // "Šonedēļ visi pērk šo" — DB best-sellers first (when orders exist),
   // padded with one product per seller from the round-robin pool.
-  const bestSellers = padToDiverseSellers(6, dbBestSellers.filter(hasValidImage), rotatorPool);
+  const bestSellers = padToDiverseSellers(6, dbBestSellers.filter(isPublicReady), rotatorPool);
   // "Vēl silti — tikko ievietoti" — distinct from bestSellers row.
   // Allow at most 1 overlap (one item can plausibly be both new + popular).
   // Strategy: exclude bestSellers ids from primary + pool, build the row,
   // then optionally re-insert one bestSeller if it's the actual newest item.
   const bestIds = new Set(bestSellers.map((l) => l.id));
-  const dbNewestExBest = dbNewest.filter(hasValidImage).filter((l) => !bestIds.has(l.id));
+  const dbNewestExBest = dbNewest.filter(isPublicReady).filter((l) => !bestIds.has(l.id));
   const rotatorPoolExBest = rotatorPool.filter((l) => !bestIds.has(l.id));
   const newestListings = padToDiverseSellers(6, dbNewestExBest, rotatorPoolExBest)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   // Weekly featured — only show what admin selected (no fallback — section hides if empty)
-  const weeklyFeatured = dbWeekly.filter(hasValidImage);
+  const weeklyFeatured = dbWeekly.filter(isPublicReady);
   // Hero "Svaigi produkti" stat — count only real DB listings (no mock)
-  const totalListings = dbListings.filter(hasValidImage).length;
+  const totalListings = dbListings.filter(isPublicReady).length;
 
   const jsonLd = {
     "@context": "https://schema.org",
