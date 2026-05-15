@@ -9,6 +9,7 @@ type Order = {
   id: string;
   order_number: string;
   status: string;
+  payment_status: string | null;
   buyer_name: string;
   buyer_email: string;
   buyer_phone: string;
@@ -29,6 +30,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
 };
 
 const STATUS_OPTIONS = ["all", "pending", "paid", "processing", "shipped", "delivered", "cancelled"] as const;
+const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
 export default function AdminPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -49,11 +51,35 @@ export default function AdminPasutijumiPage() {
   }, []);
 
   async function updateStatus(id: string, status: string) {
-    await supabase.from("orders").update({
-      status,
-      paid_at: status === "paid" ? new Date().toISOString() : undefined,
-    }).eq("id", id);
-    setOrders(p => p.map(o => o.id === id ? { ...o, status, paid_at: status === "paid" ? new Date().toISOString() : o.paid_at } : o));
+    const current = orders.find((o) => o.id === id);
+    if (!current) return;
+
+    const now = new Date().toISOString();
+    const updates: {
+      status: string;
+      payment_status?: string;
+      paid_at?: string | null;
+    } = { status };
+
+    if (status === "pending") {
+      updates.payment_status = "awaiting";
+      updates.paid_at = null;
+    } else if (PAID_FLOW_STATUSES.has(status)) {
+      updates.payment_status = "paid";
+      updates.paid_at = current.paid_at ?? now;
+    }
+
+    await supabase.from("orders").update(updates).eq("id", id);
+    setOrders((prev) => prev.map((o) =>
+      o.id === id
+        ? {
+            ...o,
+            status,
+            payment_status: updates.payment_status ?? o.payment_status,
+            paid_at: updates.paid_at === undefined ? o.paid_at : updates.paid_at,
+          }
+        : o,
+    ));
   }
 
   const visible = orders.filter(o => {
@@ -64,7 +90,9 @@ export default function AdminPasutijumiPage() {
     return matchStatus && matchSearch;
   });
 
-  const totalRevenue = orders.filter(o => o.status === "paid" || o.paid_at).reduce((s, o) => s + o.total_cents, 0);
+  const totalRevenue = orders
+    .filter((o) => o.payment_status === "paid" || !!o.paid_at || PAID_FLOW_STATUSES.has(o.status))
+    .reduce((s, o) => s + o.total_cents, 0);
 
   if (loading) return (
     <div className="flex min-h-[60vh] items-center justify-center">

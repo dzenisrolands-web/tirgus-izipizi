@@ -10,7 +10,7 @@ import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
 import { FollowSellerButton } from "@/components/follow-seller-button";
-import { hasValidImage } from "@/lib/utils";
+import { isPublicReady } from "@/lib/utils";
 
 export const dynamicParams = true;
 
@@ -52,13 +52,13 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
   if (mockSeller) {
     seller = mockSeller;
     meta = sellersMeta[id];
-    sellerListings = listings.filter((l) => l.sellerId === id).filter(hasValidImage);
+    sellerListings = listings.filter((l) => l.sellerId === id).filter(isPublicReady);
   } else {
     const db = await fetchDbSellerProfile(id);
     if (!db) notFound();
     seller = db.seller;
     meta = db.meta;
-    sellerListings = db.listings.filter(hasValidImage);
+    sellerListings = db.listings;
   }
 
   const categories = Array.from(new Set(sellerListings.map((l) => l.category))).sort();

@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { lockers } from "./mock-data";
 import type { Listing, Seller, Variant } from "./mock-data";
 import type { SellerMeta } from "./sellers-meta";
+import { isPublicReady } from "./utils";
 
 function extractYoutubeId(url?: string | null): string | undefined {
   if (!url) return undefined;
@@ -78,7 +79,9 @@ export async function fetchActiveListings(): Promise<Listing[]> {
 
   const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
 
-  return rows.map((item) => mapRow(item, sellersMap[item.seller_id] ?? null));
+  return rows
+    .map((item) => mapRow(item, sellersMap[item.seller_id] ?? null))
+    .filter((l) => isPublicReady(l));
 }
 
 /**
@@ -230,7 +233,7 @@ export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile 
   return {
     seller: mapSellerRecord(s),
     meta: mapSellerMeta(s),
-    listings: (listingsRows ?? []).map((item) => mapRow(item, s)),
+    listings: (listingsRows ?? []).map((item) => mapRow(item, s)).filter((l) => isPublicReady(l)),
   };
 }
 
@@ -253,8 +256,10 @@ export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   const byId: Record<string, Listing[]> = {};
   (listingsRows ?? []).forEach((item) => {
     const sellerRow = rows.find((r) => r.id === item.seller_id) ?? null;
+    const mapped = mapRow(item, sellerRow);
+    if (!isPublicReady(mapped)) return;
     if (!byId[item.seller_id]) byId[item.seller_id] = [];
-    byId[item.seller_id].push(mapRow(item, sellerRow));
+    byId[item.seller_id].push(mapped);
   });
 
   return rows.map((s) => ({

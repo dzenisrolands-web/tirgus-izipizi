@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/utils";
 type SellerStatus = "draft" | "pending" | "approved" | "rejected";
 
 type SellerData = {
+  id?: string | null;
   name: string | null;
   description: string | null;
   legal_name: string | null;
@@ -133,7 +134,7 @@ export default function DashboardPage() {
 
       const { data: seller } = await supabase
         .from("sellers")
-        .select("name, farm_name, description, status, legal_name, registration_number, is_vat_registered, vat_number, legal_address, bank_iban, self_billing_agreed, home_locker_ids, courier_pickup_address")
+        .select("id, name, farm_name, description, status, legal_name, registration_number, is_vat_registered, vat_number, legal_address, bank_iban, self_billing_agreed, home_locker_ids, courier_pickup_address")
         .eq("user_id", user.id)
         .single();
 
@@ -151,7 +152,7 @@ export default function DashboardPage() {
         const { data: myListings } = await supabase
           .from("listings")
           .select("id, title, freshness_date, status")
-          .eq("seller_id", user.id);
+          .eq("seller_id", seller.id);
         const listingsArr = myListings ?? [];
         setProductCount(listingsArr.length);
 
@@ -170,8 +171,8 @@ export default function DashboardPage() {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const { data: orders } = await supabase
           .from("orders")
-          .select("id, items, paid_at, total_cents, created_at")
-          .or(`paid_at.gte.${thirtyDaysAgo},and(status.eq.paid,paid_at.is.null)`)
+          .select("id, items, paid_at, payment_status, total_cents, created_at")
+          .or(`paid_at.gte.${thirtyDaysAgo},and(payment_status.eq.paid,created_at.gte.${thirtyDaysAgo}),and(status.in.(paid,processing,shipped,delivered),created_at.gte.${thirtyDaysAgo})`)
           .order("paid_at", { ascending: false });
         const myListingIds = new Set(listingsArr.map((l) => l.id));
         const todayStart = new Date();

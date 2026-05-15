@@ -45,7 +45,7 @@ type SellerStats = {
 };
 
 type ListingRow = { seller_id: string; status: string; updated_at: string };
-type OrderRow = { seller_ids: string[] | null; payment_status: string; total_cents: number; created_at: string };
+type OrderRow = { seller_ids: string[] | null; payment_status: string | null; status: string; paid_at: string | null; total_cents: number; created_at: string };
 
 const statusMap = {
   draft:    { label: "Melnraksts",   cls: "bg-gray-100 text-gray-500" },
@@ -86,7 +86,7 @@ export default function AdminRazotajiPage() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
       supabase.from("sellers").select("*").order("created_at", { ascending: false }),
       supabase.from("listings").select("seller_id, status, updated_at"),
-      supabase.from("orders").select("seller_ids, payment_status, total_cents, created_at"),
+      supabase.from("orders").select("seller_ids, payment_status, status, paid_at, total_cents, created_at"),
     ]);
     setSellers((sellersRes.data as Seller[] | null) ?? []);
     setListings((listingsRes.data as ListingRow[] | null) ?? []);
@@ -117,7 +117,14 @@ export default function AdminRazotajiPage() {
       }
     }
     for (const o of orders) {
-      if (o.payment_status !== "paid") continue;
+      const isPaidLike =
+        o.payment_status === "paid" ||
+        !!o.paid_at ||
+        o.status === "paid" ||
+        o.status === "processing" ||
+        o.status === "shipped" ||
+        o.status === "delivered";
+      if (!isPaidLike) continue;
       const ids = o.seller_ids ?? [];
       const sharePerSeller = ids.length > 0 ? (o.total_cents / ids.length) : 0;
       for (const sellerId of ids) {

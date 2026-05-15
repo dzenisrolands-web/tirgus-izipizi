@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { OrdersTimeline } from "./orders-timeline";
 import Link from "next/link";
@@ -14,6 +14,7 @@ const ESTIMATED_COMMISSION_PCT = 0.1;
 type OrderRow = {
   id: string;
   status: string;
+  payment_status: string | null;
   total_cents: number;
   items: Array<{ id?: string; title?: string; quantity?: number; price?: number }> | null;
   paid_at: string | null;
@@ -38,6 +39,7 @@ function startOfDayISO(daysAgo = 0): string {
 }
 
 export default async function StatistikaPage() {
+  const supabase = createServerClient();
   const todayStart = startOfDayISO(0);
   const weekStart = startOfDayISO(6);
   const monthStart = startOfDayISO(29);
@@ -57,8 +59,8 @@ export default async function StatistikaPage() {
     // Paid orders in the last ~50 days (covers month timeline + revenue stats)
     supabase
       .from("orders")
-      .select("id, status, total_cents, items, paid_at, created_at")
-      .or(`paid_at.gte.${fortyNineDaysAgo},and(status.eq.paid,paid_at.is.null)`)
+      .select("id, status, payment_status, total_cents, items, paid_at, created_at")
+      .or(`paid_at.gte.${fortyNineDaysAgo},and(payment_status.eq.paid,created_at.gte.${fortyNineDaysAgo}),and(status.in.(paid,processing,shipped,delivered),created_at.gte.${fortyNineDaysAgo})`)
       .order("paid_at", { ascending: false }),
     // All orders (any status) for the status split
     supabase.from("orders").select("status", { count: "exact", head: false }),

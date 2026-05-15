@@ -69,7 +69,7 @@ export default function AdminSellerDetailPage() {
     async function load() {
       const [sellerRes, ordersRes] = await Promise.all([
         supabase.from("sellers").select("id, name, email, location, status, legal_name, bank_iban").eq("id", sellerId).single(),
-        supabase.from("orders").select("*").contains("seller_ids", [sellerId]).neq("payment_status", "awaiting").order("created_at", { ascending: false }),
+        supabase.from("orders").select("*").contains("seller_ids", [sellerId]).or("payment_status.eq.paid,status.in.(paid,processing,shipped,delivered,cancelled)").order("created_at", { ascending: false }),
       ]);
       setSeller(sellerRes.data);
       setOrders(ordersRes.data ?? []);

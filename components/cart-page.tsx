@@ -10,7 +10,7 @@ import {
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
 import { listings, lockers } from "@/lib/mock-data";
-import { formatPrice, getStorageType, LOCKER_FEE } from "@/lib/utils";
+import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { lookupPostalCode, effectiveCourierZone, pricingForZone } from "@/lib/postal-zones";
@@ -185,14 +185,14 @@ export function CartPage() {
 
   const upsells = useMemo(() =>
     listings
-      .filter((l) => sellerIds.has(l.sellerId) && !cartItemIds.has(l.id))
+      .filter((l) => sellerIds.has(l.sellerId) && !cartItemIds.has(l.id) && isPublicReady(l))
       .slice(0, 6),
     [items]
   );
 
   const popularUpsells = useMemo(() =>
     listings
-      .filter((l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId))
+      .filter((l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId) && isPublicReady(l))
       .sort((a, b) => b.seller.rating - a.seller.rating)
       .slice(0, 4),
     [items]
