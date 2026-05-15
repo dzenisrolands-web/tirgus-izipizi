@@ -54,32 +54,37 @@ export default function AdminPasutijumiPage() {
     const current = orders.find((o) => o.id === id);
     if (!current) return;
 
-    const now = new Date().toISOString();
-    const updates: {
-      status: string;
-      payment_status?: string;
-      paid_at?: string | null;
-    } = { status };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { alert("Nav sesijas — pārlogojies."); return; }
 
-    if (status === "pending") {
-      updates.payment_status = "awaiting";
-      updates.paid_at = null;
-    } else if (PAID_FLOW_STATUSES.has(status)) {
-      updates.payment_status = "paid";
-      updates.paid_at = current.paid_at ?? now;
+      const res = await fetch("/api/admin/update-order-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: id, status }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.ok) {
+        alert(`Kļūda mainot statusu: ${json.error ?? "Nezināma kļūda"}`);
+        return;
+      }
+
+      const updates = json.updates as { status: string; payment_status?: string; paid_at?: string | null };
+      setOrders((prev) => prev.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              status: updates.status,
+              payment_status: updates.payment_status ?? o.payment_status,
+              paid_at: updates.paid_at === undefined ? o.paid_at : updates.paid_at,
+            }
+          : o,
+      ));
+    } catch (e) {
+      alert(`Tīkla kļūda: ${e instanceof Error ? e.message : "Nezināma kļūda"}`);
     }
-
-    await supabase.from("orders").update(updates).eq("id", id);
-    setOrders((prev) => prev.map((o) =>
-      o.id === id
-        ? {
-            ...o,
-            status,
-            payment_status: updates.payment_status ?? o.payment_status,
-            paid_at: updates.paid_at === undefined ? o.paid_at : updates.paid_at,
-          }
-        : o,
-    ));
   }
 
   const visible = orders.filter(o => {
