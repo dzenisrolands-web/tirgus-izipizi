@@ -263,7 +263,7 @@ export default async function HomePage() {
                 </span>,{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  IziPizi pārtikas pakomāts
+                  pārtikas pakomāts
                 </span>{" "}
                 <span className="text-white">vai piegāde</span>,
                 <br />
