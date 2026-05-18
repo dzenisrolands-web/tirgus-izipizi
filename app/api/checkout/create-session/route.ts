@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
+import { COMMISSION_RATE } from "@/lib/commission";
 
 type CheckoutItem = {
   id: string;
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     return {
       ...i,
       seller_id: ref?.seller_id ?? i.sellerId ?? null,
-      commission_rate: ref?.commission_rate ?? null, // snapshot at order time
+      commission_rate: COMMISSION_RATE, // fixed platform commission
     };
   });
 

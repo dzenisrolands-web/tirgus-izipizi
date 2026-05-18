@@ -1,15 +1,11 @@
 import { createServerClient } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { COMMISSION_RATE, COMMISSION_FRACTION } from "@/lib/commission";
 import { OrdersTimeline } from "./orders-timeline";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-// Pre-launch commission rate is per-product (5–20%) but the field is not
-// yet stored on listings. Use 10% as a working estimate until the per-product
-// rate column ships. TODO(post-launch): replace with COALESCE(commission_pct, 10).
-const ESTIMATED_COMMISSION_PCT = 0.1;
 
 type OrderRow = {
   id: string;
@@ -104,8 +100,8 @@ export default async function StatistikaPage() {
   const gmvMonth = ordersMonth.reduce((s, o) => s + (o.total_cents ?? 0), 0);
   const aovMonth = ordersMonth.length ? gmvMonth / ordersMonth.length : 0;
 
-  // D6 — estimated commission earned in last 30 days (10% placeholder)
-  const commissionMonth = Math.round(gmvMonth * ESTIMATED_COMMISSION_PCT);
+  // D6 — commission earned in last 30 days (fixed platform rate)
+  const commissionMonth = Math.round(gmvMonth * COMMISSION_FRACTION);
 
   // D4 — Top 10 products (by units sold in last 30 days)
   const productCounts = new Map<string, { id: string; title: string; units: number; revenueCents: number }>();
@@ -195,7 +191,7 @@ export default async function StatistikaPage() {
         <Kpi title="GMV / 30d" value={formatPrice(gmvMonth / 100)} sub={`vid. ${formatPrice(aovMonth / 100)}/pas.`} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi title="Komisija (~10%)" value={formatPrice(commissionMonth / 100)} sub="aplēse pēdējās 30d" tone="brand" />
+        <Kpi title={`Komisija (${COMMISSION_RATE}%)`} value={formatPrice(commissionMonth / 100)} sub="pēdējās 30d" tone="brand" />
         <Kpi title="Aktīvi produkti" value={`${listingStatusCounts.active ?? 0}`} sub={`${listings.length} kopā`} />
         <Kpi title="Beidzas drīz" value={`${expiring.length}`} sub="nāk. 3 dienās" tone={expiring.length > 0 ? "warn" : "ok"} />
         <Kpi

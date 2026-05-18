@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   CheckCircle, XCircle, Clock, AlertCircle, Search, Home, Plus, X, FileText, AlertTriangle,
   Package, ShoppingBag, ExternalLink, MessageSquare, ChevronDown, ChevronUp, Mail, Loader2,
-  LinkIcon, Send, LogIn,
+  LinkIcon, Send, LogIn, UserPlus, Eye, EyeOff, Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -81,6 +81,20 @@ export default function AdminRazotajiPage() {
   const [linkResult, setLinkResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateUrl, setImpersonateUrl] = useState<{ name: string; url: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Invitation system
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [invitations, setInvitations] = useState<Array<{
+    id: string; email: string; name: string | null;
+    sent_at: string; opened_at: string | null; opened_count: number; status: string;
+  }>>([]);
+  const [invitationsLoaded, setInvitationsLoaded] = useState(false);
 
   async function load() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
@@ -284,6 +298,75 @@ export default function AdminRazotajiPage() {
     setImpersonating(null);
   }
 
+  async function loadInvitations() {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch("/api/admin/invite", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const data = await res.json();
+    setInvitations(data.invitations ?? []);
+    setInvitationsLoaded(true);
+  }
+
+  async function sendInvite() {
+    if (!inviteEmail.trim()) return;
+    setInviteSending(true);
+    setInviteMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ email: inviteEmail.trim(), name: inviteName.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setInviteMsg({ ok: true, text: `Uzaicinājums nosūtīts uz ${inviteEmail}` });
+        setInviteEmail("");
+        setInviteName("");
+        loadInvitations();
+      } else {
+        setInviteMsg({ ok: false, text: data.error ?? "Kļūda" });
+      }
+    } catch (e) {
+      setInviteMsg({ ok: false, text: e instanceof Error ? e.message : "Tīkla kļūda" });
+    }
+    setInviteSending(false);
+    setTimeout(() => setInviteMsg(null), 6000);
+  }
+
+  async function deleteSeller() {
+    if (!deleteModal) return;
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/delete-seller", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ sellerId: deleteModal.id }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSellers(p => p.filter(s => s.id !== deleteModal.id));
+      } else {
+        alert(data.error ?? "Kļūda dzēšot ražotāju");
+      }
+    } catch {
+      alert("Tīkla kļūda");
+    }
+    setDeleting(false);
+    setDeleteModal(null);
+  }
+
   async function toggleHomeLocker(sellerId: string, lockerId: string) {
     const seller = sellers.find(s => s.id === sellerId);
     if (!seller) return;
@@ -320,6 +403,105 @@ export default function AdminRazotajiPage() {
             <span className="text-sm font-semibold text-amber-800">
               {sellers.filter(s => s.status === "pending").length} gaida apstiprinājumu
             </span>
+          </div>
+        )}
+      </div>
+
+      {/* Invite section */}
+      <div className="mb-5">
+        <button
+          onClick={() => { setInviteOpen(!inviteOpen); if (!invitationsLoaded) loadInvitations(); }}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#53F3A4] to-[#AD47FF] px-4 py-2.5 text-sm font-bold text-[#192635] hover:brightness-105 transition shadow-sm"
+        >
+          <UserPlus size={16} />
+          Uzaicināt ražotāju
+          {inviteOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {inviteOpen && (
+          <div className="mt-3 rounded-2xl border border-purple-200 bg-purple-50/50 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">E-pasts *</label>
+                <input
+                  type="email"
+                  placeholder="razotajs@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  disabled={inviteSending}
+                  className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nosaukums <span className="text-gray-400">(neobligāts)</span></label>
+                <input
+                  type="text"
+                  placeholder="Piem., Jāņa ferma"
+                  value={inviteName}
+                  onChange={e => setInviteName(e.target.value)}
+                  disabled={inviteSending}
+                  className="w-full rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
+              <button
+                onClick={sendInvite}
+                disabled={inviteSending || !inviteEmail.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#192635] px-5 py-2 text-sm font-bold text-white hover:brightness-110 disabled:opacity-50 transition shrink-0"
+              >
+                {inviteSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {inviteSending ? "Sūta..." : "Nosūtīt uzaicinājumu"}
+              </button>
+            </div>
+
+            {inviteMsg && (
+              <div className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+                inviteMsg.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
+              }`}>
+                {inviteMsg.ok ? "✓ " : "✗ "}{inviteMsg.text}
+              </div>
+            )}
+
+            {/* Invitation list */}
+            {invitations.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Nosūtītie uzaicinājumi ({invitations.length})
+                </p>
+                <div className="rounded-xl border border-purple-100 bg-white overflow-hidden divide-y divide-purple-50">
+                  {invitations.map(inv => (
+                    <div key={inv.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                        inv.status === "opened" || inv.status === "registered"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-400"
+                      }`}>
+                        {inv.status === "opened" || inv.status === "registered" ? <Eye size={11} /> : <EyeOff size={11} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">
+                          {inv.email}
+                          {inv.name && <span className="text-gray-400 font-normal ml-1.5">({inv.name})</span>}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          Nosūtīts {new Date(inv.sent_at).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {inv.opened_at ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                            <Eye size={9} /> Atvēra {inv.opened_count > 1 ? `(${inv.opened_count}×)` : ""}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                            Nav atvērts
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -456,6 +638,13 @@ export default function AdminRazotajiPage() {
                         Apstiprināt
                       </button>
                     )}
+                    <button
+                      onClick={() => setDeleteModal({ id: seller.id, name: seller.name })}
+                      className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+                      title="Izdzēst ražotāju"
+                    >
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 </div>
 
@@ -720,6 +909,45 @@ export default function AdminRazotajiPage() {
                 className="rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition"
               >
                 Aizvērt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { if (!deleting) setDeleteModal(null); }}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <Trash2 size={20} className="text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900">Izdzēst ražotāju</h3>
+                <p className="mt-0.5 text-sm text-gray-500">{deleteModal.name}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-lg bg-red-50 border border-red-200 p-3">
+              <p className="text-sm text-red-800">
+                <strong>Uzmanību!</strong> Tiks neatgriezeniski izdzēsts ražotāja profils un visi viņa produkti. Pasūtījumu vēsture saglabāsies.
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={deleting}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition disabled:opacity-50"
+              >
+                Atcelt
+              </button>
+              <button
+                onClick={deleteSeller}
+                disabled={deleting}
+                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {deleting ? "Dzēš..." : "Izdzēst neatgriezeniski"}
               </button>
             </div>
           </div>
