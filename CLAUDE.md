@@ -38,7 +38,7 @@ B2C marketplace at `tirgus.izipizi.lv` for Latvian farmers and food producers to
 - [ ] izipizi locker API integration (manual booking only)
 - [ ] Buyer bonus system (planned, not started)
 - [ ] Seller payouts / bank details UI
-- [x] Fixed commission system (10%, automatic, all products)
+- [x] Fixed commission system (15%, automatic, all products)
 
 ## Approach Decision
 Originally planned no DB for MVP, but Supabase has been fully integrated. Mock data (`lib/mock-data.ts`) still exists for fallback/dev but real DB queries are primary path.
@@ -51,7 +51,7 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 | `lib/supabase.ts` | Supabase client (browser + server) |
 | `lib/db-listings.ts` | Listing queries |
 | `lib/db-types.ts` | DB row TypeScript types |
-| `lib/commission.ts` | Fixed commission rate config (10%) |
+| `lib/commission.ts` | Fixed commission rate config (15%) |
 | `lib/cart-context.tsx` | Cart state via React Context |
 | `lib/hot-drops/` | Hot drops queries, types, badges, realtime hook |
 | `lib/push.ts` | Web push send utility (VAPID) |
@@ -92,7 +92,7 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 - Payment: Paysera (not yet integrated)
 - Language: Latvian only
 - Seller approval: admin manual approval (live in `/admin/razotaji`)
-- Revenue: fixed 10% commission on all products (`lib/commission.ts`)
+- Revenue: fixed 15% commission on all products (`lib/commission.ts`)
 - Brand colors: izipizi green `#53F3A4`, purple `#AD47FF`, dark navy `#192635` (in `tailwind.config.ts`)
 - Lockers: 6 locations (see `lib/mock-data.ts`)
 - MVP: real Supabase DB in use; mock data retained for dev fallback

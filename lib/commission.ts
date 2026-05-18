@@ -6,10 +6,10 @@
  * product form, checkout, invoices, statistics.
  */
 
-/** Commission rate in percent (e.g. 10 = 10 %). */
-export const COMMISSION_RATE = 10;
+/** Commission rate in percent (e.g. 15 = 15 %). */
+export const COMMISSION_RATE = 15;
 
-/** Fraction form of the rate (0.10). */
+/** Fraction form of the rate (0.15). */
 export const COMMISSION_FRACTION = COMMISSION_RATE / 100;
 
 /** Calculate commission amount for a given price. */
