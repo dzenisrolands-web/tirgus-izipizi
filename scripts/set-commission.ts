@@ -7,10 +7,20 @@
  * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY in .env or .env.local.
  */
 
-import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 
-const COMMISSION_RATE = 10;
+// Load .env.local (primary) then .env as fallback
+for (const f of [".env.local", ".env"]) {
+  try {
+    const text = require("node:fs").readFileSync(f, "utf8") as string;
+    for (const line of text.split("\n")) {
+      const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch {}
+}
+
+const COMMISSION_RATE = 15;
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY;
@@ -35,7 +45,7 @@ async function main() {
       commission_approved_by: null,
     })
     .neq("id", "00000000-0000-0000-0000-000000000000") // match all rows
-    .select("id", { count: "exact" });
+    .select("id");
 
   if (error) {
     console.error("Error updating listings:", error.message);
