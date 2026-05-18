@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Upload, X, Zap, Percent, TrendingUp } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
+import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
-
-type Benchmark = { category: string; suggested_min: number; suggested_avg: number; suggested_max: number };
 
 export type ProductData = {
   title: string;
@@ -23,15 +22,12 @@ export type ProductData = {
   quantity: string;
   status: "active" | "paused";
   express_delivery: boolean;
-  commission_rate: string;
-  commission_status?: string;
 };
 
 const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
   quantity: "1", status: "active", express_delivery: false,
-  commission_rate: "10",
 };
 
 export function ProductForm({
@@ -46,30 +42,15 @@ export function ProductForm({
     ...EMPTY,
     ...initial,
     express_delivery: initial?.express_delivery ?? false,
-    commission_rate: initial?.commission_rate ?? "10",
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    supabase
-      .from("category_commission_benchmarks")
-      .select("category, suggested_min, suggested_avg, suggested_max")
-      .then(({ data }) => setBenchmarks(data ?? []));
-  }, []);
-
-  const benchmark = useMemo(
-    () => benchmarks.find((b) => b.category === form.category),
-    [benchmarks, form.category],
-  );
-
   const priceNum = Number(form.price) || 0;
-  const commissionNum = Number(form.commission_rate) || 0;
-  const commissionEur = priceNum * (commissionNum / 100);
-  const netToSeller = priceNum - commissionEur;
+  const commissionEur = commissionForPrice(priceNum);
+  const netToSeller = netForPrice(priceNum);
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -112,8 +93,6 @@ export function ProductForm({
       return setError("Ievadi derīgu cenu");
     if (!form.image_url.trim())
       return setError("Bilde ir obligāta — produktu nevar publicēt bez bildes. Lūdzu augšupielādē attēlu sadaļā 'Bilde'.");
-    if (commissionNum < 5 || commissionNum > 20)
-      return setError("Komisijai jābūt no 5% līdz 20%");
 
     setSaving(true);
     try {
@@ -125,17 +104,6 @@ export function ProductForm({
         .select("id")
         .eq("user_id", user.id)
         .single();
-
-      const commissionChanged = !productId || String(initial?.commission_rate ?? "") !== form.commission_rate;
-      const commissionFields = commissionChanged
-        ? {
-            commission_rate: commissionNum,
-            commission_status: "proposed",
-            commission_proposed_at: new Date().toISOString(),
-            commission_approved_at: null,
-            commission_approved_by: null,
-          }
-        : { commission_rate: commissionNum };
 
       const base = {
         user_id: user.id,
@@ -149,7 +117,8 @@ export function ProductForm({
         locker_id: form.locker_id,
         quantity: Number(form.quantity) || 1,
         express_delivery: form.express_delivery,
-        ...commissionFields,
+        commission_rate: COMMISSION_RATE,
+        commission_status: "approved",
         updated_at: new Date().toISOString(),
       };
 
@@ -231,67 +200,22 @@ export function ProductForm({
         </div>
       </section>
 
-      {/* Commission */}
+      {/* Commission — fixed rate, read-only */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
-            <Percent size={14} className="text-brand-600" />
-            Komisija
-          </h2>
-          {form.commission_status === "approved" && (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-              Apstiprināta
-            </span>
-          )}
-          {form.commission_status === "proposed" && productId && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-              Gaida apstiprināšanu
-            </span>
-          )}
-          {form.commission_status === "rejected" && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
-              Noraidīta — piedāvā citu
-            </span>
-          )}
-        </div>
+        <h2 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
+          <Percent size={14} className="text-brand-600" />
+          Komisija
+        </h2>
 
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
-          Mūsu komisija ir <strong>5–20 %</strong> par darījuma apkalpošanu, Paysera maksājumu,
-          pakomātu tīklu un platformas uzturēšanu. Norādi vēlamo procentu — mūsu komanda
-          apstiprinās 1–2 darba dienu laikā.
+          Platformas komisija ir fiksēta <strong>{COMMISSION_RATE}%</strong> par darījuma apkalpošanu,
+          Paysera maksājumu, pakomātu tīklu un platformas uzturēšanu. Komisija tiek automātiski
+          piemērota visiem produktiem.
         </div>
 
-        {benchmark && (
-          <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
-            <TrendingUp size={12} className="text-gray-400" />
-            <span>
-              Vidējā komisija kategorijā <strong className="text-gray-900">{form.category}</strong>:{" "}
-              <strong className="text-brand-700">{benchmark.suggested_avg}%</strong>
-              <span className="text-gray-400"> (diapazons {benchmark.suggested_min}–{benchmark.suggested_max}%)</span>
-            </span>
-          </div>
-        )}
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">Komisijas likme</label>
-            <span className="text-2xl font-extrabold text-brand-700">{form.commission_rate}%</span>
-          </div>
-          <input
-            type="range"
-            min="5"
-            max="20"
-            step="0.5"
-            value={form.commission_rate}
-            onChange={(e) => set("commission_rate", e.target.value)}
-            className="w-full accent-brand-600"
-          />
-          <div className="mt-1 flex justify-between text-[10px] text-gray-400">
-            <span>5%</span>
-            <span>10%</span>
-            <span>15%</span>
-            <span>20%</span>
-          </div>
+        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+          <span className="text-sm font-medium text-gray-700">Komisijas likme</span>
+          <span className="text-2xl font-extrabold text-brand-700">{COMMISSION_RATE}%</span>
         </div>
 
         {priceNum > 0 && (
