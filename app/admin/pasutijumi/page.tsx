@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Search, Package } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -13,7 +13,8 @@ type Order = {
   buyer_name: string;
   buyer_email: string;
   buyer_phone: string;
-  delivery_info: { locker_name: string; locker_city: string };
+  delivery_type: string | null;
+  delivery_info: { locker_name?: string; locker_city?: string; address?: string; city?: string };
   items: { title: string; quantity: number; price: number }[];
   total_cents: number;
   paid_at: string | null;
@@ -29,6 +30,13 @@ const statusMap: Record<string, { label: string; cls: string }> = {
   cancelled:  { label: "Atcelts",       cls: "bg-red-100 text-red-600" },
 };
 
+const paymentStatusMap: Record<string, { label: string; cls: string }> = {
+  awaiting:  { label: "Gaida",      cls: "bg-amber-50 text-amber-600 border-amber-200" },
+  paid:      { label: "Apmaksāts",  cls: "bg-green-50 text-green-700 border-green-200" },
+  cancelled: { label: "Atcelts",    cls: "bg-red-50 text-red-600 border-red-200" },
+  refunded:  { label: "Atgriezts",  cls: "bg-gray-50 text-gray-600 border-gray-200" },
+};
+
 const STATUS_OPTIONS = ["all", "pending", "paid", "processing", "shipped", "delivered", "cancelled"] as const;
 const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
@@ -38,25 +46,39 @@ export default function AdminPasutijumiPage() {
   const [filter, setFilter] = useState<typeof STATUS_OPTIONS[number]>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from("orders").select("*")
-        .order("created_at", { ascending: false });
-      setOrders(data ?? []);
-      setLoading(false);
-    }
-    load();
+  const loadOrders = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    const { data } = await supabase
+      .from("orders").select("*")
+      .order("created_at", { ascending: false });
+    setOrders(data ?? []);
+    setLoading(false);
+    setRefreshing(false);
+    setLastRefresh(new Date());
   }, []);
+
+  // Initial load + auto-refresh every 30s
+  useEffect(() => {
+    loadOrders();
+    const interval = setInterval(() => loadOrders(true), 30_000);
+    return () => clearInterval(interval);
+  }, [loadOrders]);
+
+  async function getToken(): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }
 
   async function updateStatus(id: string, status: string) {
     const current = orders.find((o) => o.id === id);
     if (!current) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = await getToken();
       if (!token) { alert("Nav sesijas — pārlogojies."); return; }
 
       const res = await fetch("/api/admin/update-order-status", {
@@ -87,6 +109,39 @@ export default function AdminPasutijumiPage() {
     }
   }
 
+  /** Mark a pending order as paid + trigger full flow (notifications, emails) */
+  async function markAsPaid(order: Order) {
+    if (order.payment_status === "paid") return;
+    setMarkingPaid(order.id);
+    try {
+      const token = await getToken();
+      if (!token) { alert("Nav sesijas — pārlogojies."); return; }
+
+      const res = await fetch("/api/admin/update-order-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: order.id, status: "paid" }),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.ok) {
+        alert(`Kļūda: ${json.error ?? "Nezināma kļūda"}`);
+        return;
+      }
+
+      const updates = json.updates as { status: string; payment_status?: string; paid_at?: string | null };
+      setOrders((prev) => prev.map((o) =>
+        o.id === order.id
+          ? { ...o, status: "paid", payment_status: "paid", paid_at: updates.paid_at as string ?? new Date().toISOString() }
+          : o,
+      ));
+    } catch (e) {
+      alert(`Kļūda: ${e instanceof Error ? e.message : "Nezināma kļūda"}`);
+    } finally {
+      setMarkingPaid(null);
+    }
+  }
+
   const visible = orders.filter(o => {
     const matchStatus = filter === "all" || o.status === filter;
     const matchSearch = o.order_number.toLowerCase().includes(search.toLowerCase()) ||
@@ -95,6 +150,7 @@ export default function AdminPasutijumiPage() {
     return matchStatus && matchSearch;
   });
 
+  const pendingCount = orders.filter((o) => o.status === "pending" && o.payment_status !== "paid").length;
   const totalRevenue = orders
     .filter((o) => o.payment_status === "paid" || !!o.paid_at || PAID_FLOW_STATUSES.has(o.status))
     .reduce((s, o) => s + o.total_cents, 0);
@@ -110,9 +166,36 @@ export default function AdminPasutijumiPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Pasūtījumi</h1>
-          <p className="mt-0.5 text-sm text-gray-500">{orders.length} kopā · ieņēmumi {formatPrice(totalRevenue / 100)}</p>
+          <p className="mt-0.5 text-sm text-gray-500">
+            {orders.length} kopā · ieņēmumi {formatPrice(totalRevenue / 100)}
+            <span className="ml-2 text-gray-300">·</span>
+            <button
+              onClick={() => loadOrders()}
+              disabled={refreshing}
+              className="ml-2 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline disabled:opacity-50"
+            >
+              <RefreshCw size={10} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Atjauno..." : `Atjaunots ${lastRefresh.toLocaleTimeString("lv-LV")}`}
+            </button>
+          </p>
         </div>
       </div>
+
+      {/* Warning banner when orders are stuck */}
+      {pendingCount > 0 && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-800">
+              {pendingCount} {pendingCount === 1 ? "pasūtījums gaida" : "pasūtījumi gaida"} apmaksu
+            </p>
+            <p className="mt-0.5 text-xs text-amber-700">
+              Ja Paysera apmaksa ir veikta, bet statuss nav mainījies — nospied <strong>"Atzīmēt kā apmaksātu"</strong> uz attiecīgā pasūtījuma.
+              Tas nosūtīs e-pastu pircējam un push paziņojumu ražotājam.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
@@ -193,12 +276,43 @@ export default function AdminPasutijumiPage() {
                       </div>
                     </div>
 
+                    {/* Payment status + Mark as Paid */}
+                    {order.status === "pending" && order.payment_status !== "paid" && (
+                      <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-3">
+                        <AlertTriangle size={16} className="shrink-0 text-amber-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-amber-800">Paysera webhook nav saņemts</p>
+                          <p className="text-[10px] text-amber-600">Ja apmaksa Paysera ir veikta, nospied pogu →</p>
+                        </div>
+                        <button
+                          onClick={() => markAsPaid(order)}
+                          disabled={markingPaid === order.id}
+                          className="flex shrink-0 items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white hover:bg-green-700 transition disabled:opacity-60"
+                        >
+                          {markingPaid === order.id
+                            ? <><Loader2 size={12} className="animate-spin" /> Apstrādā...</>
+                            : <><CreditCard size={12} /> Atzīmēt kā apmaksātu</>
+                          }
+                        </button>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                      <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                        {order.paid_at
-                          ? <><CheckCircle size={12} className="text-green-500" /> Apmaksāts {new Date(order.paid_at).toLocaleDateString("lv-LV")}</>
-                          : <><Clock size={12} /> Gaida apmaksu</>
-                        }
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          {order.paid_at
+                            ? <><CheckCircle size={12} className="text-green-500" /> Apmaksāts {new Date(order.paid_at).toLocaleDateString("lv-LV")}</>
+                            : <><Clock size={12} /> Gaida apmaksu</>
+                          }
+                        </div>
+                        {order.payment_status && (() => {
+                          const ps = paymentStatusMap[order.payment_status] ?? { label: order.payment_status, cls: "bg-gray-50 text-gray-500 border-gray-200" };
+                          return (
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ps.cls}`}>
+                              💳 {ps.label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="flex items-center gap-2">
                         <select

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifySellersNewOrder, notifyBuyerOrderStatus } from "@/lib/order-notifications";
+import { sendAllOrderEmails } from "@/lib/email";
 
 const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
 /**
  * Admin-only: update order status + sync payment_status/paid_at.
+ * When changing to "paid", triggers the full flow (notifications + emails)
+ * — same as the Paysera webhook would.
  * Uses service_role key to bypass RLS.
  */
 export async function POST(req: Request) {
@@ -12,15 +16,12 @@ export async function POST(req: Request) {
   const token = auth.replace("Bearer ", "");
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Verify the caller is authenticated
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SECRET_KEY!,
   );
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  // TODO: optionally verify user is super_admin via profiles table
 
   const { orderId, status } = await req.json().catch(() => ({}));
   if (!orderId || !status) {
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   // Fetch current order
   const { data: order } = await supabase
     .from("orders")
-    .select("id, paid_at")
+    .select("id, status, payment_status, paid_at")
     .eq("id", orderId)
     .single();
 
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
+  const previousStatus = order.status;
+  const wasPaid = order.payment_status === "paid";
   const now = new Date().toISOString();
   const updates: Record<string, unknown> = { status };
 
@@ -61,5 +64,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, updates });
+  // ── Side effects: trigger notifications + emails on status transitions ────
+  const sideEffects: string[] = [];
+
+  // Newly marked as paid → full "paid" flow (same as Paysera webhook)
+  if (status === "paid" && !wasPaid) {
+    notifySellersNewOrder(orderId).catch((e) =>
+      console.error("[admin] notifySellersNewOrder failed:", e)
+    );
+    sendAllOrderEmails(orderId)
+      .then((r) => {
+        if (!r.buyer.ok) console.warn("[admin] buyer email skipped:", r.buyer.error);
+        for (const s of r.sellers) {
+          if (!s.ok) console.warn("[admin] seller email failed:", s.error);
+        }
+      })
+      .catch((e) => console.error("[admin] sendAllOrderEmails failed:", e));
+    sideEffects.push("seller_push", "order_emails");
+  }
+
+  // Status transitions that should notify the buyer
+  if (
+    status !== previousStatus &&
+    ["processing", "shipped", "delivered"].includes(status)
+  ) {
+    notifyBuyerOrderStatus(orderId, status).catch((e) =>
+      console.error("[admin] notifyBuyerOrderStatus failed:", e)
+    );
+    sideEffects.push(`buyer_notify_${status}`);
+  }
+
+  return NextResponse.json({ ok: true, updates, sideEffects });
 }

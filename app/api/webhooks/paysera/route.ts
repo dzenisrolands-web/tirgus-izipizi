@@ -24,10 +24,16 @@ export async function GET(req: Request) {
 }
 
 async function handle(req: Request) {
+  const ts = new Date().toISOString();
+  const method = req.method;
+
+  console.log(`[paysera][${ts}] callback received: ${method} ${req.url}`);
+
   // Paysera sends data either as URL params or as form body
   const url = new URL(req.url);
   let data = url.searchParams.get("data") ?? "";
   let sign = url.searchParams.get("sign") ?? "";
+  let source = data ? "url_params" : "none";
 
   if (!data) {
     try {
@@ -35,21 +41,31 @@ async function handle(req: Request) {
       const form = new URLSearchParams(text);
       data = form.get("data") ?? "";
       sign = form.get("sign") ?? "";
-    } catch {
-      /* ignore */
+      source = data ? "form_body" : "empty";
+    } catch (e) {
+      console.error(`[paysera][${ts}] failed to parse body:`, e);
     }
+  }
+
+  console.log(`[paysera][${ts}] data source=${source}, data_length=${data.length}, sign_length=${sign.length}`);
+
+  if (!data) {
+    console.error(`[paysera][${ts}] no data received — Paysera might be sending to wrong URL or format`);
+    return new NextResponse("NO_DATA", { status: 400 });
   }
 
   const result = verifyPayseraCallback(data, sign);
   if (!result.valid) {
-    console.error("[paysera] callback invalid:", result.reason);
+    console.error(`[paysera][${ts}] VERIFICATION FAILED: ${result.reason}`);
+    console.error(`[paysera][${ts}] sign_password_set=${!!process.env.PAYSERA_SIGN_PASSWORD}, mode=${getMode()}`);
     return new NextResponse("INVALID", { status: 400 });
   }
 
-  console.log("[paysera] callback ok:", { mode: getMode(), orderNumber: result.orderNumber, status: result.status });
+  console.log(`[paysera][${ts}] ✓ verified: order=${result.orderNumber} status=${result.status} amount=${result.amountCents} mode=${getMode()}`);
 
   // Only mark as paid on status=1
   if (result.status !== "1") {
+    console.log(`[paysera][${ts}] status=${result.status} (not 1) — acknowledging without processing`);
     return new NextResponse("OK", { status: 200 });
   }
 
