@@ -430,8 +430,8 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
               <tr>
                 <td style="background:#f8f8fb; border-radius:12px; padding:20px 24px;">
                   <div style="margin-bottom:14px;">
-                    <span style="display:inline-block; background:linear-gradient(135deg, #00d4aa, #b14aed); color:#ffffff; font-weight:700; font-size:15px; padding:4px 12px; border-radius:20px;">15%</span>
-                    <span style="color:#2d2d3f; font-size:15px; margin-left:8px;">komisija par plūsmas vadību, sūtījumu rezervēšanas sistēmu un maksājumu apkalpošanu</span>
+                    <span style="display:inline-block; background:#1a1a2e; color:#53F3A4; font-weight:800; font-size:18px; padding:6px 16px; border-radius:20px; letter-spacing:0.5px;">15%</span>
+                    <span style="color:#2d2d3f; font-size:15px; margin-left:10px;">komisija par plūsmas vadību, sūtījumu rezervēšanas sistēmu un maksājumu apkalpošanu</span>
                   </div>
                   <div>
                     <span style="display:inline-block; background:#1a1a2e; color:#ffffff; font-weight:700; font-size:15px; padding:4px 12px; border-radius:20px;">€1,50</span>
@@ -484,12 +484,6 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
                   Piegādes loģistika, par kuru nav jādomā
                 </td>
               </tr>
-              <tr>
-                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
-                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
-                  Tieša piekļuve pircējiem — bez starpniekiem un slēptām cenu uzcenojumiem
-                </td>
-              </tr>
             </table>
 
             <p style="margin:0 0 32px; font-size:16px; color:#2d2d3f; font-weight:600; text-align:center;">
@@ -500,8 +494,8 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
                 <td align="center" style="padding:8px 0 24px;">
-                  <a href="${escapeHtml(registerUrl)}" style="display:inline-block; background:#1a1a2e; color:#ffffff; text-decoration:none; font-size:16px; font-weight:700; padding:16px 40px; border-radius:10px; letter-spacing:0.3px;">
-                    Pieņemt uzaicinājumu
+                  <a href="${escapeHtml(registerUrl)}" style="display:inline-block; background:linear-gradient(90deg, #53F3A4, #AD47FF); color:#1a1a2e; text-decoration:none; font-size:16px; font-weight:800; padding:16px 40px; border-radius:99px; letter-spacing:0.3px;">
+                    Pieņemt uzaicinājumu →
                   </a>
                 </td>
               </tr>
