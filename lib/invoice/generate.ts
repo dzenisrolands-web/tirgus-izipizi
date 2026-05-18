@@ -5,6 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
+import { COMMISSION_RATE } from "@/lib/commission";
 import type { Period } from "./period";
 
 type OrderItem = {
@@ -96,7 +97,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     for (const item of order.items) {
       const sellerId = item.seller_id;
       if (!sellerId) continue;
-      const rate = item.commission_rate ?? 10; // fallback for legacy orders
+      const rate = item.commission_rate ?? COMMISSION_RATE; // fallback for legacy orders
       const unitPriceCents = Math.round(Number(item.price) * 100);
       const lineGross = unitPriceCents * Number(item.quantity);
       const lineCommission = Math.round(lineGross * (rate / 100));

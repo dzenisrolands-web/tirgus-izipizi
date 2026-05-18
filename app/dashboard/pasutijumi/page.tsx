@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
 
 type Order = {
   id: string;
@@ -228,6 +229,29 @@ export default function DashboardPasutijumiPage() {
                         ))}
                       </div>
                     </div>
+
+                    {/* Commission breakdown */}
+                    <div className="rounded-xl bg-gray-100/60 px-4 py-3 space-y-1.5">
+                      <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                        <Percent size={10} /> Komisija ({COMMISSION_RATE}%)
+                      </p>
+                      {order.items.map((item, i) => {
+                        const lineTotal = item.price * item.quantity;
+                        const lineComm = commissionForPrice(lineTotal);
+                        const lineNet = netForPrice(lineTotal);
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500 truncate flex-1 mr-2">{item.title}</span>
+                            <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm">
+                        <span className="font-semibold text-gray-700">Tu saņemsi</span>
+                        <span className="font-bold text-green-700">{formatPrice(netForPrice(order.total_cents / 100))}</span>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                       <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         {order.paid_at

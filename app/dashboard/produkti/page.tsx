@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X, Star, Clock, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
 import { cn } from "@/lib/utils";
 
 type Listing = {
@@ -207,11 +208,11 @@ export default function ProduktisPage() {
       ) : (
         <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           {/* Table header */}
-          <div className="hidden sm:grid grid-cols-[56px_1fr_100px_80px_90px_96px] gap-3 border-b border-gray-100 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <div className="hidden sm:grid grid-cols-[56px_1fr_100px_100px_90px_96px] gap-3 border-b border-gray-100 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-400">
             <span></span>
             <span>Nosaukums</span>
             <span>Kategorija</span>
-            <span className="text-right">Cena</span>
+            <span className="text-right">Cena ({COMMISSION_RATE}%)</span>
             <span>Statuss</span>
             <span className="text-right">Darbības</span>
           </div>
@@ -222,7 +223,7 @@ export default function ProduktisPage() {
               const st = statusLabel[item.status];
               return (
                 <div key={item.id}
-                  className="grid grid-cols-[56px_1fr_auto] sm:grid-cols-[56px_1fr_100px_80px_90px_96px] items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                  className="grid grid-cols-[56px_1fr_auto] sm:grid-cols-[56px_1fr_100px_100px_90px_96px] items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
 
                   {/* Thumb */}
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-100">
@@ -275,8 +276,16 @@ export default function ProduktisPage() {
                   {/* Desktop: category */}
                   <span className="hidden sm:block text-sm text-gray-500 truncate">{item.category}</span>
 
-                  {/* Desktop: price */}
-                  <span className="hidden sm:block text-sm font-bold text-gray-900 text-right">{formatPrice(item.price)}</span>
+                  {/* Desktop: price + commission */}
+                  <div className="hidden sm:block text-right">
+                    <span className="text-sm font-bold text-gray-900">{formatPrice(item.price)}</span>
+                    {item.price > 0 && (
+                      <p className="text-[10px] text-gray-400">
+                        <span className="text-amber-600">−{formatPrice(commissionForPrice(item.price))}</span>
+                        {" "}→ <span className="text-green-600">{formatPrice(netForPrice(item.price))}</span>
+                      </p>
+                    )}
+                  </div>
 
                   {/* Desktop: status */}
                   <span className={cn("hidden sm:inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold w-fit", st.cls)}>
