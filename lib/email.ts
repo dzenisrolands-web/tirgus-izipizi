@@ -365,57 +365,185 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
   const site = siteUrl();
   const registerUrl = `${site}/register/razotajs?ref=invite&iid=${encodeURIComponent(p.invitationId)}`;
   const trackingPixelUrl = `${site}/api/track/open/${encodeURIComponent(p.invitationId)}`;
-  const greeting = p.name ? `Sveiki, ${escapeHtml(p.name)}!` : "Sveiki!";
 
-  const body = `
-    <h1 style="margin:0 0 16px 0;font-size:24px;font-weight:800;line-height:1.3;">
-      Pievieno savus produktus<br>Latvijas lielākajam tirgum!
-    </h1>
-    <p style="margin:0 0 8px 0;font-size:15px;line-height:1.6;color:#444;">
-      ${greeting}
-    </p>
-    <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#444;">
-      Aicinām Tevi pievienoties <strong>tirgus.izipizi.lv</strong> — Latvijas ražotāju tirgus vietai,
-      kur Tavi produkti nonāk līdz pircējiem visā Latvijā caur pakomātu tīklu.
-    </p>
+  const html = `<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uzaicinājums pievienoties tirgus.izipizi.lv</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#1a1a2e; line-height:1.6;">
 
-    <div style="background:#f6f7f8;border-radius:12px;padding:20px;margin:20px 0;">
-      <p style="margin:0 0 12px 0;font-size:13px;font-weight:700;color:#192635;">Ko Tu iegūsti:</p>
-      <ul style="margin:0;padding:0 0 0 20px;font-size:14px;line-height:1.8;color:#555;">
-        <li>Savu ražotāja profilu ar logo, aprakstu un foto</li>
-        <li>Produktu izvietošanu un pārdošanu pircējiem visā Latvijā</li>
-        <li>Automātiskus paziņojumus par jauniem pasūtījumiem</li>
-        <li>Pasūtījumu pārvaldību un statistiku vienuviet</li>
-        <li>Piegādi caur pakomātiem — bez lieka stresa</li>
-      </ul>
-    </div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f4f4f7; padding:24px 0;">
+  <tr>
+    <td align="center">
 
-    <div style="text-align:center;margin:28px 0;">
-      <a href="${escapeHtml(registerUrl)}" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;text-decoration:none;font-weight:800;font-size:15px;border-radius:9999px;letter-spacing:-0.01em;">
-        Pievienoties platformai →
-      </a>
-    </div>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.06);">
 
-    <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#666;">
-      Vai poga nestrādā? Iekopē šo saiti pārlūkā:
-    </p>
-    <p style="margin:0 0 20px 0;font-size:12px;line-height:1.5;color:#888;word-break:break-all;background:#f6f7f8;padding:10px 12px;border-radius:8px;">
-      ${escapeHtml(registerUrl)}
-    </p>
+        <!-- HEADER -->
+        <tr>
+          <td style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding:48px 32px 40px; text-align:center;">
+            <div style="display:inline-block; margin-bottom:16px;">
+              <img src="${escapeHtml(site)}/logo.png" alt="IziPizi" width="80" height="80" style="display:block; border:0;">
+            </div>
+            <div style="color:#ffffff; font-size:22px; font-weight:700; letter-spacing:0.3px;">tirgus.izipizi.lv</div>
+            <div style="width:80px; height:3px; background: linear-gradient(90deg, #00d4aa, #b14aed); margin:16px auto 0; border-radius:2px;"></div>
+          </td>
+        </tr>
 
-    <div style="height:1px;background:#f0f1f3;margin:8px 0 16px;"></div>
-    <p style="margin:0;font-size:13px;line-height:1.6;color:#666;">
-      Ja ir jautājumi — atbildi uz šo e-pastu vai raksti uz
-      <a href="mailto:tirgus@izipizi.lv" style="color:#AD47FF;font-weight:600;">tirgus@izipizi.lv</a>
-    </p>
+        <!-- BODY -->
+        <tr>
+          <td style="padding:40px 40px 32px;">
 
-    <!-- Tracking pixel -->
-    <img src="${escapeHtml(trackingPixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
+            <h1 style="margin:0 0 24px; font-size:26px; font-weight:700; color:#1a1a2e; line-height:1.3;">
+              Tu esi uzaicināts pievienoties
+            </h1>
+
+            <p style="margin:0 0 20px; font-size:16px; color:#2d2d3f;">${p.name ? `Sveiks, ${escapeHtml(p.name)}!` : "Sveiks!"}</p>
+
+            <p style="margin:0 0 20px; font-size:16px; color:#2d2d3f;">
+              <strong>Temperatūras režīma pakomāti, piegāde un tirgotāju mārketplace</strong> — šie ir rīki, ko mēs būvējam tieši priekš Tevis!
+            </p>
+
+            <p style="margin:0 0 20px; font-size:16px; color:#2d2d3f;">
+              Piedāvā savu produktu <strong>tirgus.izipizi.lv</strong> tirdzniecības platformā — Latvijas ražotāju tirgus vietā, kur svaiga pārtika no fermas nonāk līdz pircējam pakomātā vai mājās.
+            </p>
+
+            <p style="margin:0 0 32px; font-size:17px; color:#1a1a2e; font-weight:600;">
+              Mūsu pircēji gaida Tevi! 🌱
+            </p>
+
+            <!-- DIVIDER -->
+            <div style="height:1px; background:#eaeaef; margin:0 0 28px;"></div>
+
+            <!-- PRICING SECTION -->
+            <h2 style="margin:0 0 16px; font-size:18px; font-weight:700; color:#1a1a2e;">
+              Godīgi un caurspīdīgi nosacījumi
+            </h2>
+
+            <p style="margin:0 0 16px; font-size:16px; color:#2d2d3f;">
+              Par platformas izmantošanu mēs ieturam:
+            </p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 24px;">
+              <tr>
+                <td style="background:#f8f8fb; border-radius:12px; padding:20px 24px;">
+                  <div style="margin-bottom:14px;">
+                    <span style="display:inline-block; background:linear-gradient(135deg, #00d4aa, #b14aed); color:#ffffff; font-weight:700; font-size:15px; padding:4px 12px; border-radius:20px;">15%</span>
+                    <span style="color:#2d2d3f; font-size:15px; margin-left:8px;">komisija par plūsmas vadību, sūtījumu rezervēšanas sistēmu un maksājumu apkalpošanu</span>
+                  </div>
+                  <div>
+                    <span style="display:inline-block; background:#1a1a2e; color:#ffffff; font-weight:700; font-size:15px; padding:4px 12px; border-radius:20px;">€1,50</span>
+                    <span style="color:#2d2d3f; font-size:15px; margin-left:8px;">līdzmaksājums piegādes maksas segšanai</span>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 32px; font-size:15px; color:#5a5a6e; font-style:italic;">
+              Reģistrācija ir bez maksas — komisijas maksa tiek ieturēta tikai pēc veiksmīga pirkuma.
+            </p>
+
+            <!-- DIVIDER -->
+            <div style="height:1px; background:#eaeaef; margin:0 0 28px;"></div>
+
+            <!-- BENEFITS -->
+            <h2 style="margin:0 0 18px; font-size:18px; font-weight:700; color:#1a1a2e;">
+              Ko Tu iegūsti?
+            </h2>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 32px;">
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Pats ievieto savus produktus — ātri un vienkārši
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Apskati pasūtījumus reālajā laikā
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Sagatavo sūtījuma pavaddokumentus vienā klikšķī
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Temperatūras režīma pakomāti — svaiga produkcija droši nonāk pie pircēja
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Piegādes loģistika, par kuru nav jādomā
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
+                  <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
+                  Tieša piekļuve pircējiem — bez starpniekiem un slēptām cenu uzcenojumiem
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 32px; font-size:16px; color:#2d2d3f; font-weight:600; text-align:center;">
+              Tas viss <span style="background:linear-gradient(90deg, #00d4aa, #b14aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">IziPizi</span> ar tirgus.izipizi.lv
+            </p>
+
+            <!-- CTA BUTTON -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td align="center" style="padding:8px 0 24px;">
+                  <a href="${escapeHtml(registerUrl)}" style="display:inline-block; background:#1a1a2e; color:#ffffff; text-decoration:none; font-size:16px; font-weight:700; padding:16px 40px; border-radius:10px; letter-spacing:0.3px;">
+                    Pieņemt uzaicinājumu
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:24px 0 8px; font-size:13px; color:#7a7a8c;">
+              Vai poga nestrādā? Iekopē šo saiti pārlūkā:
+            </p>
+            <p style="margin:0; font-size:13px; color:#5a5a6e; word-break:break-all;">
+              ${escapeHtml(registerUrl)}
+            </p>
+
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background:#f8f8fb; padding:24px 40px; text-align:center; border-top:1px solid #eaeaef;">
+            <p style="margin:0 0 8px; font-size:13px; color:#7a7a8c;">
+              Ja šī vēstule Tev nešķiet aktuāla, vienkārši ignorē to.
+            </p>
+            <p style="margin:0; font-size:12px; color:#9a9aae;">
+              © 2026 tirgus.izipizi.lv — Latvijas ražotāju tirgus
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+
+<!-- Tracking pixel -->
+<img src="${escapeHtml(trackingPixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />
+</body>
+</html>`;
 
   return sendEmail({
     to: p.to,
     subject: "Uzaicinājums pievienoties tirgus.izipizi.lv",
-    html: brandedEmailLayout(body, { subtitle: "Latvijas ražotāju tirgus vieta" }),
+    html,
   });
 }
 
