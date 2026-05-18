@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, brandedEmailLayout } from "@/lib/email";
 
 /**
  * Sūta e-pasta atgādinājumu pārdevējam par trūkstošajiem profila datiem.
@@ -30,8 +30,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const { sellerId, customMessage } = body as { sellerId?: string; customMessage?: string };
+  const reqBody = await req.json().catch(() => ({}));
+  const { sellerId, customMessage } = reqBody as { sellerId?: string; customMessage?: string };
   if (!sellerId) return NextResponse.json({ error: "Missing sellerId" }, { status: 400 });
 
   // Fetch seller info
@@ -82,46 +82,26 @@ export async function POST(req: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tirgus.izipizi.lv";
   const itemsHtml = missing.map((m) => `<li style="padding:6px 0;border-bottom:1px solid #f0f0f0;">${escape(m)}</li>`).join("");
 
-  const html = `<!doctype html>
-<html lang="lv">
-<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-        <tr>
-          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
-            tirgus.izipizi.lv
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <h1 style="margin:0 0 12px 0;font-size:22px;font-weight:800;">Sveiks, ${escape(seller.name)}!</h1>
-            <p style="margin:0 0 16px 0;color:#555;font-size:14px;line-height:1.6;">
-              Lai mēs varētu apstiprināt tavu profilu un sākt nogādāt pircējiem tavus produktus,
-              lūdzu, papildini sekojošo informāciju savā tirgotāja profilā:
-            </p>
-            ${customMessage ? `<div style="margin:0 0 16px 0;padding:12px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:14px;">${escape(customMessage)}</div>` : ""}
-            <ol style="margin:16px 0;padding-left:20px;color:#192635;font-size:14px;line-height:1.7;">
-              ${itemsHtml}
-            </ol>
-            <a href="${siteUrl}/dashboard/profils" style="display:inline-block;margin-top:16px;padding:12px 24px;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;text-decoration:none;font-weight:700;border-radius:9999px;">
-              Aizpildīt profilu →
-            </a>
-            <p style="margin:24px 0 0 0;color:#888;font-size:12px;">
-              Ja ir jautājumi, atbildi uz šo e-pastu vai raksti uz info@izipizi.lv.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · tirgus.izipizi.lv
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const emailBody = `
+    <h1 style="margin:0 0 12px 0;font-size:22px;font-weight:800;">Sveiks, ${escape(seller.name)}!</h1>
+    <p style="margin:0 0 16px 0;color:#555;font-size:14px;line-height:1.6;">
+      Lai mēs varētu apstiprināt tavu profilu un sākt nogādāt pircējiem tavus produktus,
+      lūdzu, papildini sekojošo informāciju savā tirgotāja profilā:
+    </p>
+    ${customMessage ? `<div style="margin:0 0 16px 0;padding:12px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:14px;">${escape(customMessage)}</div>` : ""}
+    <ol style="margin:16px 0;padding-left:20px;color:#192635;font-size:14px;line-height:1.7;">
+      ${itemsHtml}
+    </ol>
+    <div style="text-align:center;margin:24px 0 0 0;">
+      <a href="${siteUrl}/dashboard/profils" style="display:inline-block;padding:12px 24px;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;text-decoration:none;font-weight:700;border-radius:9999px;">
+        Aizpildīt profilu →
+      </a>
+    </div>
+    <p style="margin:24px 0 0 0;color:#888;font-size:12px;">
+      Ja ir jautājumi, atbildi uz šo e-pastu vai raksti uz info@izipizi.lv.
+    </p>`;
+
+  const html = brandedEmailLayout(emailBody);
 
   const result = await sendEmail({
     to: sellerEmail,

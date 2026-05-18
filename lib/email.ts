@@ -106,59 +106,32 @@ export async function sendOrderConfirmationEmail(o: OrderEmailData): Promise<Sen
     </tr>`;
   }).join("");
 
-  const html = `<!doctype html>
-<html lang="lv">
-<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <tr>
-          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
-            tirgus.izipizi.lv
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">Paldies par pasūtījumu, ${escapeHtml(o.buyerName)}!</h1>
-            <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
-              Pasūtījums <strong>${escapeHtml(o.orderNumber)}</strong> ir saņemts un apmaksāts.
-              Drīzumā saņemsi paziņojumu, kad ražotājs to apstiprinās un sagatavos.
-            </p>
-
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">
-              ${itemsRows}
-              <tr>
-                <td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td>
-                <td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td>
-              </tr>
-            </table>
-
-            <div style="background:#f6f7f8;border-radius:12px;padding:16px;margin:16px 0;">
-              <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#888;margin-bottom:6px;">Piegāde</div>
-              <div style="font-weight:600;">${escapeHtml(deliveryLabel)}</div>
-              ${deliveryDetails ? `<div style="margin-top:4px;color:#555;font-size:13px;">${deliveryDetails}</div>` : ""}
-            </div>
-
-            <p style="margin:24px 0 0 0;color:#555;font-size:13px;line-height:1.6;">
-              Statusu vari sekot <a href="${escapeHtml(siteUrl())}/cart/success?order=${encodeURIComponent(o.orderNumber)}" style="color:#AD47FF;font-weight:600;">savā pasūtījumu sadaļā</a>.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · Reģ. nr. 40103915568 · tirgus.izipizi.lv
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">Paldies par pasūtījumu, ${escapeHtml(o.buyerName)}!</h1>
+    <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+      Pasūtījums <strong>${escapeHtml(o.orderNumber)}</strong> ir saņemts un apmaksāts.
+      Drīzumā saņemsi paziņojumu, kad ražotājs to apstiprinās un sagatavos.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">
+      ${itemsRows}
+      <tr>
+        <td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td>
+        <td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td>
+      </tr>
+    </table>
+    <div style="background:#f6f7f8;border-radius:12px;padding:16px;margin:16px 0;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#888;margin-bottom:6px;">Piegāde</div>
+      <div style="font-weight:600;">${escapeHtml(deliveryLabel)}</div>
+      ${deliveryDetails ? `<div style="margin-top:4px;color:#555;font-size:13px;">${deliveryDetails}</div>` : ""}
+    </div>
+    <p style="margin:24px 0 0 0;color:#555;font-size:13px;line-height:1.6;">
+      Statusu vari sekot <a href="${escapeHtml(siteUrl())}/cart/success?order=${encodeURIComponent(o.orderNumber)}" style="color:#AD47FF;font-weight:600;">savā pasūtījumu sadaļā</a>.
+    </p>`;
 
   return sendEmail({
     to: o.buyerEmail,
     subject: `Pasūtījums ${o.orderNumber} apmaksāts — tirgus.izipizi.lv`,
-    html,
+    html: brandedEmailLayout(body),
   });
 }
 
@@ -229,60 +202,33 @@ export async function sendSellerNewOrderEmail(p: {
     </tr>`;
   }).join("");
 
-  const html = `<!doctype html>
-<html lang="lv">
-<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <tr>
-          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
-            tirgus.izipizi.lv
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">🛒 Jauns apmaksāts pasūtījums!</h1>
-            <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
-              Sveiki, <strong>${escapeHtml(p.sellerName)}</strong>!<br>
-              Pircējs <strong>${escapeHtml(p.buyerName)}</strong> ir apmaksājis pasūtījumu <strong>${escapeHtml(p.orderNumber)}</strong>.
-              Lūdzu apstipriniet un sagatavojiet to nosūtīšanai.
-            </p>
-
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">
-              ${itemsRows}
-              <tr>
-                <td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td>
-                <td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td>
-              </tr>
-            </table>
-
-            <div style="background:#f6f7f8;border-radius:12px;padding:16px;margin:16px 0;">
-              <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#888;margin-bottom:6px;">Piegāde</div>
-              <div style="font-weight:600;">${escapeHtml(deliveryLabel)}</div>
-              ${deliveryDetails ? `<div style="margin-top:4px;color:#555;font-size:13px;">${deliveryDetails}</div>` : ""}
-            </div>
-
-            <div style="text-align:center;margin:24px 0 0 0;">
-              <a href="${escapeHtml(siteUrl())}/dashboard/pasutijumi" style="display:inline-block;background:#192635;color:#53F3A4;padding:12px 32px;border-radius:12px;font-weight:700;text-decoration:none;font-size:14px;">Apskatīt pasūtījumus →</a>
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · Reģ. nr. 40103915568 · tirgus.izipizi.lv
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">🛒 Jauns apmaksāts pasūtījums!</h1>
+    <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+      Sveiki, <strong>${escapeHtml(p.sellerName)}</strong>!<br>
+      Pircējs <strong>${escapeHtml(p.buyerName)}</strong> ir apmaksājis pasūtījumu <strong>${escapeHtml(p.orderNumber)}</strong>.
+      Lūdzu apstipriniet un sagatavojiet to nosūtīšanai.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">
+      ${itemsRows}
+      <tr>
+        <td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td>
+        <td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td>
+      </tr>
+    </table>
+    <div style="background:#f6f7f8;border-radius:12px;padding:16px;margin:16px 0;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:#888;margin-bottom:6px;">Piegāde</div>
+      <div style="font-weight:600;">${escapeHtml(deliveryLabel)}</div>
+      ${deliveryDetails ? `<div style="margin-top:4px;color:#555;font-size:13px;">${deliveryDetails}</div>` : ""}
+    </div>
+    <div style="text-align:center;margin:24px 0 0 0;">
+      <a href="${escapeHtml(siteUrl())}/dashboard/pasutijumi" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:12px 32px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Apskatīt pasūtījumus →</a>
+    </div>`;
 
   return sendEmail({
     to: p.sellerEmail,
     subject: `Jauns pasūtījums ${p.orderNumber} — tirgus.izipizi.lv`,
-    html,
+    html: brandedEmailLayout(body),
   });
 }
 
@@ -302,40 +248,21 @@ export async function sendAdminOrderCopy(o: OrderEmailData): Promise<SendEmailRe
     `${escapeHtml(it.title)} × ${it.quantity} = ${(it.price * it.quantity).toFixed(2)}€`
   ).join("<br>");
 
-  const html = `<!doctype html>
-<html lang="lv">
-<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#192635;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <tr>
-          <td style="background:#192635;color:#53F3A4;padding:24px 28px;font-size:22px;font-weight:800;letter-spacing:-0.02em;">
-            tirgus.izipizi.lv — Admin
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:28px;">
-            <h1 style="margin:0 0 8px 0;font-size:18px;font-weight:800;">Jauns pasūtījums ${escapeHtml(o.orderNumber)}</h1>
-            <p style="margin:0 0 12px 0;color:#555;font-size:14px;line-height:1.6;">
-              <strong>Pircējs:</strong> ${escapeHtml(o.buyerName)} (${escapeHtml(o.buyerEmail)})<br>
-              <strong>Piegāde:</strong> ${escapeHtml(deliveryLabel)} ${deliveryDetails ? "— " + deliveryDetails : ""}<br>
-              <strong>Summa:</strong> ${total}€
-            </p>
-            <p style="margin:0;color:#555;font-size:13px;line-height:1.8;">
-              <strong>Preces:</strong><br>${itemsList}
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:18px;font-weight:800;">Jauns pasūtījums ${escapeHtml(o.orderNumber)}</h1>
+    <p style="margin:0 0 12px 0;color:#555;font-size:14px;line-height:1.6;">
+      <strong>Pircējs:</strong> ${escapeHtml(o.buyerName)} (${escapeHtml(o.buyerEmail)})<br>
+      <strong>Piegāde:</strong> ${escapeHtml(deliveryLabel)} ${deliveryDetails ? "— " + deliveryDetails : ""}<br>
+      <strong>Summa:</strong> ${total}€
+    </p>
+    <p style="margin:0;color:#555;font-size:13px;line-height:1.8;">
+      <strong>Preces:</strong><br>${itemsList}
+    </p>`;
 
   return sendEmail({
     to: "tirgus@izipizi.lv",
     subject: `[Admin] Jauns pasūtījums ${o.orderNumber} · ${total}€`,
-    html,
+    html: brandedEmailLayout(body, { admin: true }),
   });
 }
 
@@ -420,6 +347,138 @@ export async function sendAllOrderEmails(orderId: string): Promise<{
   const admin = await sendAdminOrderCopy(emailData);
 
   return { buyer, sellers: sellerResults, admin };
+}
+
+// ─── Invitation email ───────────────────────────────────────────────────────
+
+export type InvitationEmailParams = {
+  to: string;
+  name?: string;
+  invitationId: string; // for tracking pixel
+};
+
+/**
+ * Send a branded platform invitation email to a potential producer.
+ * Includes a tracking pixel for open detection.
+ */
+export async function sendInvitationEmail(p: InvitationEmailParams): Promise<SendEmailResult> {
+  const site = siteUrl();
+  const registerUrl = `${site}/register/razotajs?ref=invite&iid=${encodeURIComponent(p.invitationId)}`;
+  const trackingPixelUrl = `${site}/api/track/open/${encodeURIComponent(p.invitationId)}`;
+  const greeting = p.name ? `Sveiki, ${escapeHtml(p.name)}!` : "Sveiki!";
+
+  const body = `
+    <h1 style="margin:0 0 16px 0;font-size:24px;font-weight:800;line-height:1.3;">
+      Pievieno savus produktus<br>Latvijas lielākajam tirgum!
+    </h1>
+    <p style="margin:0 0 8px 0;font-size:15px;line-height:1.6;color:#444;">
+      ${greeting}
+    </p>
+    <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#444;">
+      Aicinām Tevi pievienoties <strong>tirgus.izipizi.lv</strong> — Latvijas ražotāju tirgus vietai,
+      kur Tavi produkti nonāk līdz pircējiem visā Latvijā caur pakomātu tīklu.
+    </p>
+
+    <div style="background:#f6f7f8;border-radius:12px;padding:20px;margin:20px 0;">
+      <p style="margin:0 0 12px 0;font-size:13px;font-weight:700;color:#192635;">Ko Tu iegūsti:</p>
+      <ul style="margin:0;padding:0 0 0 20px;font-size:14px;line-height:1.8;color:#555;">
+        <li>Savu ražotāja profilu ar logo, aprakstu un foto</li>
+        <li>Produktu izvietošanu un pārdošanu pircējiem visā Latvijā</li>
+        <li>Automātiskus paziņojumus par jauniem pasūtījumiem</li>
+        <li>Pasūtījumu pārvaldību un statistiku vienuviet</li>
+        <li>Piegādi caur pakomātiem — bez lieka stresa</li>
+      </ul>
+    </div>
+
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${escapeHtml(registerUrl)}" style="display:inline-block;padding:14px 36px;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;text-decoration:none;font-weight:800;font-size:15px;border-radius:9999px;letter-spacing:-0.01em;">
+        Pievienoties platformai →
+      </a>
+    </div>
+
+    <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#666;">
+      Vai poga nestrādā? Iekopē šo saiti pārlūkā:
+    </p>
+    <p style="margin:0 0 20px 0;font-size:12px;line-height:1.5;color:#888;word-break:break-all;background:#f6f7f8;padding:10px 12px;border-radius:8px;">
+      ${escapeHtml(registerUrl)}
+    </p>
+
+    <div style="height:1px;background:#f0f1f3;margin:8px 0 16px;"></div>
+    <p style="margin:0;font-size:13px;line-height:1.6;color:#666;">
+      Ja ir jautājumi — atbildi uz šo e-pastu vai raksti uz
+      <a href="mailto:tirgus@izipizi.lv" style="color:#AD47FF;font-weight:600;">tirgus@izipizi.lv</a>
+    </p>
+
+    <!-- Tracking pixel -->
+    <img src="${escapeHtml(trackingPixelUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
+
+  return sendEmail({
+    to: p.to,
+    subject: "Uzaicinājums pievienoties tirgus.izipizi.lv",
+    html: brandedEmailLayout(body, { subtitle: "Latvijas ražotāju tirgus vieta" }),
+  });
+}
+
+// ─── Branded layout ──────────────────────────────────────────────────────────
+
+type BrandedLayoutOptions = {
+  /** Override header subtitle text (default: none) */
+  subtitle?: string;
+  /** Show "Admin" badge in header */
+  admin?: boolean;
+};
+
+/**
+ * Wraps email body HTML in the branded izipizi layout:
+ * gradient header with logo, white body, branded footer.
+ */
+export function brandedEmailLayout(body: string, options?: BrandedLayoutOptions): string {
+  const logoUrl = `${siteUrl()}/izipizi-logo.png`;
+  const adminBadge = options?.admin
+    ? `<span style="display:inline-block;background:rgba(255,255,255,0.2);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.04em;margin-left:8px;vertical-align:middle;">Admin</span>`
+    : "";
+
+  return `<!doctype html>
+<html lang="lv">
+<head><meta charset="utf-8"><meta name="color-scheme" content="light"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f6f7f8;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#192635;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <!-- Header with gradient + logo -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#192635 0%,#1e3048 50%,#2a1f3d 100%);padding:28px 28px 24px;text-align:center;">
+            <img src="${escapeHtml(logoUrl)}" alt="izipizi.lv" width="64" height="64" style="display:block;margin:0 auto 12px;width:64px;height:64px;border-radius:16px;" />
+            <p style="margin:0;font-size:18px;font-weight:800;color:#ffffff;letter-spacing:-0.01em;">tirgus.izipizi.lv${adminBadge}</p>
+            ${options?.subtitle ? `<p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.85);font-weight:400;">${escapeHtml(options.subtitle)}</p>` : ""}
+            <div style="margin:16px auto 0;width:80px;height:3px;border-radius:2px;background:linear-gradient(90deg,#53F3A4,#AD47FF);"></div>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:28px;">
+            ${body}
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:16px 28px 24px;border-top:1px solid #f0f1f3;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="color:#888;font-size:11px;line-height:1.6;">
+                  Šis ir automātisks e-pasts no <a href="${escapeHtml(siteUrl())}" style="color:#AD47FF;text-decoration:none;font-weight:600;">tirgus.izipizi.lv</a><br>
+                  SIA &quot;Svaigi&quot; · Reģ. nr. 40103915568 · Margrietas iela 7, Rīga, LV-1046<br>
+                  <a href="mailto:tirgus@izipizi.lv" style="color:#888;">tirgus@izipizi.lv</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
