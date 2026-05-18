@@ -385,7 +385,7 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
         <tr>
           <td style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding:48px 32px 40px; text-align:center;">
             <div style="display:inline-block; margin-bottom:16px;">
-              <img src="${escapeHtml(site)}/logo.png" alt="IziPizi" width="80" height="80" style="display:block; border:0;">
+              <img src="${escapeHtml(site)}/izipizi-logo.png" alt="IziPizi" width="80" height="80" style="display:block; border:0;">
             </div>
             <div style="color:#ffffff; font-size:22px; font-weight:700; letter-spacing:0.3px;">tirgus.izipizi.lv</div>
             <div style="width:80px; height:3px; background: linear-gradient(90deg, #00d4aa, #b14aed); margin:16px auto 0; border-radius:2px;"></div>
