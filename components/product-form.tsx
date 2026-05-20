@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Upload, X, Zap, Percent } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
@@ -22,13 +22,14 @@ export type ProductData = {
   quantity: string;
   status: "active" | "paused";
   express_delivery: boolean;
+  courier_delivery: boolean;
   vat_rate: VatRate;
 };
 
 const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
-  quantity: "1", status: "active", express_delivery: false,
+  quantity: "1", status: "active", express_delivery: false, courier_delivery: true,
   vat_rate: 21,
 };
 
@@ -124,6 +125,7 @@ export function ProductForm({
         commission_rate: COMMISSION_RATE,
         commission_status: "approved",
         vat_rate: form.vat_rate,
+        courier_delivery: form.courier_delivery,
         updated_at: new Date().toISOString(),
       };
 
@@ -326,7 +328,8 @@ export function ProductForm({
 
       {/* Locker */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold text-gray-700">Pārtikas pakomāts</h2>
+        <h2 className="text-sm font-extrabold text-gray-700">Pakomāts un piegāde</h2>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">Pārtikas pakomāts</label>
           <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
@@ -335,44 +338,100 @@ export function ProductForm({
             ))}
           </select>
         </div>
-        {/* Express delivery toggle */}
+
+        {/* Warehouse info for non-Riga sellers */}
+        <div className="rounded-xl bg-brand-50 border border-brand-200 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <Warehouse size={16} className="mt-0.5 shrink-0 text-brand-600" />
+            <div>
+              <p className="text-sm font-semibold text-brand-800">Nav Rīgā? Izmanto IziPizi noliktavu</p>
+              <p className="mt-0.5 text-xs text-brand-700 leading-relaxed">
+                Nositī produktus uz IziPizi noliktavu (Brīvības 253, Rīgā) —
+                mēs rūpēsimies par komplektēšanu, ielikšanu pakomātā un piegādi.
+                Tā Tu vari pārdot visā Latvijā, nebūdams Rīgā.
+              </p>
+              <a href="mailto:tirgus@izipizi.lv" className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline">
+                Sazināties par noliktavas pakalpojumu →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery options */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Piegādes iespējas</label>
-          <button
-            type="button"
-            onClick={() => toggle("express_delivery")}
-            className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition ${
-              form.express_delivery
-                ? "border-yellow-400 bg-yellow-50"
-                : "border-gray-200 bg-gray-50 hover:border-gray-300"
-            }`}
-          >
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-              form.express_delivery ? "bg-yellow-400/20" : "bg-gray-200"
-            }`}>
-              <Zap size={18} className={form.express_delivery ? "text-yellow-600" : "text-gray-400"} />
-            </div>
-            <div className="flex-1">
-              <p className={`font-semibold text-sm ${form.express_delivery ? "text-yellow-800" : "text-gray-700"}`}>
-                ⚡ Eksprespiegāde (2–5h Rīgā)
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Aktivizē, ja esi Rīgā vai tuvākajā apkārtnē un vari piedāvāt tajā pašā dienā piegādi
-              </p>
-            </div>
-            <div className={`h-5 w-9 rounded-full transition-colors ${
-              form.express_delivery ? "bg-yellow-400" : "bg-gray-300"
-            }`}>
-              <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                form.express_delivery ? "translate-x-4" : "translate-x-0"
-              }`} />
-            </div>
-          </button>
+          <div className="space-y-2">
+
+            {/* Standard courier */}
+            <button
+              type="button"
+              onClick={() => toggle("courier_delivery")}
+              className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition ${
+                form.courier_delivery
+                  ? "border-brand-400 bg-brand-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                form.courier_delivery ? "bg-brand-100" : "bg-gray-200"
+              }`}>
+                <Truck size={18} className={form.courier_delivery ? "text-brand-600" : "text-gray-400"} />
+              </div>
+              <div className="flex-1">
+                <p className={`font-semibold text-sm ${form.courier_delivery ? "text-brand-800" : "text-gray-700"}`}>
+                  🚚 Kurjerpiegāde (1–2 dienas)
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Pircejs var izvēlēties piegādi uz mājām vai citu adresi visā Latvijā
+                </p>
+              </div>
+              <div className={`h-5 w-9 rounded-full transition-colors flex-shrink-0 ${
+                form.courier_delivery ? "bg-brand-400" : "bg-gray-300"
+              }`}>
+                <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  form.courier_delivery ? "translate-x-4" : "translate-x-0"
+                }`} />
+              </div>
+            </button>
+
+            {/* Express delivery */}
+            <button
+              type="button"
+              onClick={() => toggle("express_delivery")}
+              className={`flex w-full items-center gap-3 rounded-xl border-2 p-4 text-left transition ${
+                form.express_delivery
+                  ? "border-yellow-400 bg-yellow-50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                form.express_delivery ? "bg-yellow-400/20" : "bg-gray-200"
+              }`}>
+                <Zap size={18} className={form.express_delivery ? "text-yellow-600" : "text-gray-400"} />
+              </div>
+              <div className="flex-1">
+                <p className={`font-semibold text-sm ${form.express_delivery ? "text-yellow-800" : "text-gray-700"}`}>
+                  ⚡ Eksprespiegāde (2–5h Rīgā)
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Aktivīzē tikai ja esi Rīgā/Pierīgā un vari apkalpo tajā pašā dienā
+                </p>
+              </div>
+              <div className={`h-5 w-9 rounded-full transition-colors flex-shrink-0 ${
+                form.express_delivery ? "bg-yellow-400" : "bg-gray-300"
+              }`}>
+                <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  form.express_delivery ? "translate-x-4" : "translate-x-0"
+                }`} />
+              </div>
+            </button>
+
+          </div>
         </div>
 
         {!productId && (
           <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-            Produkts tiks iesniegts apstiprināšanai. Pēc apstiprināšanas tas parādīsies katalogā.
+            Produkts tiks iesniegts apstiprināšanai. Pēc apstiprināšanas tas parādīsies katalōgā.
           </p>
         )}
       </section>
