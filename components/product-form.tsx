@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
