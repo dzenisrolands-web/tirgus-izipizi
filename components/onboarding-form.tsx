@@ -90,7 +90,7 @@ export function OnboardingForm() {
   function canNext() {
     if (step === 0) return form.name.trim() && form.location.trim();
     if (step === 1) return form.description.trim() && form.short_desc.trim();
-    if (step === 2) return form.youtube_video_url.trim();
+    if (step === 2) return true; // video is optional
     if (step === 4) return form.home_locker_ids.length > 0 || !!form.courier_pickup_address.trim();
     if (step === 5) return validateLegal(form).length === 0;
     return true;
@@ -270,15 +270,15 @@ export function OnboardingForm() {
         {step === 2 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-              <Video size={16} className="text-brand-600" /> Video par sevi *
+              <Video size={16} className="text-brand-600" /> Video par sevi
             </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              Video ir <strong>obligāts</strong> — tas palīdz pircējiem iepazīt tevi un uzticēties tavam produktam.
+            <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+              Video palīdz pircējiem iepazīt tevi un uzticēties tavam produktam. Vari pievienot vēlāk.
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">YouTube video URL *</label>
+              <label className="block text-sm font-medium text-gray-700">YouTube video URL</label>
               <input value={form.youtube_video_url} onChange={(e) => set("youtube_video_url", e.target.value)}
-                className="input mt-1" placeholder="https://www.youtube.com/watch?v=..." required />
+                className="input mt-1" placeholder="https://www.youtube.com/watch?v=..." />
               <p className="mt-1 text-xs text-gray-400">Ieliec saiti uz YouTube video, kurā stāsti par sevi vai saimniecību</p>
             </div>
             {form.youtube_video_url && (() => {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Store, ArrowLeft, Truck, Percent, Shield } from "lucide-react";
+import { Loader2, Store, ArrowLeft, Truck, Percent, Shield, Star, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export function SellerSignupForm() {
@@ -171,28 +171,70 @@ export function SellerSignupForm() {
           </p>
         </div>
 
+        {/* How it works */}
+        <div className="mt-8 mb-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Kā tas darbojas</p>
+          <div className="grid gap-2">
+            {[
+              { n: "1", t: "Reģistrējies", d: "Izveido kontu — 2 minūtes." },
+              { n: "2", t: "Sagatavo profilu", d: "Nosaukums, foto, apraksts un produkti." },
+              { n: "3", t: "Sāc pārdot", d: "Pircēji atrod tevi un iegādājas produktus." },
+              { n: "4", t: "Saņem maksājumu", d: "Nauda ienāk pēc katras piegādes." },
+            ].map(s => (
+              <div key={s.n} className="flex items-center gap-3 rounded-xl bg-white/5 px-4 py-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-400/20 text-xs font-bold text-brand-400">{s.n}</span>
+                <div>
+                  <p className="text-sm font-semibold text-white">{s.t}</p>
+                  <p className="text-xs text-gray-400">{s.d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Trust signals */}
-        <div className="mt-6 grid gap-2.5">
-          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3 backdrop-blur">
+        <div className="mt-4 grid gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Platformas prasības</p>
+          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3">
             <Percent size={16} className="mt-0.5 shrink-0 text-brand-400" />
             <div>
-              <p className="text-sm font-semibold text-white">Komisija tikai no pārdošanas</p>
-              <p className="text-xs text-gray-400">Bez abonēšanas. Maksā tikai tad, kad pārdod.</p>
+              <p className="text-sm font-semibold text-white">15% komisija no katra pārdošanas</p>
+              <p className="text-xs text-gray-400">Reģistrācija bez maksas. Maksā tikai tad, kad pārd od.</p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3 backdrop-blur">
+          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3">
             <Truck size={16} className="mt-0.5 shrink-0 text-brand-400" />
             <div>
-              <p className="text-sm font-semibold text-white">3 piegādes veidi</p>
-              <p className="text-xs text-gray-400">Pakomāts 24/7, kurjers vai ekspres piegāde.</p>
+              <p className="text-sm font-semibold text-white">Temperatūras režīma piegāde</p>
+              <p className="text-xs text-gray-400">Pakomāts 24/7, kurjers vai ekspres piegāde ar temperatūras kontroli.</p>
             </div>
           </div>
-          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3 backdrop-blur">
+          <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3">
             <Shield size={16} className="mt-0.5 shrink-0 text-brand-400" />
             <div>
               <p className="text-sm font-semibold text-white">Droši maksājumi</p>
-              <p className="text-xs text-gray-400">Paysera maksājumu sistēma — droša un uzticama.</p>
+              <p className="text-xs text-gray-400">Paysera maksājumu sistēma — nauda ienāk tieši tev.</p>
             </div>
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="mt-6">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Saka mūsu ražotāji</p>
+          <div className="grid gap-3">
+            {[
+              { name: "Jānis B.", farm: "Bērziņu saimniecība", text: "Pirmo pasūtījumu saņēmu jau 3 dienas pēc profila izveides. Vienkārši un ātri!" },
+              { name: "Anita K.", farm: "Austeru bārs BURŽUJS", text: "Pakomāts ļauj klientiem saņemt arī naktī. Tas ir īsts plūsa atteikšanās no tradicijām." },
+              { name: "Māris Z.", farm: "Zaļā ferma", text: "Iekonomāju laiku uz loģistiku — varu vairāk pievērsties ražošanai." },
+            ].map(t => (
+              <div key={t.name} className="rounded-xl bg-white/5 px-4 py-3">
+                <div className="flex gap-0.5 mb-2">
+                  {[1,2,3,4,5].map(i => <Star key={i} size={11} className="text-amber-400" fill="currentColor" />)}
+                </div>
+                <p className="text-xs text-gray-300 italic leading-relaxed">"{t.text}"</p>
+                <p className="mt-2 text-[11px] font-semibold text-white">{t.name} <span className="text-gray-500 font-normal">— {t.farm}</span></p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
