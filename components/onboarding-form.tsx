@@ -25,6 +25,7 @@ export function OnboardingForm() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [triedNext, setTriedNext] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -433,6 +434,30 @@ export function OnboardingForm() {
         )}
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+        {/* Show legal validation errors when user tries to proceed */}
+        {triedNext && step === 5 && validateLegal(form).length > 0 && (
+          <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+            <p className="text-sm font-semibold text-red-800 mb-2">Lūdzu labojiet šos laukus:</p>
+            <ul className="space-y-1">
+              {validateLegal(form).map((err, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-red-700">
+                  <span className="mt-0.5 shrink-0 text-red-500">✗</span>
+                  {err}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Show delivery step errors */}
+        {triedNext && step === 4 && !canNext() && (
+          <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {form.delivery_mode === "locker"
+              ? "✗ Atvēlī vismaz vienu pakomātu"
+              : "✗ Ievadi adresi, kur kurjers paņems produktus"}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -443,8 +468,12 @@ export function OnboardingForm() {
         </button>
 
         {step < STEPS.length - 1 ? (
-          <button onClick={() => setStep((s) => s + 1)} disabled={!canNext()}
-            className="btn-primary flex items-center gap-1 disabled:opacity-50">
+          <button
+            onClick={() => {
+              if (canNext()) { setTriedNext(false); setStep((s) => s + 1); }
+              else setTriedNext(true);
+            }}
+            className="btn-primary flex items-center gap-1">
             Tālāk <ChevronRight size={16} />
           </button>
         ) : (

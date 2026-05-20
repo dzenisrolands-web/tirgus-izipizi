@@ -319,9 +319,14 @@ export default function DashboardPage() {
           <p className="font-semibold text-gray-900">Profila statuss: <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${st.color}`}>{st.label}</span></p>
           <p className="mt-0.5 text-sm text-gray-600">{st.desc}</p>
           {status === "draft" && (
-            <Link href="/dashboard/profils" className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#192635] hover:underline">
-              Aizpildīt profilu <ArrowRight size={13} />
-            </Link>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link href="/dashboard/onboarding" className="inline-flex items-center gap-1 rounded-full bg-[#192635] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#243647] transition">
+                Turpināt reģistrāciju <ArrowRight size={13} />
+              </Link>
+              <Link href="/dashboard/profils" className="inline-flex items-center gap-1 rounded-full border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                Rediģēt profilu
+              </Link>
+            </div>
           )}
         </div>
       </div>
