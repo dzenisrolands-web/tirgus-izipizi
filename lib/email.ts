@@ -398,16 +398,13 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
               </tr>
             </table>
 
-            <!-- Tagline -->
-            <div style="color:#53F3A4; font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; margin-bottom:12px;">&#9472;&#9472; No fermas līdz galdam &#9472;&#9472;</div>
-
             <!-- Unified image banner strip -->
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
               style="border-radius:12px; overflow:hidden; border:2px solid #2d3f52; margin-bottom:14px;">
               <tr>
                 <td width="34%" style="padding:0; vertical-align:middle; border-right:2px solid #2d3f52;">
                   <img src="${escapeHtml(site)}/email-slide-marketplace.png" alt="Platforma" style="display:block; width:100%; height:130px; object-fit:cover; border:0;">
-                  <div style="background-color:#0f1e2d; color:#53F3A4; font-size:9px; font-weight:700; text-align:center; padding:5px 0; letter-spacing:1.5px; text-transform:uppercase;">Platforma</div>
+                  <div style="background-color:#0f1e2d; color:#53F3A4; font-size:9px; font-weight:700; text-align:center; padding:5px 0; letter-spacing:1.5px; text-transform:uppercase;">Tirdzniecības platforma</div>
                 </td>
                 <td width="34%" style="padding:0; vertical-align:middle; border-right:2px solid #2d3f52;">
                   <img src="${escapeHtml(site)}/email-slide-locker.png" alt="Pakomāts" style="display:block; width:100%; height:130px; object-fit:cover; border:0;">
@@ -440,7 +437,7 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
             </p>
 
             <p style="margin:0 0 20px; font-size:16px; color:#2d2d3f;">
-              Piedāvā savu produktu <strong>tirgus.izipizi.lv</strong> tirdzniecības platformā — Latvijas ražotāju tirgus vietā, kur svaiga pārtika no fermas nonāk līdz pircējam pakomātā vai mājās.
+              Piedāvā savu produktu <strong>tirgus.izipizi.lv</strong> — Latvijas ražotāju tirdzniecības platformā, kur svaiga pārtika no ražotāja nonāk līdz pircējam pakomātā vai mājās.
             </p>
 
             <p style="margin:0 0 32px; font-size:17px; color:#1a1a2e; font-weight:600;">
@@ -465,10 +462,6 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
                   <div style="margin-bottom:14px;">
                     <span style="display:inline-block; background:#1a1a2e; color:#53F3A4; font-weight:800; font-size:18px; padding:6px 16px; border-radius:20px; letter-spacing:0.5px;">15%</span>
                     <span style="color:#2d2d3f; font-size:15px; margin-left:10px;">komisija par plūsmas vadību, sūtījumu rezervēšanas sistēmu un maksājumu apkalpošanu</span>
-                  </div>
-                  <div>
-                    <span style="display:inline-block; background:#1a1a2e; color:#ffffff; font-weight:700; font-size:15px; padding:4px 12px; border-radius:20px;">€1,50</span>
-                    <span style="color:#2d2d3f; font-size:15px; margin-left:8px;">līdzmaksājums piegādes maksas segšanai</span>
                   </div>
                 </td>
               </tr>
@@ -514,7 +507,7 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
               <tr>
                 <td style="padding:8px 0; font-size:15px; color:#2d2d3f;">
                   <span style="color:#00d4aa; font-weight:700; margin-right:10px;">✓</span>
-                  Piegādes loģistika, par kuru nav jādomā
+                  Temperatūras režīma un ekspres piegāde
                 </td>
               </tr>
             </table>
