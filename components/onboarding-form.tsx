@@ -355,6 +355,7 @@ export function OnboardingForm() {
                     Kurjers paņem no manis
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5">Kurjers ierodas pie manis un paņem preci</p>
+                  <p className="text-[11px] font-bold text-amber-600 mt-1">€3,50 / piegāde</p>
                 </div>
                 {form.delivery_mode === "courier" && <CheckCircle size={16} className="text-brand-600" />}
               </button>
@@ -401,6 +402,10 @@ export function OnboardingForm() {
             {/* Courier pickup address */}
             {form.delivery_mode === "courier" && (
               <div>
+                <div className="mb-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
+                  <p className="font-semibold text-amber-800">Kurjera izmaksas: <span className="text-amber-900">€3,50 par katru piegādi</span></p>
+                  <p className="text-xs text-amber-700 mt-0.5">Summa tiek ieturēta no Tavas izmaksas par katru pasūtījumu. Pakomāta režīmā — bez maksas.</p>
+                </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Adrese, kur kurjers paņems produktus *
                 </label>

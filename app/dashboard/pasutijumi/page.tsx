@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
-import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
+import { COMMISSION_RATE, COURIER_FEE, commissionForPrice, netForPrice, netForPriceWithDelivery } from "@/lib/commission";
 
 type Order = {
   id: string;
@@ -32,6 +32,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
 
 export default function DashboardPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [deliveryMode, setDeliveryMode] = useState<"locker" | "courier">("locker");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -99,7 +100,8 @@ export default function DashboardPasutijumiPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
       const { data: seller } = await supabase
-        .from("sellers").select("id").eq("user_id", user.id).single();
+        .from("sellers").select("id, delivery_mode").eq("user_id", user.id).single();
+      if (seller?.delivery_mode === "courier") setDeliveryMode("courier");
       if (!seller) { setLoading(false); return; }
       const { data } = await supabase
         .from("orders").select("*")
@@ -233,22 +235,27 @@ export default function DashboardPasutijumiPage() {
                     {/* Commission breakdown */}
                     <div className="rounded-xl bg-gray-100/60 px-4 py-3 space-y-1.5">
                       <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                        <Percent size={10} /> Komisija ({COMMISSION_RATE}%)
+                        <Percent size={10} /> Izmaksu sīkumsājums
                       </p>
                       {order.items.map((item, i) => {
                         const lineTotal = item.price * item.quantity;
                         const lineComm = commissionForPrice(lineTotal);
-                        const lineNet = netForPrice(lineTotal);
                         return (
                           <div key={i} className="flex items-center justify-between text-xs">
                             <span className="text-gray-500 truncate flex-1 mr-2">{item.title}</span>
-                            <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)}</span>
+                            <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)} ({COMMISSION_RATE}%)</span>
                           </div>
                         );
                       })}
+                      {deliveryMode === "courier" && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Kurjera savakšana</span>
+                          <span className="text-amber-600">−{formatPrice(COURIER_FEE)}</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm">
                         <span className="font-semibold text-gray-700">Tu saņemsi</span>
-                        <span className="font-bold text-green-700">{formatPrice(netForPrice(order.total_cents / 100))}</span>
+                        <span className="font-bold text-green-700">{formatPrice(netForPriceWithDelivery(order.total_cents / 100, deliveryMode === "courier"))}</span>
                       </div>
                     </div>
 

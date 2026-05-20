@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
-import { COMMISSION_RATE, COMMISSION_FRACTION } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_FRACTION, COURIER_FEE } from "@/lib/commission";
 import { OrdersTimeline } from "./orders-timeline";
 import Link from "next/link";
 
@@ -25,7 +25,7 @@ type ListingRow = {
   freshness_date: string | null;
 };
 
-type SellerRow = { id: string; name: string; farm_name: string | null };
+  type SellerRow = { id: string; name: string; farm_name: string | null; delivery_mode: string | null };
 
 function startOfDayISO(daysAgo = 0): string {
   const d = new Date();
@@ -62,8 +62,8 @@ export default async function StatistikaPage() {
     supabase.from("orders").select("status", { count: "exact", head: false }),
     // All listings — for status counts
     supabase.from("listings").select("id, title, status, seller_id, freshness_date"),
-    // Seller name lookup
-    supabase.from("sellers").select("id, name, farm_name"),
+    // Seller name lookup (including delivery_mode for courier fee calc)
+    supabase.from("sellers").select("id, name, farm_name, delivery_mode"),
     // Active listings expiring within the next 3 days
     supabase
       .from("listings")
@@ -102,6 +102,22 @@ export default async function StatistikaPage() {
 
   // D6 — commission earned in last 30 days (fixed platform rate)
   const commissionMonth = Math.round(gmvMonth * COMMISSION_FRACTION);
+
+  // D7 — courier fees earned in last 30 days
+  // Count orders from sellers with delivery_mode = 'courier'
+  const courierSellerIds = new Set(
+    sellers.filter(s => s.delivery_mode === "courier").map(s => s.id)
+  );
+  // For each paid order, check if any seller is courier mode
+  // (simplified: count order if seller_ids overlap with courier sellers)
+  const courierOrdersMonth = ordersMonth.filter(o => {
+    // orders don't store seller_ids in the stats query, use item lookup
+    const sellerIds = new Set(
+      (o.items ?? []).map(it => it.id ? listingById.get(it.id)?.seller_id : null).filter(Boolean)
+    );
+    return [...sellerIds].some(sid => courierSellerIds.has(sid as string));
+  });
+  const courierFeesMonth = Math.round(courierOrdersMonth.length * COURIER_FEE * 100);
 
   // D4 — Top 10 products (by units sold in last 30 days)
   const productCounts = new Map<string, { id: string; title: string; units: number; revenueCents: number }>();
@@ -192,6 +208,7 @@ export default async function StatistikaPage() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi title={`Komisija (${COMMISSION_RATE}%)`} value={formatPrice(commissionMonth / 100)} sub="pēdējās 30d" tone="brand" />
+        <Kpi title="Kurjera maksa (€3,50)" value={formatPrice(courierFeesMonth / 100)} sub={`${courierOrdersMonth.length} kur. pasūt.`} tone="brand" />
         <Kpi title="Aktīvi produkti" value={`${listingStatusCounts.active ?? 0}`} sub={`${listings.length} kopā`} />
         <Kpi title="Beidzas drīz" value={`${expiring.length}`} sub="nāk. 3 dienās" tone={expiring.length > 0 ? "warn" : "ok"} />
         <Kpi
