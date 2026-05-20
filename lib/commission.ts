@@ -37,3 +37,46 @@ export function netForPrice(price: number): number {
 export function netForPriceWithDelivery(price: number, isCourier: boolean): number {
   return Math.round((netForPrice(price) - (isCourier ? COURIER_FEE : 0)) * 100) / 100;
 }
+
+// ─── PVN (VAT) helpers ────────────────────────────────────────────────────────
+
+/**
+ * Latvian VAT rates available for sellers.
+ * 0%  — exempt (e.g. financial services, not typical for food)
+ * 5%  — reduced (certain basic food products, fresh produce)
+ * 12% — reduced (medicines, printed books, some food)
+ * 21% — standard rate
+ */
+export const VAT_RATES = [0, 5, 12, 21] as const;
+export type VatRate = typeof VAT_RATES[number];
+
+/**
+ * Extract VAT amount from a VAT-inclusive price.
+ * vatAmount = price × rate / (100 + rate)
+ */
+export function vatAmountFromInclusive(price: number, vatRate: number): number {
+  if (vatRate === 0) return 0;
+  return Math.round(price * vatRate / (100 + vatRate) * 100) / 100;
+}
+
+/** Price without VAT (ex-VAT) from a VAT-inclusive price. */
+export function exVatPrice(price: number, vatRate: number): number {
+  if (vatRate === 0) return price;
+  return Math.round(price / (1 + vatRate / 100) * 100) / 100;
+}
+
+/**
+ * Commission is calculated on the FULL (VAT-inclusive) price.
+ * Seller is responsible for remitting VAT to the tax authority separately.
+ */
+export function sellerNetWithVat(
+  price: number,
+  vatRate: number,
+  isCourier = false
+): { exVat: number; vatAmount: number; commission: number; net: number } {
+  const vatAmount = vatAmountFromInclusive(price, vatRate);
+  const exVat = exVatPrice(price, vatRate);
+  const commission = commissionForPrice(price); // on full inc-VAT price
+  const net = Math.round((price - commission) * 100) / 100;
+  return { exVat, vatAmount, commission, net };
+}

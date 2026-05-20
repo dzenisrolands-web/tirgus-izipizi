@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Loader2, Upload, X, Zap, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
-import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
+import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
@@ -22,12 +22,14 @@ export type ProductData = {
   quantity: string;
   status: "active" | "paused";
   express_delivery: boolean;
+  vat_rate: VatRate;
 };
 
 const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
   quantity: "1", status: "active", express_delivery: false,
+  vat_rate: 21,
 };
 
 export function ProductForm({
@@ -51,6 +53,8 @@ export function ProductForm({
   const priceNum = Number(form.price) || 0;
   const commissionEur = commissionForPrice(priceNum);
   const netToSeller = netForPrice(priceNum);
+  const vatAmt = vatAmountFromInclusive(priceNum, form.vat_rate);
+  const exVat = exVatPrice(priceNum, form.vat_rate);
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -119,6 +123,7 @@ export function ProductForm({
         express_delivery: form.express_delivery,
         commission_rate: COMMISSION_RATE,
         commission_status: "approved",
+        vat_rate: form.vat_rate,
         updated_at: new Date().toISOString(),
       };
 
@@ -198,41 +203,77 @@ export function ProductForm({
               className="input mt-1 w-full" placeholder="10" />
           </div>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">PVN likme *</label>
+          <select
+            value={form.vat_rate}
+            onChange={e => setForm(f => ({ ...f, vat_rate: Number(e.target.value) as VatRate }))}
+            className="input mt-1 w-full"
+          >
+            <option value={21}>21% — standarta likme</option>
+            <option value={12}>12% — samazinātā likme (medikamenti, grāmatas)</option>
+            <option value={5}>5% — samazinātā likme (pārtika, dārzeņi, augļi u.c.)</option>
+            <option value={0}>0% — atbrīvots no PVN</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Pārtikai (dārzeņi, augļi, gaļa, piena produkti u.c.) parasti ir 5% vai 12%. Ja neesi drošs — pārbaudi
+            savus rēķinus vai konsultējies ar grāmatvedi.
+          </p>
+        </div>
       </section>
 
-      {/* Commission — fixed rate, read-only */}
+      {/* Commission + VAT breakdown */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-extrabold text-gray-700 flex items-center gap-2">
           <Percent size={14} className="text-brand-600" />
-          Komisija
+          Komisija un PVN aprēķins
         </h2>
 
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
-          Platformas komisija ir fiksēta <strong>{COMMISSION_RATE}%</strong> par darījuma apkalpošanu,
-          Paysera maksājumu, pakomātu tīklu un platformas uzturēšanu. Komisija tiek automātiski
-          piemērota visiem produktiem.
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
-          <span className="text-sm font-medium text-gray-700">Komisijas likme</span>
-          <span className="text-2xl font-extrabold text-brand-700">{COMMISSION_RATE}%</span>
+          Komisija ir <strong>{COMMISSION_RATE}%</strong> no pārdošanas cenas (ieskaitot PVN). PVN tiek norādīts
+          pircēja rēķinā un jāieskaita VID saskaņā ar Tavu reģistrācijas statusu.
         </div>
 
         {priceNum > 0 && (
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-gray-50 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400">Pārdošanas cena</p>
-              <p className="mt-0.5 font-bold text-gray-900">{priceNum.toFixed(2)}€</p>
+          <div className="space-y-2">
+            {/* Price row */}
+            <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5">
+              <span className="text-sm text-gray-600">Pārdošanas cena (ar PVN {form.vat_rate}%)</span>
+              <span className="font-bold text-gray-900">{priceNum.toFixed(2)} €</span>
             </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-amber-700">Komisija</p>
-              <p className="mt-0.5 font-bold text-amber-700">−{commissionEur.toFixed(2)}€</p>
+            {/* VAT row */}
+            {form.vat_rate > 0 && (
+              <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
+                <div>
+                  <span className="text-sm text-purple-800">PVN daļa ({form.vat_rate}%)</span>
+                  <p className="text-[10px] text-purple-600">Cena bez PVN: {exVat.toFixed(2)} € · Jāieskaita VID</p>
+                </div>
+                <span className="font-bold text-purple-700">{vatAmt.toFixed(2)} €</span>
+              </div>
+            )}
+            {/* Commission row */}
+            <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5">
+              <span className="text-sm text-amber-800">Platformas komisija ({COMMISSION_RATE}%)</span>
+              <span className="font-bold text-amber-700">−{commissionEur.toFixed(2)} €</span>
             </div>
-            <div className="rounded-xl bg-green-50 border border-green-200 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-green-700">Tu saņemsi</p>
-              <p className="mt-0.5 font-bold text-green-700">{netToSeller.toFixed(2)}€</p>
+            {/* Net row */}
+            <div className="flex items-center justify-between rounded-xl bg-green-50 border border-green-300 px-4 py-3">
+              <div>
+                <span className="text-sm font-bold text-green-900">Tu saņemsi</span>
+                {form.vat_rate > 0 && (
+                  <p className="text-[10px] text-green-700">
+                    (ieskaitot PVN {vatAmt.toFixed(2)} € ko jāieskaita VID)
+                  </p>
+                )}
+              </div>
+              <span className="text-lg font-extrabold text-green-700">{netToSeller.toFixed(2)} €</span>
             </div>
           </div>
+        )}
+
+        {priceNum === 0 && (
+          <p className="text-xs text-gray-400 text-center">Ievadi cenu, lai rēdzētu aprēķinu</p>
         )}
       </section>
 
