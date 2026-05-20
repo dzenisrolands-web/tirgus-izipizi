@@ -383,33 +383,45 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
 
         <!-- HEADER -->
         <tr>
-          <td style="background: linear-gradient(160deg, #0d0d1a 0%, #1a1a2e 50%, #0f1e12 100%); padding:36px 32px 28px; text-align:center;">
-            <!-- Logo + brand -->
-            <div style="margin-bottom:20px;">
-              <img src="${escapeHtml(site)}/izipizi-logo.png" alt="IziPizi" width="56" height="56" style="display:inline-block; vertical-align:middle; border:0; border-radius:12px;">
-              <span style="display:inline-block; vertical-align:middle; margin-left:12px; color:#ffffff; font-size:20px; font-weight:800; letter-spacing:0.5px;">tirgus<span style="background:linear-gradient(90deg,#53F3A4,#AD47FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">.izipizi.lv</span></span>
-            </div>
-            <!-- Headline -->
-            <div style="color:#53F3A4; font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; margin-bottom:8px;">No fermas līdz galdam</div>
-            <div style="color:#ffffff; font-size:28px; font-weight:800; line-height:1.2; margin-bottom:20px;">Ferma. Pakomāts. Tavs galds.</div>
-            <!-- 3 images: marketplace | locker | van -->
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:20px;">
+          <td style="background-color:#192635; padding:36px 28px 32px; text-align:center;">
+
+            <!-- Logo centered -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 14px;">
               <tr>
-                <td width="33%" style="padding:0 4px 0 0; vertical-align:bottom;">
-                  <img src="${escapeHtml(site)}/email-slide-marketplace.png" alt="Tirgus platforma" width="170" style="display:block; width:100%; border-radius:10px; border:0;">
-                  <div style="color:#53F3A4; font-size:10px; font-weight:700; text-align:center; margin-top:6px; letter-spacing:1px; text-transform:uppercase;">Platforma</div>
+                <td style="vertical-align:middle; padding-right:10px;">
+                  <img src="${escapeHtml(site)}/izipizi-logo.png" alt="IziPizi" width="72" height="72" style="display:block; width:72px; height:72px; border-radius:14px; border:0;">
                 </td>
-                <td width="33%" style="padding:0 2px; vertical-align:bottom;">
-                  <img src="${escapeHtml(site)}/email-slide-locker.png" alt="IziPizi Pakomāts" width="170" style="display:block; width:100%; border-radius:10px; border:0;">
-                  <div style="color:#AD47FF; font-size:10px; font-weight:700; text-align:center; margin-top:6px; letter-spacing:1px; text-transform:uppercase;">Pakomāts</div>
-                </td>
-                <td width="33%" style="padding:0 0 0 4px; vertical-align:bottom;">
-                  <img src="${escapeHtml(site)}/email-slide-van.png" alt="IziPizi Piegāde" width="170" style="display:block; width:100%; border-radius:10px; border:0; background:#fff;">
-                  <div style="color:#ffffff; font-size:10px; font-weight:700; text-align:center; margin-top:6px; letter-spacing:1px; text-transform:uppercase; opacity:0.7;">Piegāde</div>
+                <td style="vertical-align:middle; text-align:left;">
+                  <div style="color:#ffffff; font-size:22px; font-weight:800; line-height:1.1;">tirgus.izipizi.lv</div>
+                  <div style="color:#53F3A4; font-size:12px; font-weight:600; margin-top:3px;">Pārtikas ražotāju marketplace</div>
                 </td>
               </tr>
             </table>
-            <div style="width:80px; height:3px; background: linear-gradient(90deg, #53F3A4, #AD47FF); margin:0 auto; border-radius:2px;"></div>
+
+            <!-- Tagline -->
+            <div style="color:#53F3A4; font-size:10px; font-weight:700; letter-spacing:3px; text-transform:uppercase; margin-bottom:12px;">&#9472;&#9472; No fermas līdz galdam &#9472;&#9472;</div>
+
+            <!-- Unified image banner strip -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+              style="border-radius:12px; overflow:hidden; border:2px solid #2d3f52; margin-bottom:14px;">
+              <tr>
+                <td width="34%" style="padding:0; vertical-align:middle; border-right:2px solid #2d3f52;">
+                  <img src="${escapeHtml(site)}/email-slide-marketplace.png" alt="Platforma" style="display:block; width:100%; height:130px; object-fit:cover; border:0;">
+                  <div style="background-color:#0f1e2d; color:#53F3A4; font-size:9px; font-weight:700; text-align:center; padding:5px 0; letter-spacing:1.5px; text-transform:uppercase;">Platforma</div>
+                </td>
+                <td width="34%" style="padding:0; vertical-align:middle; border-right:2px solid #2d3f52;">
+                  <img src="${escapeHtml(site)}/email-slide-locker.png" alt="Pakomāts" style="display:block; width:100%; height:130px; object-fit:cover; border:0;">
+                  <div style="background-color:#0f1e2d; color:#AD47FF; font-size:9px; font-weight:700; text-align:center; padding:5px 0; letter-spacing:1.5px; text-transform:uppercase;">Pakomāts</div>
+                </td>
+                <td width="32%" style="padding:0; vertical-align:middle; background-color:#ffffff;">
+                  <img src="${escapeHtml(site)}/email-slide-van.png" alt="Piegāde" style="display:block; width:100%; height:130px; object-fit:contain; border:0;">
+                  <div style="background-color:#0f1e2d; color:#ffffff; font-size:9px; font-weight:700; text-align:center; padding:5px 0; letter-spacing:1.5px; text-transform:uppercase;">Piegāde</div>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Gradient line -->
+            <div style="height:3px; background:linear-gradient(90deg,#53F3A4,#AD47FF); border-radius:2px;"></div>
           </td>
         </tr>
 
