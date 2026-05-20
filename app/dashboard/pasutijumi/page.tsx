@@ -237,19 +237,23 @@ export default function DashboardPasutijumiPage() {
                       <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
                         <Percent size={10} /> Izmaksu sīkumsājums
                       </p>
+                      {/* Commission per item */}
                       {order.items.map((item, i) => {
                         const lineTotal = item.price * item.quantity;
                         const lineComm = commissionForPrice(lineTotal);
                         return (
                           <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500 truncate flex-1 mr-2">{item.title}</span>
+                            <span className="text-gray-500 truncate flex-1 mr-2">
+                              {item.title} ×{item.quantity}
+                            </span>
                             <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)} ({COMMISSION_RATE}%)</span>
                           </div>
                         );
                       })}
+                      {/* Courier fee — 1x per order regardless of item count */}
                       {deliveryMode === "courier" && (
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">Kurjera savakšana</span>
+                        <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-1.5">
+                          <span className="text-gray-500">Kurjera savakšana <span className="text-gray-400">(1× par pasūtījumu)</span></span>
                           <span className="text-amber-600">−{formatPrice(COURIER_FEE)}</span>
                         </div>
                       )}
