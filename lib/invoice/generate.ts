@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
-import { COMMISSION_RATE } from "@/lib/commission";
+import { COMMISSION_RATE, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
 import type { Period } from "./period";
 
 type OrderItem = {
@@ -16,6 +16,7 @@ type OrderItem = {
   unit?: string;
   seller_id?: string | null;
   commission_rate?: number | null;
+  vat_rate?: number | null; // product VAT rate (0/5/12/21)
 };
 
 type OrderRow = {
@@ -69,6 +70,24 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   if (ordersErr) throw ordersErr;
 
   // Aggregate by seller
+  // Collect all listing IDs to batch-fetch their vat_rate
+  const allItemIds = new Set<string>();
+  for (const order of (orders ?? []) as OrderRow[]) {
+    for (const item of order.items ?? []) {
+      if (item.id) allItemIds.add(item.id);
+    }
+  }
+  const listingVatMap = new Map<string, number>(); // listingId -> vat_rate
+  if (allItemIds.size > 0) {
+    const { data: listings } = await supabase
+      .from("listings")
+      .select("id, vat_rate")
+      .in("id", Array.from(allItemIds));
+    for (const l of listings ?? []) {
+      listingVatMap.set(l.id, l.vat_rate ?? 21);
+    }
+  }
+
   type Aggregate = {
     sellerId: string;
     lines: {
@@ -80,11 +99,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       unit: string | null;
       unit_price_cents: number;
       line_gross_cents: number;
+      vat_rate: number;
+      vat_amount_cents: number;
+      ex_vat_cents: number;
       commission_rate: number;
       commission_cents: number;
       net_cents: number;
     }[];
     grossCents: number;
+    productVatCents: number;
     commissionCents: number;
     netCents: number;
   };
@@ -97,15 +120,20 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     for (const item of order.items) {
       const sellerId = item.seller_id;
       if (!sellerId) continue;
-      const rate = item.commission_rate ?? COMMISSION_RATE; // fallback for legacy orders
+      const rate = item.commission_rate ?? COMMISSION_RATE;
+      // Product VAT rate: from item (if stored), listing lookup, or fallback
+      const vatRate = item.vat_rate ?? (item.id ? listingVatMap.get(item.id) : undefined) ?? 21;
+
       const unitPriceCents = Math.round(Number(item.price) * 100);
       const lineGross = unitPriceCents * Number(item.quantity);
+      const lineVatAmount = Math.round(vatAmountFromInclusive(lineGross / 100, vatRate) * 100);
+      const lineExVat = lineGross - lineVatAmount;
       const lineCommission = Math.round(lineGross * (rate / 100));
       const lineNet = lineGross - lineCommission;
 
       let agg = bySeller.get(sellerId);
       if (!agg) {
-        agg = { sellerId, lines: [], grossCents: 0, commissionCents: 0, netCents: 0 };
+        agg = { sellerId, lines: [], grossCents: 0, productVatCents: 0, commissionCents: 0, netCents: 0 };
         bySeller.set(sellerId, agg);
       }
       agg.lines.push({
@@ -117,11 +145,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         unit: item.unit ?? null,
         unit_price_cents: unitPriceCents,
         line_gross_cents: lineGross,
+        vat_rate: vatRate,
+        vat_amount_cents: lineVatAmount,
+        ex_vat_cents: lineExVat,
         commission_rate: rate,
         commission_cents: lineCommission,
         net_cents: lineNet,
       });
       agg.grossCents += lineGross;
+      agg.productVatCents += lineVatAmount;
       agg.commissionCents += lineCommission;
       agg.netCents += lineNet;
     }
@@ -181,10 +213,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
     const invoiceNumber = numData as unknown as string;
 
-    // VAT handling: 21% on commission only if seller is VAT-registered
-    // (Operator SIA Svaigi is VAT registered and charges VAT on its commission service)
-    const vatRate = 21;
-    const vatAmountCents = Math.round(agg.commissionCents * (vatRate / 100));
+    // VAT on commission: SIA Svaigi (platform) is VAT registered, charges 21% VAT
+    // on its commission service. This reduces seller's net payout.
+    const commissionVatRate = 21;
+    const commissionVatCents = Math.round(agg.commissionCents * (commissionVatRate / 100));
+    // Product VAT: informational — seller owes this to VID separately
+    const productVatCents = agg.productVatCents;
+    const exVatGrossCents = agg.grossCents - productVatCents;
+    // Final net to seller = gross - commission - VAT on commission
+    const finalNetCents = agg.netCents - commissionVatCents;
 
     // Insert invoice
     const { data: invoice, error: invErr } = await supabase
@@ -195,10 +232,12 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         period_start: periodStart,
         period_end: periodEnd,
         total_gross_cents: agg.grossCents,
+        total_ex_vat_cents: exVatGrossCents,
+        total_product_vat_cents: productVatCents,
         total_commission_cents: agg.commissionCents,
-        total_net_cents: agg.netCents - vatAmountCents, // net to seller after VAT on commission
-        vat_rate: vatRate,
-        vat_amount_cents: vatAmountCents,
+        commission_vat_rate: commissionVatRate,
+        commission_vat_cents: commissionVatCents,
+        total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,
         seller_vat_number: seller.vat_number,
@@ -223,7 +262,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       continue;
     }
 
-    generated.push({ invoiceNumber: invoice.invoice_number, sellerId, netCents: agg.netCents - vatAmountCents });
+    generated.push({ invoiceNumber: invoice.invoice_number, sellerId, netCents: finalNetCents });
 
     // Notify seller
     const { data: subs } = await supabase
@@ -233,7 +272,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     if (subs && subs.length > 0) {
       sendPushToSubscriptions(subs, {
         title: "📄 Jauns rēķins!",
-        body: `${invoice.invoice_number} · neto ${((agg.netCents - vatAmountCents) / 100).toFixed(2)}€ · ${period.label}`,
+        body: `${invoice.invoice_number} · neto ${(finalNetCents / 100).toFixed(2)}€ · ${period.label}`,
         url: `/dashboard/rekini/${invoice.id}`,
       }).catch((e) => console.error("[invoice] push failed:", e));
     }
