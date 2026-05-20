@@ -2,6 +2,8 @@
 
 export type Locker = {
   id: string; name: string; address: string; city: string; hours: string;
+  /** true = local sellers can place products here for pickup, but no courier deliveries TO this locker */
+  pickup_only?: boolean;
 };
 export type Seller = {
   id: string; name: string; farmName: string; avatar: string;
@@ -61,7 +63,8 @@ export const lockers: Locker[] = [
     "name": "Dundagas tirgus",
     "address": "Pils 3B / Tirgus",
     "city": "Dundaga",
-    "hours": "24/7"
+    "hours": "24/7",
+    "pickup_only": true
   },
   {
     "id": "ikskile",

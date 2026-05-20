@@ -483,11 +483,23 @@ export function CartPage() {
                         onChange={() => setLockerId(l.id)}
                         className="mt-0.5 accent-[#192635]" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900">{l.city} — {l.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900">{l.city} — {l.name}</p>
+                          {l.pickup_only && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                              Tikai vietējā saņemšana
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><MapPin size={11} />{l.address}</span>
                           <span className="flex items-center gap-1"><Clock size={11} />{l.hours}</span>
                         </div>
+                        {l.pickup_only && (
+                          <p className="mt-1 text-[11px] text-amber-700">
+                            ⚠ Šis pakomāts apkalpo tikai vietējo ražotāju produktus. Kurjerpiegāde uz šo pakomātu nav pieejama.
+                          </p>
+                        )}
                       </div>
                       {lockerId === l.id && (
                         <CheckCircle size={18} className="shrink-0 text-[#192635]" />

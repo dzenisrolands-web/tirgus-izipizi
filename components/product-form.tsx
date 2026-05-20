@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse } from "lucide-react";
@@ -49,7 +49,26 @@ export function ProductForm({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [sellerDelivery, setSellerDelivery] = useState<{
+    home_locker_ids: string[];
+    courier_pickup_address: string | null;
+    delivery_mode: string | null;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load seller's pickup settings from profile
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("sellers")
+        .select("home_locker_ids, courier_pickup_address, delivery_mode")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setSellerDelivery(data);
+    })();
+  }, []);
 
   const priceNum = Number(form.price) || 0;
   const commissionEur = commissionForPrice(priceNum);
@@ -326,18 +345,53 @@ export function ProductForm({
         )}
       </section>
 
-      {/* Locker */}
+      {/* Locker + delivery */}
       <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-extrabold text-gray-700">Pakomāts un piegāde</h2>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Pārtikas pakomāts</label>
-          <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
-            {lockers.map(l => (
-              <option key={l.id} value={l.id}>{l.city} — {l.name}</option>
-            ))}
-          </select>
-        </div>
+        {/* Show seller's configured pickup location from profile */}
+        {sellerDelivery ? (
+          <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Tava nodošanas vieta (no profila)</p>
+            {sellerDelivery.delivery_mode === "courier" && sellerDelivery.courier_pickup_address ? (
+              <div className="flex items-start gap-2">
+                <Truck size={15} className="mt-0.5 shrink-0 text-brand-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Kurjers paņem no tevis</p>
+                  <p className="text-xs text-gray-500">{sellerDelivery.courier_pickup_address}</p>
+                </div>
+              </div>
+            ) : sellerDelivery.home_locker_ids?.length > 0 ? (
+              <div className="flex items-start gap-2">
+                <Package size={15} className="mt-0.5 shrink-0 text-brand-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Pakomāti</p>
+                  <p className="text-xs text-gray-500">
+                    {sellerDelivery.home_locker_ids
+                      .map(id => lockers.find(l => l.id === id)?.name ?? id)
+                      .join(", ")}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-700">
+                ⚠ Nodošanas vieta nav iestatīta.
+                <a href="/dashboard/profils" className="ml-1 font-semibold underline">
+                  Uzstādīt profilā →
+                </a>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Pārtikas pakomāts</label>
+            <select value={form.locker_id} onChange={e => set("locker_id", e.target.value)} className="input mt-1 w-full">
+              {lockers.map(l => (
+                <option key={l.id} value={l.id}>{l.city} — {l.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Warehouse info for non-Riga sellers */}
         <div className="rounded-xl bg-brand-50 border border-brand-200 px-4 py-3">
@@ -346,7 +400,7 @@ export function ProductForm({
             <div>
               <p className="text-sm font-semibold text-brand-800">Nav Rīgā? Izmanto IziPizi noliktavu</p>
               <p className="mt-0.5 text-xs text-brand-700 leading-relaxed">
-                Nositī produktus uz IziPizi noliktavu (Brīvības 253, Rīgā) —
+                Nosītī produktus uz IziPizi noliktavu (Brīvības 253, Rīgā) —
                 mēs rūpēsimies par komplektēšanu, ielikšanu pakomātā un piegādi.
                 Tā Tu vari pārdot visā Latvijā, nebūdams Rīgā.
               </p>
@@ -359,7 +413,7 @@ export function ProductForm({
 
         {/* Delivery options */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Piegādes iespējas</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Piegādes iespējas šim produktam</label>
           <div className="space-y-2">
 
             {/* Standard courier */}
