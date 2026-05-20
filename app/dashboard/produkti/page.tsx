@@ -70,11 +70,17 @@ export default function ProduktisPage() {
   async function load() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
+    // First get the seller record for this user
+    const { data: seller } = await supabase
+      .from("sellers").select("id").eq("user_id", user.id).single();
+    // Query listings by seller_id (primary) or user_id (fallback for old data)
+    const query = supabase
       .from("listings")
       .select("id,title,price,unit,category,image_url,quantity,status,created_at")
-      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+    const { data } = seller?.id
+      ? await query.eq("seller_id", seller.id)
+      : await query.eq("user_id", user.id);
     setItems(data ?? []);
 
     const listingIds = (data ?? []).map((d) => d.id);

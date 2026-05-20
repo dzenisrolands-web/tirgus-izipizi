@@ -28,6 +28,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
   shipped:    { label: "Nosūtīts",      cls: "bg-purple-100 text-purple-700" },
   delivered:  { label: "Piegādāts",     cls: "bg-gray-100 text-gray-600" },
   cancelled:  { label: "Atcelts",       cls: "bg-red-100 text-red-600" },
+  awaiting:   { label: "Gaida apmaksu", cls: "bg-amber-100 text-amber-700" },
 };
 
 export default function DashboardPasutijumiPage() {
@@ -44,6 +45,13 @@ export default function DashboardPasutijumiPage() {
     processing: { label: "Atzīmēt kā nosūtītu",   next: "shipped" },
     shipped:    { label: "Atzīmēt kā saņemtu",     next: "delivered" },
   };
+
+  async function restoreOrder(orderId: string) {
+    setUpdating(orderId);
+    await supabase.from("orders").update({ status: "paid" }).eq("id", orderId);
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid" } : o));
+    setUpdating(null);
+  }
 
   async function notifyBuyer(orderId: string, status: string) {
     try {
@@ -278,11 +286,24 @@ export default function DashboardPasutijumiPage() {
                         disabled={updating === order.id}
                         className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#192635] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#243647] transition disabled:opacity-60"
                       >
-                        {updating === order.id
-                          ? <Loader2 size={14} className="animate-spin" />
-                          : <ChevronRight size={14} />}
+                        {updating === order.id ? <Loader2 size={14} className="animate-spin" /> : <ChevronRight size={14} />}
                         {NEXT_STATUS[order.status].label}
                       </button>
+                    )}
+                    {order.status === "cancelled" && (
+                      <div className="mt-2 space-y-2">
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                          ⚠ Pasūtījums tika automātiski atcelts (24h apstiprināšanas laiks). Ja pasūtījums ir apmaksāts — atjauno to.
+                        </div>
+                        <button
+                          onClick={() => restoreOrder(order.id)}
+                          disabled={updating === order.id}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition disabled:opacity-60"
+                        >
+                          {updating === order.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                          Atjaunot pasūtījumu (apstiprināt)
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

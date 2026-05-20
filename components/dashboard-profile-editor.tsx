@@ -109,10 +109,36 @@ export function DashboardProfileEditor() {
     if (!user) return;
 
     const justAgreed = !saved.self_billing_agreed && profile.self_billing_agreed;
-    const payload = {
-      ...profile,
-      bank_iban: profile.bank_iban?.replace(/\s/g, "").toUpperCase() ?? "",
+    // Explicit column list — avoids errors if new columns (tiktok, delivery_mode)
+    // haven't been added to the DB yet via SQL migration.
+    const payload: Record<string, unknown> = {
+      name: profile.name,
+      farm_name: profile.farm_name,
+      location: profile.location,
+      description: profile.description,
+      short_desc: profile.short_desc,
+      avatar_url: profile.avatar_url,
+      cover_url: profile.cover_url,
+      youtube_video_url: profile.youtube_video_url,
+      youtube_channel: profile.youtube_channel,
+      website: profile.website,
+      facebook: profile.facebook,
+      instagram: profile.instagram,
+      facts: profile.facts,
+      milestones: profile.milestones,
+      events: profile.events,
+      home_locker_ids: profile.home_locker_ids,
+      courier_pickup_address: profile.courier_pickup_address,
+      // Legal
+      legal_name: profile.legal_name,
+      registration_number: profile.registration_number,
+      is_vat_registered: profile.is_vat_registered,
       vat_number: profile.is_vat_registered ? profile.vat_number?.toUpperCase() : null,
+      legal_address: profile.legal_address,
+      bank_name: profile.bank_name,
+      bank_iban: profile.bank_iban?.replace(/\s/g, "").toUpperCase() ?? "",
+      bank_swift: profile.bank_swift,
+      self_billing_agreed: profile.self_billing_agreed,
       ...(justAgreed
         ? {
             self_billing_agreed_at: new Date().toISOString(),
@@ -121,6 +147,8 @@ export function DashboardProfileEditor() {
         : {}),
       updated_at: new Date().toISOString(),
     };
+    // Include tiktok only if it's a non-empty string (column may not exist yet)
+    if (profile.tiktok) payload.tiktok = profile.tiktok;
 
     if (profile.id) {
       const { error } = await supabase.from("sellers").update(payload).eq("id", profile.id);
