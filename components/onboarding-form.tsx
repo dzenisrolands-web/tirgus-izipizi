@@ -68,6 +68,7 @@ export function OnboardingForm() {
     tiktok: "",
     home_locker_ids: [] as string[],
     courier_pickup_address: "",
+    delivery_mode: "locker" as "locker" | "courier",
     ...EMPTY_LEGAL,
   });
 
@@ -92,7 +93,7 @@ export function OnboardingForm() {
     if (step === 0) return form.name.trim() && form.location.trim();
     if (step === 1) return form.description.trim() && form.short_desc.trim();
     if (step === 2) return true; // video is optional
-    if (step === 4) return form.home_locker_ids.length > 0 || !!form.courier_pickup_address.trim();
+    if (step === 4) return form.delivery_mode === "locker" ? form.home_locker_ids.length > 0 : !!form.courier_pickup_address.trim();
     if (step === 5) return validateLegal(form).length === 0;
     return true;
   }
@@ -311,65 +312,109 @@ export function OnboardingForm() {
         )}
 
         {step === 4 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-4">
-              <Truck size={16} className="text-brand-600" /> Nodošanas vietas *
-            </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              No šejienes pircēji saņems tavus produktus un tiks aprēķināta piegādes cena. <strong>Obligāti — vismaz viens pakomāts vai kurjera adrese.</strong>
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <Truck size={16} className="text-brand-600" /> Piegādes veids *
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pakomāti, kuros liksi produktus
-              </label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {LOCKERS.map((l) => {
-                  const active = form.home_locker_ids.includes(l.id);
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => toggleLocker(l.id)}
-                      className={cn(
-                        "flex items-start gap-2.5 rounded-xl border-2 p-2.5 text-left transition",
-                        active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                        active ? "bg-brand-100" : "bg-gray-100"
-                      )}>
-                        <Package size={14} className={active ? "text-brand-700" : "text-gray-500"} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("font-semibold text-xs", active ? "text-brand-900" : "text-gray-900")}>
-                          {l.name}
-                        </p>
-                        <p className="text-[10px] text-gray-500 truncate">{l.address}</p>
-                        <p className="text-[10px] text-gray-400">{l.city}</p>
-                      </div>
-                      {active && <CheckCircle size={14} className="mt-1 shrink-0 text-brand-600" />}
-                    </button>
-                  );
-                })}
+            {/* Mode selector */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => { set("delivery_mode", "locker"); set("courier_pickup_address", ""); }}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition",
+                  form.delivery_mode === "locker"
+                    ? "border-brand-400 bg-brand-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                )}
+              >
+                <Package size={24} className={form.delivery_mode === "locker" ? "text-brand-600" : "text-gray-400"} />
+                <div>
+                  <p className={cn("font-semibold text-sm", form.delivery_mode === "locker" ? "text-brand-900" : "text-gray-700")}>
+                    Pats lieku pakomātā
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Es piegādāju produktus uz IziPizi pakomātu</p>
+                </div>
+                {form.delivery_mode === "locker" && <CheckCircle size={16} className="text-brand-600" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { set("delivery_mode", "courier"); setForm(f => ({ ...f, home_locker_ids: [] })); }}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition",
+                  form.delivery_mode === "courier"
+                    ? "border-brand-400 bg-brand-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                )}
+              >
+                <Truck size={24} className={form.delivery_mode === "courier" ? "text-brand-600" : "text-gray-400"} />
+                <div>
+                  <p className={cn("font-semibold text-sm", form.delivery_mode === "courier" ? "text-brand-900" : "text-gray-700")}>
+                    Kurjers paņem no manis
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Kurjers ierodas pie manis un paņem preci</p>
+                </div>
+                {form.delivery_mode === "courier" && <CheckCircle size={16} className="text-brand-600" />}
+              </button>
+            </div>
+
+            {/* Locker selector */}
+            {form.delivery_mode === "locker" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Izvēlies pakomātus, kuros liksi produktus *
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {LOCKERS.map((l) => {
+                    const active = form.home_locker_ids.includes(l.id);
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => toggleLocker(l.id)}
+                        className={cn(
+                          "flex items-start gap-2.5 rounded-xl border-2 p-2.5 text-left transition",
+                          active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                          active ? "bg-brand-100" : "bg-gray-100"
+                        )}>
+                          <Package size={14} className={active ? "text-brand-700" : "text-gray-500"} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("font-semibold text-xs", active ? "text-brand-900" : "text-gray-900")}>{l.name}</p>
+                          <p className="text-[10px] text-gray-500 truncate">{l.address}</p>
+                          <p className="text-[10px] text-gray-400">{l.city}</p>
+                        </div>
+                        {active && <CheckCircle size={14} className="mt-1 shrink-0 text-brand-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="border-t border-gray-100 pt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vai kurjera saņemšanas adrese
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Ja kurjers brauc pie tevis paņemt produktus, ievadi adresi. Vari aizpildīt arī papildus pakomātam.
-              </p>
-              <LvAddressAutocomplete
-                value={form.courier_pickup_address}
-                onChange={(v) => set("courier_pickup_address", v)}
-                onSelect={(parsed) => set("courier_pickup_address", parsed.fullText)}
-                placeholder="Sāc rakstīt adresi (piem., Brīvības 100, Rīga)"
-              />
-            </div>
+            {/* Courier pickup address */}
+            {form.delivery_mode === "courier" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Adrese, kur kurjers paņems produktus *
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Šī adrese tiks izmantota piegādes cenas aprēķinam un leiblu ģenerēšanai.
+                </p>
+                <LvAddressAutocomplete
+                  value={form.courier_pickup_address}
+                  onChange={(v) => set("courier_pickup_address", v)}
+                  onSelect={(parsed) => set("courier_pickup_address", parsed.fullText)}
+                  placeholder="Sāc rakstīt adresi (piem., Brīvības 100, Rīga)"
+                />
+              </div>
+            )}
           </div>
         )}
 
