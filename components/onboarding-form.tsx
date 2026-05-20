@@ -65,6 +65,7 @@ export function OnboardingForm() {
     facebook: "",
     instagram: "",
     youtube_channel: "",
+    tiktok: "",
     home_locker_ids: [] as string[],
     courier_pickup_address: "",
     ...EMPTY_LEGAL,
@@ -305,6 +306,7 @@ export function OnboardingForm() {
             <Field label="Mājas lapa" value={form.website} onChange={(v) => set("website", v)} placeholder="https://tava-saimnieciba.lv" />
             <Field label="Facebook" value={form.facebook} onChange={(v) => set("facebook", v)} placeholder="https://facebook.com/..." />
             <Field label="Instagram" value={form.instagram} onChange={(v) => set("instagram", v)} placeholder="https://instagram.com/..." />
+            <Field label="TikTok" value={form.tiktok} onChange={(v) => set("tiktok", v)} placeholder="https://www.tiktok.com/@tavs-konts" />
           </div>
         )}
 

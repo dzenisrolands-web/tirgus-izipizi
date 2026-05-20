@@ -11,6 +11,7 @@ export type DBSeller = {
   website: string | null;
   facebook: string | null;
   instagram: string | null;
+  tiktok: string | null;
   youtube_video_id: string | null;
   quote_text: string | null;
   quote_author: string | null;

@@ -45,6 +45,7 @@ type Profile = LegalData & {
   website: string;
   facebook: string;
   instagram: string;
+  tiktok: string;
   facts: Fact[];
   milestones: string[];
   events: Event[];
@@ -56,7 +57,7 @@ type Profile = LegalData & {
 const EMPTY: Profile = {
   name: "", farm_name: "", location: "", description: "", short_desc: "",
   avatar_url: "", cover_url: "", youtube_video_url: "", youtube_channel: "",
-  website: "", facebook: "", instagram: "",
+  website: "", facebook: "", instagram: "", tiktok: "",
   facts: [], milestones: [], events: [], status: "draft",
   home_locker_ids: [], courier_pickup_address: "",
   ...EMPTY_LEGAL,
@@ -270,6 +271,7 @@ export function DashboardProfileEditor() {
               <Field label="Facebook" value={profile.facebook} onChange={(v) => set("facebook", v)} placeholder="https://facebook.com/..." />
               <Field label="Instagram" value={profile.instagram} onChange={(v) => set("instagram", v)} placeholder="https://instagram.com/..." />
               <Field label="YouTube kanāls" value={profile.youtube_channel} onChange={(v) => set("youtube_channel", v)} placeholder="https://youtube.com/@..." />
+              <Field label="TikTok" value={profile.tiktok} onChange={(v) => set("tiktok", v)} placeholder="https://www.tiktok.com/@tavs-konts" />
             </div>
           }>
           <div className="my-4 flex items-center justify-end gap-2">
@@ -277,7 +279,8 @@ export function DashboardProfileEditor() {
             {profile.facebook && <SocialIcon href={profile.facebook}><Facebook size={15} /></SocialIcon>}
             {profile.instagram && <SocialIcon href={profile.instagram}><Instagram size={15} /></SocialIcon>}
             {profile.youtube_channel && <SocialIcon href={profile.youtube_channel}><Youtube size={15} /></SocialIcon>}
-            {!profile.website && !profile.facebook && !profile.instagram && (
+            {profile.tiktok && <SocialIcon href={profile.tiktok}><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.14 8.14 0 0 0 4.77 1.52V6.75a4.85 4.85 0 0 1-1-.06z"/></svg></SocialIcon>}
+            {!profile.website && !profile.facebook && !profile.instagram && !profile.tiktok && (
               <span className="text-xs text-gray-300 italic">+ Pievienot sociālos tīklus</span>
             )}
           </div>
