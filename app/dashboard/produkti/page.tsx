@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X, Star, Clock, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Package, Eye, EyeOff, AlertTriangle, X, Star, Clock, CheckCircle, Truck, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { COMMISSION_RATE, commissionForPrice, netForPrice } from "@/lib/commission";
@@ -19,6 +19,9 @@ type Listing = {
   quantity: number;
   status: "active" | "paused" | "sold_out" | "pending_review" | "rejected";
   created_at: string;
+  vat_rate: number | null;
+  courier_delivery: boolean | null;
+  express_delivery: boolean | null;
 };
 
 type FeaturedEntry = {
@@ -76,7 +79,7 @@ export default function ProduktisPage() {
     // Query listings by seller_id (primary) or user_id (fallback for old data)
     const query = supabase
       .from("listings")
-      .select("id,title,price,unit,category,image_url,quantity,status,created_at")
+      .select("id,title,price,unit,category,image_url,quantity,status,created_at,vat_rate,courier_delivery,express_delivery")
       .order("created_at", { ascending: false });
     const { data } = seller?.id
       ? await query.eq("seller_id", seller.id)
@@ -270,7 +273,26 @@ export default function ProduktisPage() {
                         );
                       })()}
                     </div>
-                    <p className="text-xs text-gray-400">{item.quantity} gab. · {item.unit}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <p className="text-xs text-gray-400">{item.quantity} gab. · {item.unit}</p>
+                      {/* PVN badge */}
+                      {item.vat_rate != null && (
+                        <span className="rounded-full bg-purple-50 px-1.5 py-0.5 text-[9px] font-bold text-purple-600">
+                          PVN {item.vat_rate}%
+                        </span>
+                      )}
+                      {/* Delivery badges */}
+                      {item.courier_delivery && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-600" title="Kurjerpiegāde pieejama">
+                          <Truck size={8} /> Kurjers
+                        </span>
+                      )}
+                      {item.express_delivery && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-50 px-1.5 py-0.5 text-[9px] font-bold text-yellow-600" title="Eksprespiegāde pieejama">
+                          <Zap size={8} /> Ekspres
+                        </span>
+                      )}
+                    </div>
                     {/* Mobile only: category + price + status */}
                     <div className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">
                       <span className="text-xs text-gray-500">{item.category}</span>
