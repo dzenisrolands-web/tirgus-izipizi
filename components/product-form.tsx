@@ -252,8 +252,7 @@ export function ProductForm({
         </h2>
 
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
-          Komisija ir <strong>{COMMISSION_RATE}%</strong> no pārdošanas cenas (ieskaitot PVN). PVN tiek norādīts
-          pircēja rēķinā un jāieskaita VID saskaņā ar Tavu reģistrācijas statusu.
+          Komisija ir <strong>{COMMISSION_RATE}%</strong> no pārdošanas cenas (ieskaitot PVN). Ietver platformas uzturēšanu, maksājumu apkalpošanu un piegādes līdzmaksājumu.
         </div>
 
         {priceNum > 0 && (
@@ -268,7 +267,7 @@ export function ProductForm({
               <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
                 <div>
                   <span className="text-sm text-purple-800">PVN daļa ({form.vat_rate}%)</span>
-                  <p className="text-[10px] text-purple-600">Cena bez PVN: {exVat.toFixed(2)} € · Jāieskaita VID</p>
+                  <p className="text-[10px] text-purple-600">Cena bez PVN: {exVat.toFixed(2)} €</p>
                 </div>
                 <span className="font-bold text-purple-700">{vatAmt.toFixed(2)} €</span>
               </div>
@@ -284,7 +283,7 @@ export function ProductForm({
                 <span className="text-sm font-bold text-green-900">Tu saņemsi</span>
                 {form.vat_rate > 0 && (
                   <p className="text-[10px] text-green-700">
-                    (ieskaitot PVN {vatAmt.toFixed(2)} € ko jāieskaita VID)
+                    (ieskaitot PVN {vatAmt.toFixed(2)} €)
                   </p>
                 )}
               </div>
