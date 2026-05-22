@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
@@ -356,34 +356,47 @@ export function ProductForm({
 
         {/* Seller's pickup location */}
         {sellerDelivery ? (
-          <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nodošanas vieta</p>
-            {sellerDelivery.delivery_mode === "courier" && sellerDelivery.courier_pickup_address ? (
-              <div className="flex items-center gap-2">
-                <Truck size={15} className="shrink-0 text-brand-600" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Kurjers paņem no Tevis</p>
-                  <p className="text-xs text-gray-500">{sellerDelivery.courier_pickup_address}</p>
+          <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 space-y-3">
+            {/* Where seller drops off */}
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nodošanas vieta</p>
+              {sellerDelivery.delivery_mode === "courier" && sellerDelivery.courier_pickup_address ? (
+                <div className="flex items-center gap-2">
+                  <Truck size={15} className="shrink-0 text-brand-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Kurjers paņem no Tevis</p>
+                    <p className="text-xs text-gray-500">{sellerDelivery.courier_pickup_address}</p>
+                  </div>
                 </div>
-              </div>
-            ) : sellerDelivery.home_locker_ids?.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Package size={15} className="shrink-0 text-brand-600" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Pakomāts</p>
-                  <p className="text-xs text-gray-500">
-                    {sellerDelivery.home_locker_ids
-                      .map(id => lockers.find(l => l.id === id)?.name ?? id)
-                      .join(", ")}
-                  </p>
+              ) : sellerDelivery.home_locker_ids?.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Package size={15} className="shrink-0 text-brand-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Pakomāts</p>
+                    <p className="text-xs text-gray-500">
+                      {sellerDelivery.home_locker_ids
+                        .map(id => lockers.find(l => l.id === id)?.name ?? id)
+                        .join(", ")}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-xs text-amber-700">
-                ⚠ Nodošanas vieta nav iestatīta.
-                <a href="/dashboard/profils" className="ml-1 font-semibold underline">Uzstādīt profilā →</a>
+              ) : (
+                <p className="text-xs text-amber-700">
+                  ⚠ Nodošanas vieta nav iestatīta.
+                  <a href="/dashboard/profils" className="ml-1 font-semibold underline">Uzstādīt profilā →</a>
+                </p>
+              )}
+            </div>
+            {/* Where buyers can pick up */}
+            <div className="border-t border-gray-200 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Saņemšana pircējiem</p>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Produkts būs pieejams saņemšanai <strong>visos IziPizi pakomātos</strong> (Rīgā, Salāspilā, Tukumā, Ikšķilē, Āgenskalna tirgū), kā arī ar kurjerpiegādi uz jebkuru adresi Latvijā.
               </p>
-            )}
+              <p className="mt-1 text-xs text-amber-700">
+                ⚠ <strong>Dundagas pakomāts</strong> — prece pieejama saņemšanai Dundagā tikai tad, ja Tu to pats ieliec Dundagas pakomātā.
+              </p>
+            </div>
           </div>
         ) : (
           <div>
@@ -482,18 +495,20 @@ export function ProductForm({
           <div className="flex items-start gap-3">
             <Warehouse size={20} className="mt-0.5 shrink-0 text-[#53F3A4]" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white">Neesi mūsu piegādes teritorijā?</p>
+              <p className="text-sm font-bold text-white">Esi ārpus regularo piegāžu zonas?</p>
               <p className="mt-1 text-xs text-gray-300 leading-relaxed">
-                Ja atrodas ārpus Latvijas pamatpiegādes zonas vai nevari nodrošināt pašu piegādi —
-                mēs varam uzglabāt produktus noliktavā, sakomplektēt pasūtījumus un nodrošināt
-                piegādi klientam ērtākā veidā.
+                Piedāvājam uzglabāt Tavu preci IziPizi pakomātā un nodrošinām komplektēšanu un visus piegādes veidus tieši no pakomāta.
               </p>
-              <a
-                href="mailto:tirgus@izipizi.lv"
-                className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#53F3A4]/20 px-3 py-1.5 text-xs font-bold text-[#53F3A4] hover:bg-[#53F3A4]/30 transition"
-              >
-                <Mail size={11} /> Sazināties par komplektēšanas pakalpojumu
-              </a>
+              <div className="mt-2.5 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs text-gray-300">
+                  <Mail size={11} className="shrink-0 text-[#53F3A4]" />
+                  <span>birojs@izipizi.lv</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-gray-300">
+                  <Phone size={11} className="shrink-0 text-[#53F3A4]" />
+                  <span>+371 20031552</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
