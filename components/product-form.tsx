@@ -391,7 +391,7 @@ export function ProductForm({
             <div className="border-t border-gray-200 pt-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Saņemšana pircējiem</p>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Produkts būs pieejams saņemšanai <strong>visos IziPizi pakomātos</strong> (Rīgā, Salāspilā, Tukumā, Ikšķilē, Āgenskalna tirgū), kā arī ar kurjerpiegādi uz jebkuru adresi Latvijā.
+                Produkts būs pieejams saņemšanai <strong>visos IziPizi pakomātos</strong> (Rīgā, Salāspilā, Tukumā, Ikšķilē, Āgenskalna tirgū), kā arī ar kurjerpiegādi.
               </p>
               <p className="mt-1 text-xs text-amber-700">
                 ⚠ <strong>Dundagas pakomāts</strong> — prece pieejama saņemšanai Dundagā tikai tad, ja Tu to pats ieliec Dundagas pakomātā.
@@ -432,7 +432,7 @@ export function ProductForm({
               <p className={`font-semibold text-sm ${form.courier_delivery ? "text-brand-800" : "text-gray-700"}`}>
                 🚚 Tradicīnā kurjerpiegāde
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">Piegāde uz mājām vai biroju visā Latvijā</p>
+              <p className="text-xs text-gray-500 mt-0.5">Piegāde uz mājām vai biroju mūsu piegādes zonās</p>
               {form.courier_delivery && (
                 <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-brand-100/60 px-2.5 py-1.5">
                   <Clock size={11} className="text-brand-600 shrink-0" />
