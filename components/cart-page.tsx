@@ -654,7 +654,7 @@ export function CartPage() {
                         <label className="block text-xs font-medium text-gray-700">Piezīme kurjeram (neobligāti)</label>
                         <textarea value={deliveryNote}
                           onChange={(e) => setDeliveryNote(e.target.value)}
-                          placeholder="Piem., zvanīt pirms ierašanās"
+                          placeholder="Piem., ieeja no pagalma, durvju kods 4567#"
                           rows={2}
                           className="input mt-1 w-full resize-y" />
                       </div>
