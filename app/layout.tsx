@@ -142,6 +142,7 @@ export default function RootLayout({
       <head>
         {/* Disable Android Chrome's "Auto Dark Theme" — site is light-mode by design */}
         <meta name="color-scheme" content="light" />
+        <meta name="verify-paysera" content="ab6f81bdd50b7d173b62492dffc33e86" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
