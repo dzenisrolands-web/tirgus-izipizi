@@ -331,8 +331,9 @@ export function CartPage() {
       const { paymentUrl } = await res.json();
       // Open Paysera in a new tab to ensure correct Referer header,
       // especially when running as a PWA (standalone mode).
-      const newWin = window.open(paymentUrl, "_blank", "noopener");
-      // Fallback: if popup was blocked, navigate in same window
+      // Open Paysera in new tab — no "noopener" so Referer header is preserved (Paysera requires it)
+      const newWin = window.open(paymentUrl, "_blank");
+      // Fallback: if popup was blocked (e.g. in PWA), navigate in same window
       if (!newWin) window.location.href = paymentUrl;
     } catch (err) {
       console.error(err);
