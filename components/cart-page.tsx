@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Minus, Plus, Trash2, ShoppingCart, MapPin, Clock,
-  ChevronRight, Loader2, CheckCircle, Tag, Package, Truck, Zap, AlertCircle,
+  ChevronRight, Loader2, CheckCircle, Tag, Package, Truck, Zap, AlertCircle, X,
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { lookupPostalCode, effectiveCourierZone, pricingForZone } from "@/lib/postal-zones";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
+import { useSavedAddresses, QUICK_LABELS, type SavedAddress } from "@/lib/saved-addresses";
 
 type SellerInfo = {
   id: string;
@@ -47,11 +48,41 @@ export function CartPage() {
   const [timeSlot, setTimeSlot] = useState("");
   const [deliveryNote, setDeliveryNote] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [saveLabel, setSaveLabel] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
+
+  // Sync address fields from context when it loads from localStorage (delayed hydration)
+  useEffect(() => {
+    if (buyerCtxAddress && !postalCode) {
+      setPostalCode(buyerCtxAddress.postalCode);
+      setCity(buyerCtxAddress.city);
+      setAddressSearch(buyerCtxAddress.fullText);
+    }
+  }, [buyerCtxAddress]);
 
   function applyAddress(parsed: ParsedAddress) {
     if (parsed.street) setAddress(parsed.street);
     if (parsed.city) setCity(parsed.city);
     if (parsed.postalCode) setPostalCode(parsed.postalCode);
+    setShowSaveForm(true);
+  }
+
+  function applySavedAddress(a: SavedAddress) {
+    setAddress(a.street);
+    setCity(a.city);
+    setPostalCode(a.postalCode);
+    setAddressSearch(a.fullText);
+  }
+
+  function handleSaveAddress() {
+    const label = saveLabel === "custom" ? customLabel.trim() : saveLabel;
+    if (!label || !address || !postalCode) return;
+    addSavedAddress({ label, fullText: addressSearch || `${address}, ${city}`, street: address, city, postalCode });
+    setShowSaveForm(false);
+    setSaveLabel("");
+    setCustomLabel("");
   }
 
   // Time slot options based on zone + delivery method
@@ -522,6 +553,26 @@ export function CartPage() {
                     </p>
                   </div>
 
+                  {/* Saved addresses quick-pick */}
+                  {savedAddresses.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-gray-500">Saglabātās adreses</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {savedAddresses.map((a) => (
+                          <div key={a.id} className="flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 pl-3 pr-1 py-1 text-xs font-semibold text-brand-800">
+                            <button type="button" onClick={() => applySavedAddress(a)} className="hover:underline">
+                              {a.label}
+                            </button>
+                            <button type="button" onClick={() => removeSavedAddress(a.id)}
+                              className="ml-0.5 rounded-full p-0.5 text-brand-400 hover:bg-brand-100 hover:text-brand-700">
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Autocomplete — main entry */}
                   <LvAddressAutocomplete
                     value={addressSearch}
@@ -584,6 +635,50 @@ export function CartPage() {
                         className="input mt-1 w-full font-mono" />
                     </div>
                   </div>
+
+                  {/* Save address prompt */}
+                  {showSaveForm && address && postalCode && (
+                    <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-brand-800">Saglabāt šo adresi?</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_LABELS.map((l) => (
+                          <button key={l} type="button"
+                            onClick={() => setSaveLabel(l)}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                              saveLabel === l
+                                ? "border-brand-400 bg-brand-100 text-brand-800"
+                                : "border-gray-200 bg-white text-gray-600 hover:border-brand-300"
+                            }`}>{l}</button>
+                        ))}
+                        <button type="button"
+                          onClick={() => setSaveLabel("custom")}
+                          className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                            saveLabel === "custom"
+                              ? "border-brand-400 bg-brand-100 text-brand-800"
+                              : "border-gray-200 bg-white text-gray-600 hover:border-brand-300"
+                          }`}>+ Cits</button>
+                      </div>
+                      {saveLabel === "custom" && (
+                        <input
+                          value={customLabel}
+                          onChange={(e) => setCustomLabel(e.target.value)}
+                          placeholder="Piemēram: Draugi, Dārzs..."
+                          className="input w-full text-sm"
+                        />
+                      )}
+                      <div className="flex gap-2">
+                        <button type="button" onClick={handleSaveAddress}
+                          disabled={!saveLabel || (saveLabel === "custom" && !customLabel.trim())}
+                          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-40 transition">
+                          Saglabāt
+                        </button>
+                        <button type="button" onClick={() => setShowSaveForm(false)}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-50">
+                          Izlaist
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Zone feedback */}
                   {postalCode && !zoneResult.found && (
