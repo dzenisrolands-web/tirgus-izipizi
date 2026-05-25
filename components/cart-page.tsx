@@ -329,9 +329,11 @@ export function CartPage() {
       }
 
       const { paymentUrl } = await res.json();
-      // Note: cart will be cleared on /cart/success page; if user cancels Paysera,
-      // they return to /cart/cancel and the cart is still intact for retry.
-      window.location.href = paymentUrl;
+      // Open Paysera in a new tab to ensure correct Referer header,
+      // especially when running as a PWA (standalone mode).
+      const newWin = window.open(paymentUrl, "_blank", "noopener");
+      // Fallback: if popup was blocked, navigate in same window
+      if (!newWin) window.location.href = paymentUrl;
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
