@@ -74,6 +74,13 @@ export const lockers: Locker[] = [
     "address": "Daugavas iela 63 / Labumu bode",
     "city": "Ikšķile",
     "hours": "10:00–20:00"
+  },
+  {
+    "id": "iukstes",
+    "name": "Iūkstes iela 40A",
+    "address": "Iūkstes iela 40A",
+    "city": "Rīga",
+    "hours": "24/7"
   }
 ];
 
