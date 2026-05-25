@@ -159,7 +159,12 @@ export function ProductForm({
       router.push("/dashboard/produkti");
       router.refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const e = err as Record<string, unknown>;
+      const msg = (typeof e?.message === "string" && e.message)
+        ? e.message
+        : (typeof e?.details === "string" && e.details)
+          ? `${e.code ?? ""}: ${e.details}`
+          : JSON.stringify(err);
       setError(msg || "Kļūda saglabājot");
     } finally {
       setSaving(false);
