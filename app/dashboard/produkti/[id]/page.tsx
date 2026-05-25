@@ -27,9 +27,9 @@ export default function EditProduktisPage() {
           courier_delivery: data.courier_delivery ?? true,
           vat_rate: data.vat_rate ?? 21,
           variants: Array.isArray(data.variants)
-            ? (data.variants as Array<{id?: string; title?: string; price?: number}>)
+            ? (data.variants as Array<{id?: string; title?: string; price?: number; quantity?: number}>)
                 .filter(v => v.title && Number(v.price) > 0)
-                .map(v => ({ id: v.id ?? crypto.randomUUID(), title: String(v.title), price: String(v.price) } as FormVariant))
+                .map(v => ({ id: v.id ?? crypto.randomUUID(), title: String(v.title), price: String(v.price), quantity: v.quantity != null ? String(v.quantity) : "" } as FormVariant))
             : [],
         });
       }

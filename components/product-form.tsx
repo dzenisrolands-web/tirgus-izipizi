@@ -11,7 +11,7 @@ import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusiv
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
 
-export type FormVariant = { id: string; title: string; price: string };
+export type FormVariant = { id: string; title: string; price: string; quantity: string };
 
 export type ProductData = {
   title: string;
@@ -32,7 +32,7 @@ export type ProductData = {
 const QUICK_SIZES = ["100g", "200g", "250g", "500g", "1kg", "2kg", "5kg", "100ml", "250ml", "500ml", "1L", "3L", "5L"];
 
 function newVariant(title = ""): FormVariant {
-  return { id: crypto.randomUUID(), title, price: "" };
+  return { id: crypto.randomUUID(), title, price: "", quantity: "" };
 }
 
 const EMPTY: ProductData = {
@@ -122,8 +122,11 @@ export function ProductForm({
     setError("");
 
     if (!form.title.trim()) return setError("Nosaukums ir obligāts");
-    if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
+    const hasVariants = form.variants.length > 0;
+    if (!hasVariants && (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0))
       return setError("Ievadi derīgu cenu");
+    if (hasVariants && form.variants.every(v => !v.title.trim() || !(Number(v.price) > 0)))
+      return setError("Ievadi vismaz vienu apjomu ar nosaukumu un cenu");
     if (!form.image_url.trim())
       return setError("Bilde ir obligāta — produktu nevar publicēt bez bildes. Lūdzu augšupielādē attēlu sadaļā 'Bilde'.");
 
@@ -142,7 +145,12 @@ export function ProductForm({
       const variantsJson = form.variants.length > 0
         ? form.variants
             .filter(v => v.title.trim() && Number(v.price) > 0)
-            .map(v => ({ id: v.id, title: v.title.trim(), price: Number(v.price), quantity: Number(form.quantity) || 99 }))
+            .map(v => ({
+              id: v.id,
+              title: v.title.trim(),
+              price: Number(v.price),
+              quantity: Number(v.quantity) > 0 ? Number(v.quantity) : 99,
+            }))
         : [];
 
       const base = {
@@ -222,19 +230,21 @@ export function ProductForm({
             placeholder="Sastāvdaļas, ražošanas veids, uzglabāšana..." />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Cena (€) *</label>
-            <input type="number" step="0.01" min="0" value={form.price} onChange={e => set("price", e.target.value)}
-              className="input mt-1 w-full" placeholder="4.99" required />
+        {form.variants.length === 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cena (€) *</label>
+              <input type="number" step="0.01" min="0" value={form.price} onChange={e => set("price", e.target.value)}
+                className="input mt-1 w-full" placeholder="4.99" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Vienība</label>
+              <select value={form.unit} onChange={e => set("unit", e.target.value)} className="input mt-1 w-full">
+                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Vienība</label>
-            <select value={form.unit} onChange={e => set("unit", e.target.value)} className="input mt-1 w-full">
-              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
-          </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -243,11 +253,13 @@ export function ProductForm({
               {CATS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Daudzums (gab.)</label>
-            <input type="number" min="0" value={form.quantity} onChange={e => set("quantity", e.target.value)}
-              className="input mt-1 w-full" placeholder="10" />
-          </div>
+          {form.variants.length === 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Daudzums (gab.)</label>
+              <input type="number" min="0" value={form.quantity} onChange={e => set("quantity", e.target.value)}
+                className="input mt-1 w-full" placeholder="10" />
+            </div>
+          )}
         </div>
 
         <div>
@@ -314,30 +326,45 @@ export function ProductForm({
               </div>
             </div>
 
+            {/* Column headers */}
+            <div className="grid gap-2" style={{gridTemplateColumns: '1fr 7rem 6rem 2.25rem'}}>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1">Apjoms / izmērs</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1">Cena €</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1">Atlikums</p>
+              <span />
+            </div>
+
             {/* Variant rows */}
             <div className="space-y-2">
               {form.variants.map((v, i) => (
-                <div key={v.id} className="flex items-center gap-2">
+                <div key={v.id} className="grid items-center gap-2" style={{gridTemplateColumns: '1fr 7rem 6rem 2.25rem'}}>
                   <input
                     value={v.title}
                     onChange={e => setForm(f => ({ ...f, variants: f.variants.map((x, j) => j === i ? { ...x, title: e.target.value } : x) }))}
-                    placeholder="Apjoms (piemēram: 1L, 500g)"
-                    className="input flex-1 text-sm"
+                    placeholder="piem. 500g, 1L, Mazā"
+                    className="input text-sm"
                   />
-                  <div className="relative w-28 flex-shrink-0">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
                     <input
                       type="number" step="0.01" min="0"
                       value={v.price}
                       onChange={e => setForm(f => ({ ...f, variants: f.variants.map((x, j) => j === i ? { ...x, price: e.target.value } : x) }))}
                       placeholder="0.00"
-                      className="input w-full pl-7 text-sm"
+                      className="input w-full pl-6 text-sm"
                     />
                   </div>
+                  <input
+                    type="number" min="0"
+                    value={v.quantity}
+                    onChange={e => setForm(f => ({ ...f, variants: f.variants.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x) }))}
+                    placeholder="gab."
+                    className="input text-sm"
+                  />
                   <button
                     type="button"
                     onClick={() => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))}
-                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition"
                   >
                     <Trash2 size={14} />
                   </button>
