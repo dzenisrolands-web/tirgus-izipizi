@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { ProductForm, type ProductData } from "@/components/product-form";
+import { ProductForm, type ProductData, type FormVariant } from "@/components/product-form";
 
 export default function EditProduktisPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +26,11 @@ export default function EditProduktisPage() {
           express_delivery: data.express_delivery ?? false,
           courier_delivery: data.courier_delivery ?? true,
           vat_rate: data.vat_rate ?? 21,
+          variants: Array.isArray(data.variants)
+            ? (data.variants as Array<{id?: string; title?: string; price?: number}>)
+                .filter(v => v.title && Number(v.price) > 0)
+                .map(v => ({ id: v.id ?? crypto.randomUUID(), title: String(v.title), price: String(v.price) } as FormVariant))
+            : [],
         });
       }
       setLoading(false);

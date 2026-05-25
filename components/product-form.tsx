@@ -3,13 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone } from "lucide-react";
+import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
+
+export type FormVariant = { id: string; title: string; price: string };
 
 export type ProductData = {
   title: string;
@@ -24,13 +26,20 @@ export type ProductData = {
   express_delivery: boolean;
   courier_delivery: boolean;
   vat_rate: VatRate;
+  variants: FormVariant[];
 };
+
+const QUICK_SIZES = ["100g", "200g", "250g", "500g", "1kg", "2kg", "5kg", "100ml", "250ml", "500ml", "1L", "3L", "5L"];
+
+function newVariant(title = ""): FormVariant {
+  return { id: crypto.randomUUID(), title, price: "" };
+}
 
 const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
   quantity: "1", status: "active", express_delivery: false, courier_delivery: true,
-  vat_rate: 21,
+  vat_rate: 21, variants: [],
 };
 
 export function ProductForm({
@@ -129,12 +138,21 @@ export function ProductForm({
         .eq("user_id", user.id)
         .single();
 
+      // Build validated variants array
+      const variantsJson = form.variants.length > 0
+        ? form.variants
+            .filter(v => v.title.trim() && Number(v.price) > 0)
+            .map(v => ({ id: v.id, title: v.title.trim(), price: Number(v.price), quantity: Number(form.quantity) || 99 }))
+        : [];
+
       const base = {
         user_id: user.id,
         seller_id: seller?.id ?? null,
         title: form.title.trim(),
         description: form.description.trim(),
-        price: Number(form.price),
+        price: variantsJson.length > 0
+          ? Math.min(...variantsJson.map(v => v.price))
+          : Number(form.price),
         unit: form.unit,
         category: form.category,
         image_url: form.image_url.trim(),
@@ -145,6 +163,7 @@ export function ProductForm({
         commission_status: "approved",
         vat_rate: form.vat_rate,
         courier_delivery: form.courier_delivery,
+        variants: variantsJson,
         updated_at: new Date().toISOString(),
       };
 
@@ -243,6 +262,102 @@ export function ProductForm({
             <option value={5}>5%</option>
           </select>
         </div>
+      </section>
+
+      {/* Variants */}
+      <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <h2 className="text-sm font-extrabold text-gray-700">Dažādi apjomi vai izmēri</h2>
+          <p className="mt-1 text-xs text-gray-500">Ja produkts ir pieejams vairākos daudzumos (piemēram, 1L, 3L, 5L vai 500g, 1kg), aktivizē šo sadaļu.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setForm(f => ({ ...f, variants: f.variants.length > 0 ? [] : [newVariant()] }))}
+          className={`flex w-full items-center gap-3 rounded-xl border-2 p-3 text-left transition ${
+            form.variants.length > 0 ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"
+          }`}
+        >
+          <div className={`h-5 w-9 rounded-full transition-colors flex-shrink-0 ${
+            form.variants.length > 0 ? "bg-brand-400" : "bg-gray-300"
+          }`}>
+            <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              form.variants.length > 0 ? "translate-x-4" : "translate-x-0"
+            }`} />
+          </div>
+          <span className={`text-sm font-semibold ${form.variants.length > 0 ? "text-brand-800" : "text-gray-700"}`}>
+            Pievienot dažādus apjomus / izmērus
+          </span>
+        </button>
+
+        {form.variants.length > 0 && (
+          <div className="space-y-3">
+            {/* Quick-add size chips */}
+            <div>
+              <p className="text-xs text-gray-500 mb-2">Ātrā pievienošana:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {QUICK_SIZES.map(s => {
+                  const exists = form.variants.some(v => v.title === s);
+                  return (
+                    <button
+                      key={s} type="button"
+                      disabled={exists}
+                      onClick={() => setForm(f => ({ ...f, variants: [...f.variants, newVariant(s)] }))}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${
+                        exists
+                          ? "border-brand-300 bg-brand-50 text-brand-600 opacity-50 cursor-default"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-brand-400 hover:text-brand-700"
+                      }`}
+                    >{s}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Variant rows */}
+            <div className="space-y-2">
+              {form.variants.map((v, i) => (
+                <div key={v.id} className="flex items-center gap-2">
+                  <input
+                    value={v.title}
+                    onChange={e => setForm(f => ({ ...f, variants: f.variants.map((x, j) => j === i ? { ...x, title: e.target.value } : x) }))}
+                    placeholder="Apjoms (piemēram: 1L, 500g)"
+                    className="input flex-1 text-sm"
+                  />
+                  <div className="relative w-28 flex-shrink-0">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={v.price}
+                      onChange={e => setForm(f => ({ ...f, variants: f.variants.map((x, j) => j === i ? { ...x, price: e.target.value } : x) }))}
+                      placeholder="0.00"
+                      className="input w-full pl-7 text-sm"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, variants: [...f.variants, newVariant()] }))}
+              className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
+            >
+              <Plus size={13} /> Pievienot vēl apjomu
+            </button>
+
+            <p className="text-xs text-gray-400">
+              Klientam rādīsies pogas ar katru apjomu un cenu. Produkta pamata cena tiks automātiski iestatīta uz mazāko no variantiem.
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Commission + VAT breakdown */}
