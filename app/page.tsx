@@ -6,7 +6,7 @@ import {
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
   TrendingUp, Sparkles,
 } from "lucide-react";
-import { listings, sellers } from "@/lib/mock-data";
+import { listings, sellers, lockers } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
 import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
@@ -303,7 +303,7 @@ export default async function HomePage() {
                   <p className="mt-0.5 text-xs text-gray-400">Svaigi produkti</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>6+</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{lockers.length}+</p>
                   <p className="mt-0.5 text-xs text-gray-400">Pakomātu vietas</p>
                 </div>
               </div>
@@ -540,7 +540,7 @@ export default async function HomePage() {
                 icon: <Package size={22} className="text-brand-500" />,
                 bg: "bg-brand-50 border-brand-200",
                 title: "IziPizi pakomāts",
-                desc: "Saņem jebkurā no 6+ pakomātiem 24/7. Dzesēts un saldēts režīms.",
+                desc: `Saņem jebkurā no ${lockers.length}+ pakomātiem 24/7. Dzesēts un saldēts režīms.`,
                 price: "3 € / skapītis",
                 href: "/piegade",
                 color: "text-brand-600",

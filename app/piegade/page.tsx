@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { lockers } from "@/lib/mock-data";
 import {
   Package, MapPin, Truck, Thermometer, Snowflake,
   CheckCircle, Zap, ArrowRight, ChevronDown,
@@ -163,6 +164,56 @@ export default function PiegadePage() {
         {/* ── PASTA INDEKSA PĀRBAUDE ── */}
         <section id="zonas" className="scroll-mt-20">
           <PostalZoneLookup />
+        </section>
+
+        {/* ── PAKOMĀTU ADRESES ── */}
+        <section id="pakomati" className="scroll-mt-20">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Atrašanās vietas</p>
+          <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">
+            {lockers.filter(l => !l.pickup_only).length} pārtikas pakomātu vietas
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {lockers.filter(l => !l.pickup_only).map((locker) => (
+              <div key={locker.id} className="flex gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+                  <MapPin size={18} />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm">{locker.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{locker.address}</p>
+                  <p className="text-xs text-gray-400">{locker.city}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-green-700">
+                    <CheckCircle size={11} /> {locker.hours}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {lockers.some(l => l.pickup_only) && (
+            <div className="mt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">Tikai saņemšana (bez kurjera piegādes)</p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {lockers.filter(l => l.pickup_only).map((locker) => (
+                  <div key={locker.id} className="flex gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                      <MapPin size={18} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-700 text-sm">{locker.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{locker.address}</p>
+                      <p className="text-xs text-gray-400">{locker.city}</p>
+                      <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
+                        <CheckCircle size={11} /> {locker.hours}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="mt-5 text-center text-xs text-gray-400">
+            Visi pakomāti ir atvērti 24/7 ar temperatūras kontroli +2°C līdz −18°C.
+          </p>
         </section>
 
         {/* ── PAKOMĀTA BONUSI — 3 KARTIŅAS ── */}
