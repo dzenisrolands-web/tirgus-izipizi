@@ -329,12 +329,15 @@ export function CartPage() {
       }
 
       const { paymentUrl } = await res.json();
-      // Open Paysera in a new tab to ensure correct Referer header,
-      // especially when running as a PWA (standalone mode).
-      // Open Paysera in new tab — no "noopener" so Referer header is preserved (Paysera requires it)
-      const newWin = window.open(paymentUrl, "_blank");
-      // Fallback: if popup was blocked (e.g. in PWA), navigate in same window
-      if (!newWin) window.location.href = paymentUrl;
+      // Use <a> with referrerpolicy="unsafe-url" to force full Referer header.
+      // Required for Paysera 0x13 fix — works in both browser and PWA standalone mode.
+      const a = document.createElement("a");
+      a.href = paymentUrl;
+      a.referrerPolicy = "unsafe-url";
+      a.rel = "";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
