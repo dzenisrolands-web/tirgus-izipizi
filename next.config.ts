@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.supabase.co" },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Set Referrer-Policy on cart page so browser sends full Referer to Paysera
+        // This is required for Paysera 0x13 fix when using Edge PWA standalone mode
+        source: "/cart",
+        headers: [
+          { key: "Referrer-Policy", value: "unsafe-url" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // Apvienots /piegade aizvieto atsevišķās sadaļas
