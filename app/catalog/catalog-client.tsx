@@ -62,6 +62,10 @@ export function CatalogClient({
     if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
     if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
     if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
+    if (filters.delivery === "courier") result = result.filter((l) => l.courier_delivery);
+    if (filters.delivery === "express") result = result.filter((l) => l.express_delivery);
+    if (filters.delivery === "locker") result = result.filter((l) => !l.courier_delivery && !l.express_delivery);
+    if (filters.day) result = result.filter((l) => !l.dispatch_days?.length || l.dispatch_days.includes(filters.day));
     result = result.filter((l) => l.price <= filters.maxPrice);
     if (sort === "price_asc") result.sort((a, b) => a.price - b.price);
     else if (sort === "price_desc") result.sort((a, b) => b.price - a.price);
@@ -83,6 +87,8 @@ export function CatalogClient({
     filters.maxPrice < 100,
     filters.seller !== "",
     filters.storageType !== "all",
+    filters.delivery !== "all",
+    filters.day !== "",
     query.trim() !== "",
   ].filter(Boolean).length;
 

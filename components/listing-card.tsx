@@ -49,6 +49,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
     setTimeout(() => setAdded(false), 1500);
   }
 
+  const DAYS = [{k:"mon",l:"P"},{k:"tue",l:"O"},{k:"wed",l:"T"},{k:"thu",l:"C"},{k:"fri",l:"Pk"},{k:"sat",l:"S"},{k:"sun",l:"Sv"}];
+  const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
+
   return (
     <Link href={`/listing/${listing.id}`} className="group block">
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100">
@@ -94,6 +97,22 @@ export function ListingCard({ listing }: { listing: Listing }) {
           <div className="flex items-center gap-1 text-xs text-gray-400">
             <MapPin size={11} className="shrink-0" />
             <span className="truncate">no {listing.seller.location}</span>
+          </div>
+        )}
+
+        {hasDays && (
+          <div className="flex items-center gap-0.5 flex-wrap">
+            {DAYS.map(({k, l}) => {
+              const active = listing.dispatch_days!.includes(k);
+              const isWeekend = k === "sat" || k === "sun";
+              return (
+                <span key={k} className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold ${
+                  active
+                    ? isWeekend ? "bg-amber-100 text-amber-700" : "bg-brand-100 text-brand-700"
+                    : "bg-gray-100 text-gray-300"
+                }`}>{l}</span>
+              );
+            })}
           </div>
         )}
 

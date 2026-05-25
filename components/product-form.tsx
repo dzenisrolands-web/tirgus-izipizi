@@ -27,6 +27,7 @@ export type ProductData = {
   courier_delivery: boolean;
   vat_rate: VatRate;
   variants: FormVariant[];
+  dispatch_days: string[];
 };
 
 const QUICK_SIZES = ["100g", "200g", "250g", "500g", "1kg", "2kg", "5kg", "100ml", "250ml", "500ml", "1L", "3L", "5L"];
@@ -39,7 +40,7 @@ const EMPTY: ProductData = {
   title: "", description: "", price: "", unit: "gab.",
   category: CATS[0], image_url: "", locker_id: lockers[0]?.id ?? "",
   quantity: "1", status: "active", express_delivery: false, courier_delivery: true,
-  vat_rate: 21, variants: [],
+  vat_rate: 21, variants: [], dispatch_days: [],
 };
 
 export function ProductForm({
@@ -172,6 +173,7 @@ export function ProductForm({
         vat_rate: form.vat_rate,
         courier_delivery: form.courier_delivery,
         variants: variantsJson,
+        dispatch_days: form.dispatch_days,
         updated_at: new Date().toISOString(),
       };
 
@@ -652,6 +654,35 @@ export function ProductForm({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Dispatch days */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Izsniegšanas dienas</p>
+          <p className="text-xs text-gray-400 mb-2">Atzīmē dienas, kad vari nodot/izsniegt pasūtījumus. Atstāj tukšu, ja pieejams ikdienā.</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(["mon","tue","wed","thu","fri","sat","sun"] as const).map((d, i) => {
+              const labels = ["P","O","T","C","Pk","S","Sv"];
+              const active = form.dispatch_days.includes(d);
+              return (
+                <button key={d} type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    dispatch_days: active
+                      ? f.dispatch_days.filter(x => x !== d)
+                      : [...f.dispatch_days, d]
+                  }))}
+                  className={`h-9 w-9 rounded-full text-xs font-bold border-2 transition ${
+                    active
+                      ? i >= 5
+                        ? "border-amber-400 bg-amber-50 text-amber-700"
+                        : "border-brand-400 bg-brand-50 text-brand-700"
+                      : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
+                  }`}
+                >{labels[i]}</button>
+              );
+            })}
           </div>
         </div>
 

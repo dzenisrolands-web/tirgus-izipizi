@@ -59,13 +59,16 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
     freshnessDate,
     createdAt: item.created_at as string,
     variants: mapVariants(item.variants),
+    express_delivery: (item.express_delivery as boolean) ?? false,
+    courier_delivery: (item.courier_delivery as boolean) ?? true,
+    dispatch_days: Array.isArray(item.dispatch_days) ? (item.dispatch_days as string[]) : [],
   };
 }
 
 export async function fetchActiveListings(): Promise<Listing[]> {
   const { data: rows, error } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, express_delivery, courier_delivery, dispatch_days")
     .eq("status", "active")
     .order("created_at", { ascending: false });
 

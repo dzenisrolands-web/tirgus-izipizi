@@ -10,6 +10,8 @@ export type Filters = {
   maxPrice: number;
   seller: string;
   storageType: "all" | "frozen" | "chilled";
+  delivery: "all" | "courier" | "express" | "locker";
+  day: string; // "" = all, or day key e.g. "mon"
 };
 
 type Props = {
@@ -33,7 +35,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export const DEFAULT_FILTERS: Filters = { category: "Visi", maxPrice: 100, seller: "", storageType: "all" };
+export const DEFAULT_FILTERS: Filters = { category: "Visi", maxPrice: 100, seller: "", storageType: "all", delivery: "all", day: "" };
+
+const DAY_OPTS = [
+  { k: "mon", l: "Pirmdiena" },
+  { k: "tue", l: "Otrdiena" },
+  { k: "wed", l: "Trešdiena" },
+  { k: "thu", l: "Ceturtdiena" },
+  { k: "fri", l: "Piektdiena" },
+  { k: "sat", l: "Sestdiena" },
+  { k: "sun", l: "Svētdiena" },
+];
+
+function todayKey(): string {
+  const d = new Date().getDay(); // 0=Sun
+  return ["sun","mon","tue","wed","thu","fri","sat"][d];
+}
 
 export function FilterSidebar({ filters, onChange }: Props) {
   return (
@@ -114,6 +131,50 @@ export function FilterSidebar({ filters, onChange }: Props) {
             >
               {s.name}
             </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Piegādes veids">
+        <div className="flex flex-col gap-1">
+          {([
+            { value: "all", label: "Visi veidi" },
+            { value: "courier", label: "🚚 Kurjerpiegāde" },
+            { value: "express", label: "⚡ Eksprespiegāde" },
+            { value: "locker", label: "📦 Pakomāts" },
+          ] as const).map((opt) => (
+            <button key={opt.value}
+              onClick={() => onChange({ ...filters, delivery: opt.value })}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-left text-sm transition",
+                filters.delivery === opt.value
+                  ? "bg-brand-50 font-semibold text-brand-700"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Izsniegšanas diena">
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={() => onChange({ ...filters, day: "" })}
+            className={cn("rounded-lg px-3 py-1.5 text-left text-sm transition",
+              filters.day === "" ? "bg-brand-50 font-semibold text-brand-700" : "text-gray-600 hover:bg-gray-50"
+            )}>Visas dienas</button>
+          <button
+            onClick={() => onChange({ ...filters, day: todayKey() })}
+            className={cn("rounded-lg px-3 py-1.5 text-left text-sm transition",
+              filters.day === todayKey() ? "bg-green-50 font-semibold text-green-700" : "text-gray-600 hover:bg-gray-50"
+            )}>✅ Šodien</button>
+          {DAY_OPTS.map((d) => (
+            <button key={d.k}
+              onClick={() => onChange({ ...filters, day: d.k })}
+              className={cn("rounded-lg px-3 py-1.5 text-left text-sm transition",
+                filters.day === d.k ? "bg-brand-50 font-semibold text-brand-700" : "text-gray-600 hover:bg-gray-50"
+              )}>{d.l}</button>
           ))}
         </div>
       </Section>

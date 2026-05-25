@@ -23,6 +23,8 @@ export type Listing = {
   storageType?: StorageType;
   variants?: Variant[];
   express_delivery?: boolean;
+  courier_delivery?: boolean;
+  dispatch_days?: string[];
 };
 export type Review = {
   id: string; listingId: string; buyerName: string; buyerAvatar: string;

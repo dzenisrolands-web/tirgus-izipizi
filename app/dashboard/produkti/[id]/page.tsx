@@ -26,6 +26,7 @@ export default function EditProduktisPage() {
           express_delivery: data.express_delivery ?? false,
           courier_delivery: data.courier_delivery ?? true,
           vat_rate: data.vat_rate ?? 21,
+          dispatch_days: Array.isArray(data.dispatch_days) ? data.dispatch_days as string[] : [],
           variants: Array.isArray(data.variants)
             ? (data.variants as Array<{id?: string; title?: string; price?: number; quantity?: number}>)
                 .filter(v => v.title && Number(v.price) > 0)
