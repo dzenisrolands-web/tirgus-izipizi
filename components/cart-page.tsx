@@ -329,15 +329,10 @@ export function CartPage() {
       }
 
       const { paymentUrl } = await res.json();
-      // Use <a> with referrerpolicy="unsafe-url" to force full Referer header.
-      // Required for Paysera 0x13 fix — works in both browser and PWA standalone mode.
-      const a = document.createElement("a");
-      a.href = paymentUrl;
-      a.referrerPolicy = "unsafe-url";
-      a.rel = "";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      // Navigate via /pay intermediary page on our domain.
+      // This guarantees Referer = tirgus.izipizi.lv when reaching Paysera,
+      // fixing the 0x13 error in Edge PWA standalone mode.
+      window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
