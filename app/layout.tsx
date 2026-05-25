@@ -72,7 +72,7 @@ export const metadata: Metadata = {
   },
   verification: {
     other: {
-      "verify-paysera": "6567d173da1185168a8bf3c13a6d3456",
+      "verify-paysera": "ab6f81bdd50b7d173b62492dffc33e86",
     },
   },
   manifest: "/manifest.webmanifest",
