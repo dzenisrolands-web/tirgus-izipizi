@@ -110,7 +110,9 @@ export function CartPage() {
   // Postal code → zone lookup (for courier and express)
   const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
   const zonePricing = zoneResult.found ? zoneResult.pricing : null;
-  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null;
+  // Express is available only if zone supports it AND at least one cart item allows express
+  const anyItemAllowsExpress = items.some(i => i.express_delivery !== false);
+  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null && anyItemAllowsExpress;
 
   // Group items by seller and compute per-seller delivery fees
   const sellerGroups = useMemo(() => {
@@ -443,17 +445,19 @@ export function CartPage() {
                     : "no 5.45 €"}
                   hint="Mājas durvīs"
                 />
-                <DeliveryMethodCard
-                  method="express"
-                  selected={deliveryMethod === "express"}
-                  onSelect={() => setDeliveryMethod("express")}
-                  icon={<Zap size={18} />}
-                  label="Eksprespiegāde"
-                  price={zonePricing && expressAvailable
-                    ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : "no 6.66 €"}
-                  hint="2–5h Rīgā"
-                />
+                {anyItemAllowsExpress && (
+                  <DeliveryMethodCard
+                    method="express"
+                    selected={deliveryMethod === "express"}
+                    onSelect={() => setDeliveryMethod("express")}
+                    icon={<Zap size={18} />}
+                    label="Eksprespiegāde"
+                    price={zonePricing && expressAvailable
+                      ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
+                      : "no 6.66 €"}
+                    hint="2–5h Rīgā"
+                  />
+                )}
               </div>
 
               {/* Multi-temp note */}

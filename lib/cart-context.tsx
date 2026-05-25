@@ -12,6 +12,8 @@ export type CartItem = {
   sellerId?: string;
   quantity: number;
   storageType: "frozen" | "chilled";
+  /** undefined = legacy cart item from localStorage (treat as allowed) */
+  express_delivery?: boolean;
 };
 
 type CartCtx = {

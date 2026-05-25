@@ -161,7 +161,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} expressAvailable={expressAvailable} />
 
           {listing.variants && listing.variants.length > 0 ? (
-            <VariantSelector
+          <VariantSelector
               listingId={listing.id}
               title={listing.title}
               image={listing.image}
@@ -169,9 +169,10 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               sellerId={listing.sellerId}
               storageType={getStorageType(listing)}
               variants={listing.variants}
+              express_delivery={listing.express_delivery ?? false}
             />
           ) : (
-            <AddToCartButton
+          <AddToCartButton
               id={listing.id}
               title={listing.title}
               price={listing.price}
@@ -180,6 +181,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               sellerName={listing.seller.farmName}
               sellerId={listing.sellerId}
               storageType={getStorageType(listing)}
+              express_delivery={listing.express_delivery ?? false}
             />
           )}
 

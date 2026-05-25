@@ -44,6 +44,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       sellerName: listing.seller.farmName,
       sellerId: listing.sellerId,
       storageType: storageType,
+      express_delivery: listing.express_delivery ?? false,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);

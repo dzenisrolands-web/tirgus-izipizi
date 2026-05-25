@@ -14,9 +14,10 @@ type Props = {
   sellerId?: string;
   storageType: "frozen" | "chilled";
   variants: Variant[];
+  express_delivery?: boolean;
 };
 
-export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants }: Props) {
+export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants, express_delivery }: Props) {
   const { addItem } = useCart();
   const [selected, setSelected] = useState(variants[0].id);
   const [added, setAdded] = useState(false);
@@ -35,6 +36,7 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
       sellerName,
       sellerId,
       storageType,
+      express_delivery: express_delivery ?? false,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);

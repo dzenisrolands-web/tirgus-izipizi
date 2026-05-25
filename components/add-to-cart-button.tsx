@@ -13,14 +13,15 @@ type Props = {
   sellerName: string;
   sellerId?: string;
   storageType: "frozen" | "chilled";
+  express_delivery?: boolean;
 };
 
-export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType }: Props) {
+export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery }: Props) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
 
   function handle() {
-    addItem({ id, title, price, unit, image, sellerName, sellerId, storageType });
+    addItem({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
