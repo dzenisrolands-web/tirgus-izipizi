@@ -42,12 +42,11 @@ export function netForPriceWithDelivery(price: number, isCourier: boolean): numb
 
 /**
  * Latvian VAT rates available for sellers.
- * 0%  — exempt (e.g. financial services, not typical for food)
  * 5%  — reduced (certain basic food products, fresh produce)
  * 12% — reduced (medicines, printed books, some food)
  * 21% — standard rate
  */
-export const VAT_RATES = [0, 5, 12, 21] as const;
+export const VAT_RATES = [5, 12, 21] as const;
 export type VatRate = typeof VAT_RATES[number];
 
 /**

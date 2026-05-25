@@ -23,6 +23,9 @@ export default function EditProduktisPage() {
           locker_id: data.locker_id ?? "",
           quantity: String(data.quantity ?? 1),
           status: data.status ?? "active",
+          express_delivery: data.express_delivery ?? false,
+          courier_delivery: data.courier_delivery ?? true,
+          vat_rate: data.vat_rate ?? 21,
         });
       }
       setLoading(false);

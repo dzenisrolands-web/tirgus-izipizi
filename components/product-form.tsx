@@ -159,7 +159,8 @@ export function ProductForm({
       router.push("/dashboard/produkti");
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Kļūda saglabājot");
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || "Kļūda saglabājot");
     } finally {
       setSaving(false);
     }
@@ -232,15 +233,10 @@ export function ProductForm({
             onChange={e => setForm(f => ({ ...f, vat_rate: Number(e.target.value) as VatRate }))}
             className="input mt-1 w-full"
           >
-            <option value={21}>21% — standarta likme</option>
-            <option value={12}>12% — samazinātā likme (medikamenti, grāmatas)</option>
-            <option value={5}>5% — samazinātā likme (pārtika, dārzeņi, augļi u.c.)</option>
-            <option value={0}>0% — atbrīvots no PVN</option>
+            <option value={21}>21%</option>
+            <option value={12}>12%</option>
+            <option value={5}>5%</option>
           </select>
-          <p className="mt-1 text-xs text-gray-400">
-            Pārtikai (dārzeņi, augļi, gaļa, piena produkti u.c.) parasti ir 5% vai 12%. Ja neesi drošs — pārbaudi
-            savus rēķinus vai konsultējies ar grāmatvedi.
-          </p>
         </div>
       </section>
 
