@@ -4,7 +4,7 @@ import Image from "next/image";
 import {
   ArrowRight, Package, Zap,
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
-  TrendingUp, Sparkles,
+  TrendingUp, Sparkles, Leaf, Snowflake, Users, Banknote,
 } from "lucide-react";
 import { listings, sellers, lockers } from "@/lib/mock-data";
 import { sellersMeta } from "@/lib/sellers-meta";
@@ -584,44 +584,63 @@ export default async function HomePage() {
       {/* ── RECIPES paslēptas pirms launch — saturs jāsakārto (teksti, bildes, darbības)
             skat. project_recipes_cleanup.md atmiņā ─────────── */}
 
-      {/* ── SELLER CTA ───────────────────────────────────────── */}
+      {/* ── SELLER CTA ─────────────────────────────────────────── */}
       <section className="px-4 py-14 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-[#192635] px-8 py-12 text-white">
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-[#0f1b2a] px-8 py-12 text-white sm:px-10">
+          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+
+            {/* Left */}
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-400/20 px-3 py-1 text-xs font-semibold text-brand-400">
-                🌱 Pārdod vietēji
+              <span className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium"
+                style={{ background: "rgba(45,212,150,.14)", color: "#4ee0a0" }}>
+                <Leaf size={13} /> Pārdod vietēji
               </span>
-              <h2 className="mt-4 text-3xl font-extrabold leading-tight">
+              <h2 className="mt-5 text-[32px] font-medium leading-[1.15] text-white">
                 Esi ražotājs<br />vai pārdevējs?
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-300">
-                Tu tirgo, mēs nodrošinām visu pārējo — pārtikas pakomātu tīklu, temperatūras ķēdi,
-                piegādi un maksājumus. Reģistrējies un sasniedz vairāk pircējus.
+              <p className="mt-4 max-w-[34ch] text-[15px] leading-relaxed" style={{ color: "#9fb0c2" }}>
+                Tu tirgo, mēs nodrošinām visu pārējo — pārtikas pakomātu tīklu,
+                temperatūras ķēdi, piegādi un maksājumus. Reģistrējies un sasniedz vairāk pircējus.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-7">
                 <Link href="/sell"
-                  className="inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold text-[#192635] hover:brightness-110 transition"
-                  style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  Sākt pārdot <ArrowRight size={15} />
+                  className="inline-flex items-center gap-2.5 rounded-full px-[26px] py-[13px] text-[15px] font-medium text-[#0f1b2a] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(52,217,154,.28)]"
+                  style={{ background: "linear-gradient(135deg,#34d99a,#7b6ef0)" }}>
+                  Sākt pārdot <ArrowRight size={16} />
                 </Link>
               </div>
             </div>
-            <ul className="space-y-2">
+
+            {/* Right — animated feature list */}
+            <div className="flex flex-col gap-3">
               {[
-                "✅ Bezmaksas reģistrācija",
-                "⚡ Apstiprināšana 24h laikā",
-                "💰 Komisija tikai no pārdošanas",
-                "🚚 pārtikas pakomāts, kurjers un ekspres piegāde",
-                "❄️ Temperatūras ķēde no ražotāja",
-                "📍 Visi izipizi pārtikas pakomāti Latvijā",
-              ].map((f) => (
-                <li key={f}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-gray-300">
-                  {f}
-                </li>
+                { Icon: CheckCircle, color: "#4ee0a0", bg: "rgba(45,212,150,.13)",   title: "Bezmaksas reģistrācija",           sub: "Sāc pārdot bez riska",                   delay: "0.05s" },
+                { Icon: Zap,          color: "#f4b24e", bg: "rgba(244,159,39,.13)",   title: "Apstiprināšana 24h laikā",        sub: "Un tu jau tirgo",                       delay: "0.13s" },
+                { Icon: Banknote,     color: "#f0997b", bg: "rgba(216,90,48,.14)",    title: "Komisija tikai no pārdošanas",     sub: "Caurspīdīgi, bez slēptām maksām",      delay: "0.21s" },
+                { Icon: Snowflake,    color: "#6db8f0", bg: "rgba(55,138,221,.14)",   title: "Temperatūras ķēde no ražotāja",    sub: "+6°C un −18°C, pat saldētai precei",  delay: "0.29s" },
+                { Icon: Users,        color: "#a89cf5", bg: "rgba(123,110,240,.15)",  title: "Tirgus atved pircējus tev",        sub: "Bez sava mārketinga budžeta",          delay: "0.37s" },
+                { Icon: Truck,        color: "#ed93b1", bg: "rgba(212,83,126,.14)",   title: "Pārtikas pakomāts, kurjers un ekspres", sub: "Loģistiku risinām mēs",          delay: "0.45s" },
+              ].map(({ Icon, color, bg, title, sub, delay }) => (
+                <div key={title}
+                  className="izp-in group flex items-center gap-3.5 rounded-[14px] px-[18px] py-[15px] transition-colors hover:bg-white/[0.06]"
+                  style={{
+                    background: "rgba(255,255,255,.03)",
+                    border: "0.5px solid rgba(255,255,255,.07)",
+                    animationDelay: delay,
+                  }}>
+                  <div
+                    className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] transition-transform group-hover:scale-[1.08]"
+                    style={{ background: bg }}>
+                    <Icon size={20} style={{ color }} />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-medium leading-snug text-white">{title}</p>
+                    <p className="text-[13px]" style={{ color: "#9fb0c2" }}>{sub}</p>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
+
           </div>
         </div>
       </section>
