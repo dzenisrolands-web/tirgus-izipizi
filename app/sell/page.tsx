@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle, ArrowRight, Clock, Percent, Shield } from "lucide-react";
+import { CheckCircle, ArrowRight, Clock, Percent, Shield, CreditCard } from "lucide-react";
 
 export const metadata = {
   title: "Sākt pārdot — pievienojies kā ražotājs",
@@ -37,14 +37,15 @@ const steps = [
   {
     num: "5",
     title: "Saņem maksājumu",
-    desc: "Maksājums tiek pārskaitīts pēc veiksmīgas pasūtījuma pabeigšanas.",
+    desc: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī uz tavu bankas kontu (IBAN). Tirgus izraksta reversais rēķins (self-billing) tavā vārdā — dokumentus kārtojam mēs.",
   },
 ];
 
 const benefits = [
   { icon: <Percent size={20} />, title: "Komisija tikai no pārdošanas", desc: "Nav abonēšanas maksas. Maksā tikai tad, kad pārdod." },
   { icon: <Clock size={20} />, title: "Ātrs sākums", desc: "Apstiprināšana līdz 24 stundām. Sāc pārdot jau šodien." },
-  { icon: <Shield size={20} />, title: "Droši maksājumi", desc: "Paysera maksājumu sistēma — droša un uzticama." },
+  { icon: <Shield size={20} />, title: "Drosi maksājumi", desc: "Paysera maksājumu sistēma — droša un uzticīga." },
+  { icon: <CreditCard size={20} />, title: "Izmaksa 2× mēnesī", desc: "Maksājumi uz tavu bankas kontu divas reizes mēnesī. Reversais rēķins — mums." },
 ];
 
 export default function SellPage() {

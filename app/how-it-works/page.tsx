@@ -78,7 +78,7 @@ const sellerSteps = [
   {
     icon: <CreditCard size={22} />,
     title: "Saņem maksājumu",
-    desc: "Pēc veiksmīgas izsniegšanas maksājums tiek pārskaitīts uz tavu norādīto kontu.",
+    desc: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī uz tavu bankas kontu. Tirgus izraksta reversais rēķins tavā vārdā (self-billing) — dokumentus kārtojam mēs.",
   },
 ];
 
@@ -209,6 +209,10 @@ export default function HowItWorksPage() {
             {
               q: "Kāda ir komisija pārdevējiem?",
               a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas). Konkrēts apmērs tiek apspriests un apstiprināts pirms produkta publicēšanas.",
+            },
+            {
+              q: "Kad un kā tiek izmaksāts maksājums pārdevējam?",
+              a: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī (ap 1. un 15. datumu) uz tavu reģistrēto bankas kontu (IBAN). Tirgus izraksta reversais rēķins (self-billing) tavā vārdā — Tev nav jāizraksta rēķins pš. Reversais rēķins ir pieejams tava dashboard sadaļā \"Rēķini\".",
             },
           ].map((item, i) => (
             <details key={i} className="group rounded-2xl border border-gray-100 bg-white shadow-sm">
