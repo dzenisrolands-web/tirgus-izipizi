@@ -117,7 +117,7 @@ export default function AdminRekiniPage() {
           {visible.map((inv) => {
             const st = statusMap[inv.status] ?? statusMap.draft;
             return (
-              <Link key={inv.id} href={`/dashboard/rekini/${inv.id}`}
+              <Link key={inv.id} href={`/admin/rekini/${inv.id}`}
                 className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm hover:border-gray-300 transition">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50">
                   <FileText size={16} className="text-brand-600" />

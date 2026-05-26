@@ -37,7 +37,7 @@ const steps = [
   {
     num: "5",
     title: "Saņem maksājumu",
-    desc: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī uz tavu bankas kontu (IBAN). Tirgus izraksta reversais rēķins (self-billing) tavā vārdā — dokumentus kārtojam mēs.",
+    desc: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī (1. un 16. datumā) uz tavu bankas kontu (IBAN). Tirgus izraksta reversais rēķins (self-billing) tavā vārdā — dokumentus kārtojam mēs.",
   },
 ];
 

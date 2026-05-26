@@ -212,7 +212,7 @@ export default function HowItWorksPage() {
             },
             {
               q: "Kad un kā tiek izmaksāts maksājums pārdevējam?",
-              a: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī (ap 1. un 15. datumu) uz tavu reģistrēto bankas kontu (IBAN). Tirgus izraksta reversais rēķins (self-billing) tavā vārdā — Tev nav jāizraksta rēķins pš. Reversais rēķins ir pieejams tava dashboard sadaļā \"Rēķini\".",
+              a: "Maksājumi tiek apkopoti un pārskaitīti 2× mēnesī (1. un 16. datumā) uz tavu reģistrēto bankas kontu (IBAN). Pēc rēķina nosūtīšanas tev ir 7 dienas iebildumiem, tad samaksa 5 darba dienu laikā. Tirgus izraksta reversais rēķins tavā vārdā (self-billing) — Tev nav jāizraksta rēķins pašam. Pieejams Dashboard → Rēķini.",
             },
           ].map((item, i) => (
             <details key={i} className="group rounded-2xl border border-gray-100 bg-white shadow-sm">
