@@ -50,7 +50,7 @@ export function PostalZoneLookup() {
         </div>
         <div>
           <h3 className="font-bold text-gray-900">Pārbaudi piegādi savā adresē</h3>
-          <p className="text-xs text-gray-500">Sāc rakstīt adresi — atrasīsim zonu, cenu un tuvākos pakomātus</p>
+          <p className="text-xs text-gray-500">Sāc rakstīt adresi — atrasīsim zonu, cenu un tuvākos p\u0101rtikas pakom\u0101tus</p>
         </div>
       </div>
 
@@ -112,7 +112,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
           <div className="mb-3 flex items-center gap-2">
             <Package size={14} className="text-brand-700" />
             <p className="text-xs font-bold uppercase tracking-wider text-brand-700">
-              Tuvākie pakomāti — vienmēr 3 € / skapītis
+              Tuvākie p\u0101rtikas pakom\u0101ti — vienmēr 3 € / skapītis
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
@@ -170,7 +170,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
             ))}
           </div>
           <a href="#pakomati-saraksts" className="mt-3 inline-block text-[11px] font-semibold text-brand-700 hover:underline">
-            Skatīt visus pakomātus →
+            Skatīt visus p\u0101rtikas pakom\u0101tus →
           </a>
         </div>
       )}
@@ -237,7 +237,7 @@ function NotFoundResult({ result }: { result: Extract<LookupResult, { found: fal
               LV-{result.code} — Pārējā Latvija
             </p>
             <p className="mt-1 text-xs text-gray-600">
-              Šajā vietā kurjera un ekspres piegāde <strong>nav pieejama</strong>, bet vari saņemt sūtījumu jebkurā no IziPizi pakomātiem.
+              Šajā vietā kurjera un ekspres piegāde <strong>nav pieejama</strong>, bet vari saņemt sūtījumu jebkurā no IziPizi p\u0101rtikas pakom\u0101tiem.
             </p>
           </div>
         </div>
@@ -245,7 +245,7 @@ function NotFoundResult({ result }: { result: Extract<LookupResult, { found: fal
         {result.nearestLockers && result.nearestLockers.length > 0 && (
           <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-gray-200">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-700">
-              Pakomāti — vienmēr 3 € / skapītis
+              p\u0101rtikas pakom\u0101ti — vienmēr 3 € / skapītis
             </p>
             <ul className="space-y-1.5">
               {result.nearestLockers.map((l) => (

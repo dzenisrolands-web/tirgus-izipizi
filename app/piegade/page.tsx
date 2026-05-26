@@ -34,8 +34,8 @@ const FAQ = [
     a: "'+2°C VAI −18°C' nozīmē, ka sūtījumā ir vai nu dzesēti, vai saldēti produkti — viena temperatūras zona. '+2°C UN −18°C' nozīmē, ka vienā sūtījumā ir ABĀ dzesēti UN saldēti produkti vienlaikus.",
   },
   {
-    q: "Cik ilgi var uzglabāties sūtījums pakomātā?",
-    a: "Sūtījums pakomātā tiek uzglabāts līdz 48 stundām ar nepārtrauktu temperatūras kontroli (+2°C–+6°C vai −18°C).",
+    q: "Cik ilgi var uzglabāties sūtījums p\u0101rtikas pakom\u0101tā?",
+    a: "Sūtījums p\u0101rtikas pakom\u0101tā tiek uzglabāts līdz 48 stundām ar nepārtrauktu temperatūras kontroli (+2°C–+6°C vai −18°C).",
   },
   {
     q: "Vai varu saņemt pie durvīm, ja dzīvoju ārpus Rīgas?",
@@ -43,7 +43,7 @@ const FAQ = [
   },
   {
     q: "Vai pieejama piegāde uz nelieliem novadiem ārpus zonām?",
-    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko pakomātu (3€) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
+    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko p\u0101rtikas pakom\u0101tu (3€) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
   },
 ];
 
@@ -166,7 +166,7 @@ export default function PiegadePage() {
           <PostalZoneLookup />
         </section>
 
-        {/* ── PAKOMĀTU ADRESES ── */}
+        {/* ── p\u0101rtikas pakom\u0101tU ADRESES ── */}
         <section id="pakomati" className="scroll-mt-20">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Atrašanās vietas</p>
           <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">
@@ -223,14 +223,14 @@ export default function PiegadePage() {
             </div>
           )}
           <p className="mt-5 text-center text-xs text-gray-400">
-            Visi pakomāti ir atvērti 24/7 ar temperatūras kontroli +2°C līdz −18°C.
+            Visi p\u0101rtikas pakom\u0101ti ir atvērti 24/7 ar temperatūras kontroli +2°C līdz −18°C.
           </p>
         </section>
 
-        {/* ── PAKOMĀTA BONUSI — 3 KARTIŅAS ── */}
+        {/* ── p\u0101rtikas pakom\u0101tA BONUSI — 3 KARTIŅAS ── */}
         <section>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Kāpēc pakomāts</p>
-          <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">3 iemesli izvēlēties pakomātu</h2>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Kāpēc p\u0101rtikas pakom\u0101ts</p>
+          <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">3 iemesli izvēlēties p\u0101rtikas pakom\u0101tu</h2>
           <div className="grid gap-5 sm:grid-cols-3">
 
             {/* Izdevīgākais */}
@@ -245,7 +245,7 @@ export default function PiegadePage() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                3 € par skapīti — neatkarīgi no pakomāta atrašanās vai attāluma. Ja pasūtījumā ir gan dzesēti, gan saldēti produkti — 2 skapīši × 3 €.
+                3 € par skapīti — neatkarīgi no p\u0101rtikas pakom\u0101ta atrašanās vai attāluma. Ja pasūtījumā ir gan dzesēti, gan saldēti produkti — 2 skapīši × 3 €.
               </p>
             </div>
 

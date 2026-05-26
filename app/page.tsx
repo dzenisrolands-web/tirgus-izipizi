@@ -21,13 +21,13 @@ import {
 import { hasValidImage, isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Pērc no vietējā, saņem ērti — pakomātā vai ar piegādi",
+  title: "Pērc no vietējā, saņem ērti — p\u0101rtikas pakom\u0101tā vai ar piegādi",
   description:
     "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet. Saņem pārtikas pakomātā vai ar piegādi uz mājām.",
   openGraph: {
     title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
     description:
-      "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet. Pakomātā vai ar piegādi.",
+      "Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet. p\u0101rtikas pakom\u0101tā vai ar piegādi.",
     url: "https://tirgus.izipizi.lv",
     images: [
       {
@@ -247,7 +247,7 @@ export default async function HomePage() {
                   saņem <span className="text-white">ērti</span>
                 </h1>
                 <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
-                  Pārtikas <strong className="text-white">pakomātā</strong> vai ar <strong className="text-white">piegādi</strong> uz mājām. Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet.
+                  Pārtikas <strong className="text-white">p\u0101rtikas pakom\u0101tā</strong> vai ar <strong className="text-white">piegādi</strong> uz mājām. Pelmeņi no Vidzemes, brieža steiki no meža, ikri no Rīgas bāra — desmitiem Latvijas ražotāju vienuviet.
                 </p>
               */}
 
@@ -275,7 +275,7 @@ export default async function HomePage() {
                 <strong className="text-white">K/S “Ekoloģisks.lv”</strong>,{" "}
                 <strong className="text-white">Cake Break</strong> un citi —{" "}
                 {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
-                Saņem <strong className="text-white">pakomātā</strong> vai ar{" "}
+                Saņem <strong className="text-white">p\u0101rtikas pakom\u0101tā</strong> vai ar{" "}
                 <strong className="text-white">piegādi</strong> uz mājām.
               </p>
 
@@ -304,7 +304,7 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{lockers.length}+</p>
-                  <p className="mt-0.5 text-xs text-gray-400">Pakomātu vietas</p>
+                  <p className="mt-0.5 text-xs text-gray-400">p\u0101rtikas pakom\u0101tu vietas</p>
                 </div>
               </div>
             </div>
@@ -507,9 +507,9 @@ export default async function HomePage() {
           <div className="mt-10 grid gap-3 sm:grid-cols-4">
             {[
               { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Pārlūko katalogu vai izmanto meklēšanu — atrodi ko vēlies." },
-              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "Pakomāts, kurjers vai ekspres — cena atkarīga no attāluma līdz ražotājam." },
+              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "p\u0101rtikas pakom\u0101ts, kurjers vai ekspres — cena atkarīga no attāluma līdz ražotājam." },
               { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
-              { icon: "✅", step: "04", title: "Saņem ērti", desc: "Pakomātā 24/7, mājās vai dažu stundu laikā." },
+              { icon: "✅", step: "04", title: "Saņem ērti", desc: "p\u0101rtikas pakom\u0101tā 24/7, mājās vai dažu stundu laikā." },
             ].map((item, i) => (
               <div key={item.step} className="relative">
                 {i < 3 && (
@@ -539,8 +539,8 @@ export default async function HomePage() {
               {
                 icon: <Package size={22} className="text-brand-500" />,
                 bg: "bg-brand-50 border-brand-200",
-                title: "IziPizi pakomāts",
-                desc: `Saņem jebkurā no ${lockers.length}+ pakomātiem 24/7. Dzesēts un saldēts režīms.`,
+                title: "IziPizi p\u0101rtikas pakom\u0101ts",
+                desc: `Saņem jebkurā no ${lockers.length}+ p\u0101rtikas pakom\u0101tiem 24/7. Dzesēts un saldēts režīms.`,
                 price: "3 € / skapītis",
                 href: "/piegade",
                 color: "text-brand-600",
@@ -596,7 +596,7 @@ export default async function HomePage() {
                 Esi ražotājs<br />vai pārdevējs?
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-gray-300">
-                Tu tirgo, mēs nodrošinām visu pārējo — pakomātu tīklu, temperatūras ķēdi,
+                Tu tirgo, mēs nodrošinām visu pārējo — p\u0101rtikas pakom\u0101tu tīklu, temperatūras ķēdi,
                 piegādi un maksājumus. Reģistrējies un sasniedz vairāk pircējus.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -612,9 +612,9 @@ export default async function HomePage() {
                 "✅ Bezmaksas reģistrācija",
                 "⚡ Apstiprināšana 24h laikā",
                 "💰 Komisija tikai no pārdošanas",
-                "🚚 Pakomāts, kurjers un ekspres piegāde",
+                "🚚 p\u0101rtikas pakom\u0101ts, kurjers un ekspres piegāde",
                 "❄️ Temperatūras ķēde no ražotāja",
-                "📍 Visi izipizi pakomāti Latvijā",
+                "📍 Visi izipizi p\u0101rtikas pakom\u0101ti Latvijā",
               ].map((f) => (
                 <li key={f}
                   className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-gray-300">

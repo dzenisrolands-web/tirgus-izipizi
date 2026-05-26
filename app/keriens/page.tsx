@@ -6,10 +6,10 @@ export const revalidate = 30;
 
 export const metadata = {
   title: "Sludinājumu dēlis",
-  description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pakomātā. Abonē un saņem paziņojumu uzreiz.",
+  description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā p\u0101rtikas pakom\u0101tā. Abonē un saņem paziņojumu uzreiz.",
   openGraph: {
     title: "🔥 Sludinājumu dēlis — tirgus.izipizi.lv",
-    description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pakomātā.",
+    description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā p\u0101rtikas pakom\u0101tā.",
     url: "https://tirgus.izipizi.lv/keriens",
     images: [
       {
@@ -23,7 +23,7 @@ export const metadata = {
   twitter: {
     card: "summary_large_image" as const,
     title: "🔥 Sludinājumu dēlis — tirgus.izipizi.lv",
-    description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pakomātā.",
+    description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā p\u0101rtikas pakom\u0101tā.",
   },
 };
 
@@ -39,7 +39,7 @@ export default async function SludinajumuDelisPage() {
           Sludinājumu dēlis
         </h1>
         <p className="mt-2 text-base text-gray-500">
-          Tieši no ražotāja · Pievienots šodien · Saņem savā pakomātā
+          Tieši no ražotāja · Pievienots šodien · Saņem savā p\u0101rtikas pakom\u0101tā
         </p>
       </div>
 

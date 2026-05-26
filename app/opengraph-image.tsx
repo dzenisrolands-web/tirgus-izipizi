@@ -117,7 +117,7 @@ export default function OgImage() {
             maxWidth: 700,
           }}
         >
-          Latvijas ražotāji · IziPizi pakomāti · Tieši no fermas
+          Latvijas ražotāji · IziPizi p\u0101rtikas pakom\u0101ti · Tieši no fermas
         </p>
 
         {/* Domain */}

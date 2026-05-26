@@ -90,7 +90,7 @@ export function SellerSignupForm() {
           </div>
           <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Pieteikties kā ražotājs</h1>
           <p className="mt-2 text-sm text-gray-500">
-            Sāc pārdot savus produktus caur izipizi pakomātu tīklu.
+            Sāc pārdot savus produktus caur izipizi p\u0101rtikas pakom\u0101tu tīklu.
           </p>
 
           {/* Google */}
@@ -206,7 +206,7 @@ export function SellerSignupForm() {
             <Truck size={16} className="mt-0.5 shrink-0 text-brand-400" />
             <div>
               <p className="text-sm font-semibold text-white">Temperatūras režīma piegāde</p>
-              <p className="text-xs text-gray-400">Pakomāts 24/7, kurjers vai ekspres piegāde ar temperatūras kontroli.</p>
+              <p className="text-xs text-gray-400">p\u0101rtikas pakom\u0101ts 24/7, kurjers vai ekspres piegāde ar temperatūras kontroli.</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-xl bg-white/5 px-4 py-3">
@@ -224,7 +224,7 @@ export function SellerSignupForm() {
           <div className="grid gap-3">
             {[
               { name: "Jānis B.", farm: "Bērziņu saimniecība", text: "Pirmo pasūtījumu saņēmu jau 3 dienas pēc profila izveides. Vienkārši un ātri!" },
-              { name: "Anita K.", farm: "Austeru bārs BURŽUJS", text: "Pakomāts ļauj klientiem saņemt arī naktī. Tas ir īsts plūsa atteikšanās no tradicijām." },
+              { name: "Anita K.", farm: "Austeru bārs BURŽUJS", text: "p\u0101rtikas pakom\u0101ts ļauj klientiem saņemt arī naktī. Tas ir īsts plūsa atteikšanās no tradicijām." },
               { name: "Māris Z.", farm: "Zaļā ferma", text: "Iekonomāju laiku uz loģistiku — varu vairāk pievērsties ražošanai." },
             ].map(t => (
               <div key={t.name} className="rounded-xl bg-white/5 px-4 py-3">

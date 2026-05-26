@@ -94,7 +94,7 @@ function computeMissing(s: SellerData): MissingItem[] {
     missing.push({
       key: "dropoff",
       label: "Nodošanas vietas",
-      desc: "Vismaz viens pakomāts vai kurjera saņemšanas adrese",
+      desc: "Vismaz viens p\u0101rtikas pakom\u0101ts vai kurjera saņemšanas adrese",
       icon: <Truck size={14} />,
       href: "/dashboard/profils",
     });

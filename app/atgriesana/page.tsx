@@ -82,14 +82,14 @@ export default function AtgriesanaPage() {
           <li><strong>Sazinies ar mums</strong> — sūti e-pastu uz {operatorInfo.contact.emailComplaints} ar pasūtījuma numuru un atgriešanas iemeslu</li>
           <li><strong>Mēs apstiprinām atgriešanu</strong> 1–2 darba dienu laikā un izsniedzam atgriešanas instrukcijas</li>
           <li><strong>Iesaiņo produktu</strong> oriģinālajā iepakojumā, ja iespējams</li>
-          <li><strong>Nogādā produktu</strong> uz mūsu norādīto pakomātu vai adresi</li>
+          <li><strong>Nogādā produktu</strong> uz mūsu norādīto p\u0101rtikas pakom\u0101tu vai adresi</li>
           <li><strong>Saņem atmaksu</strong> 14 dienu laikā pēc tam, kad mēs saņemam produktu atpakaļ</li>
         </ol>
 
         <h2>4. Atgriešanas izmaksas</h2>
         <ul>
           <li>Ja produkts atgriezts <strong>tava lēmuma dēļ (atteikuma tiesības)</strong>: tu sedz atgriešanas piegādes izmaksas</li>
-          <li>Ja produkts ir <strong>bojāts vai nepareizs</strong>: mēs sedzam visas izmaksas un nosūtam atpakaļ pakomāta kodu vai kurjeru</li>
+          <li>Ja produkts ir <strong>bojāts vai nepareizs</strong>: mēs sedzam visas izmaksas un nosūtam atpakaļ p\u0101rtikas pakom\u0101ta kodu vai kurjeru</li>
         </ul>
 
         <h2>5. Atmaksa</h2>

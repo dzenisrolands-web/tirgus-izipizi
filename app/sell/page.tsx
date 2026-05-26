@@ -4,10 +4,10 @@ import { CheckCircle, ArrowRight, Clock, Percent, Shield } from "lucide-react";
 export const metadata = {
   title: "Sākt pārdot — pievienojies kā ražotājs",
   description:
-    "Pārdod savus produktus caur IziPizi pakomātu tīklu. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",
+    "Pārdod savus produktus caur IziPizi p\u0101rtikas pakom\u0101tu tīklu. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",
   openGraph: {
     title: "Sākt pārdot tirgus.izipizi.lv — pievienojies kā ražotājs",
-    description: "Pārdod savus produktus caur IziPizi pakomātu tīklu. Komisija tikai no pārdošanas.",
+    description: "Pārdod savus produktus caur IziPizi p\u0101rtikas pakom\u0101tu tīklu. Komisija tikai no pārdošanas.",
     url: "https://tirgus.izipizi.lv/sell",
     type: "website" as const,
   },
@@ -22,17 +22,17 @@ const steps = [
   {
     num: "2",
     title: "Izvieto produktus",
-    desc: "Pievieno savus produktus — foto, cena, daudzums, derīguma termiņš, pakomāta vieta.",
+    desc: "Pievieno savus produktus — foto, cena, daudzums, derīguma termiņš, p\u0101rtikas pakom\u0101ta vieta.",
   },
   {
     num: "3",
     title: "Saņem pasūtījumu",
-    desc: "Kad klients pasūta, tu saņem paziņojumu un laika logs ielādei pakomātā.",
+    desc: "Kad klients pasūta, tu saņem paziņojumu un laika logs ielādei p\u0101rtikas pakom\u0101tā.",
   },
   {
     num: "4",
-    title: "Ievieto pakomātā",
-    desc: "Ievieto produktus izipizi pakomātā, iezīmē kā gatavu — klients saņem kodu.",
+    title: "Ievieto p\u0101rtikas pakom\u0101tā",
+    desc: "Ievieto produktus izipizi p\u0101rtikas pakom\u0101tā, iezīmē kā gatavu — klients saņem kodu.",
   },
   {
     num: "5",
@@ -54,7 +54,7 @@ export default function SellPage() {
       <div className="text-center">
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
           Pārdod savus produktus<br />
-          <span className="text-brand-600">caur izipizi pakomātiem</span>
+          <span className="text-brand-600">caur izipizi p\u0101rtikas pakom\u0101tiem</span>
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-gray-500">
           Reģistrējies kā pārdevējs, izvieto savus produktus un sasniedz klientus

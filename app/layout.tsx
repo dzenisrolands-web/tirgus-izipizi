@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   description:
     "Pērc no vietējā un saņem ērti — pārtikas pakomātā vai ar piegādi uz mājām. Pelmeņi, gaļa, olas, dārzeņi no Latvijas ražotājiem.",
-  keywords: ["tirgus", "svaiga pārtika", "ražotāji", "pakomāts", "izipizi", "vietējie produkti", "latvija", "ferma"],
+  keywords: ["tirgus", "svaiga pārtika", "ražotāji", "p\u0101rtikas pakom\u0101ts", "izipizi", "vietējie produkti", "latvija", "ferma"],
   authors: [{ name: "tirgus.izipizi.lv" }],
   creator: "IziPizi",
   openGraph: {
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
-    description: "Pērc no vietējā — pakomātā vai ar piegādi.",
+    description: "Pērc no vietējā — p\u0101rtikas pakom\u0101tā vai ar piegādi.",
     images: ["/og-default.jpg"],
   },
   robots: {
@@ -106,7 +106,7 @@ const organizationJsonLd = {
   url: BASE_URL,
   logo: `${BASE_URL}/og-default.jpg`,
   description:
-    "Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz pakomātam.",
+    "Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz p\u0101rtikas pakom\u0101tam.",
   inLanguage: "lv-LV",
   areaServed: { "@type": "Country", name: "Latvia" },
   parentOrganization: {
@@ -189,7 +189,7 @@ export default function RootLayout({
               <div>
                 <p className="text-sm font-semibold text-brand-700">tirgus.izipizi.lv</p>
                 <p className="mt-2 text-xs text-gray-500">
-                  Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz pakomātam.
+                  Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz p\u0101rtikas pakom\u0101tam.
                 </p>
                 <p className="mt-4 text-[10px] leading-relaxed text-gray-400">
                   SIA &quot;Svaigi&quot; · Reģ. Nr. 40103915568 ·

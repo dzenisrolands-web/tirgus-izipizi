@@ -520,7 +520,7 @@ export function ProductForm({
                 <div className="flex items-center gap-2">
                   <Package size={15} className="shrink-0 text-brand-600" />
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">Pakomāts</p>
+                    <p className="text-sm font-semibold text-gray-800">p\u0101rtikas pakom\u0101ts</p>
                     <p className="text-xs text-gray-500">
                       {sellerDelivery.home_locker_ids
                         .map(id => lockers.find(l => l.id === id)?.name ?? id)
@@ -539,11 +539,11 @@ export function ProductForm({
             <div className="border-t border-gray-200 pt-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Saņemšana pircējiem</p>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Produkts būs pieejams saņemšanai <strong>visos {activeLockers.length} IziPizi pakomātos</strong>{" "}
+                Produkts būs pieejams saņemšanai <strong>visos {activeLockers.length} IziPizi p\u0101rtikas pakom\u0101tos</strong>{" "}
                 ({activeLockers.map(l => l.name).join(", ")}), kā arī ar kurjerpiegādi.
               </p>
               <p className="mt-1 text-xs text-amber-700">
-                ⚠ <strong>Dundagas pakomāts</strong> — prece pieejama saņemšanai Dundagā tikai tad, ja Tu to pats ieliec Dundagas pakomātā.
+                ⚠ <strong>Dundagas p\u0101rtikas pakom\u0101ts</strong> — prece pieejama saņemšanai Dundagā tikai tad, ja Tu to pats ieliec Dundagas p\u0101rtikas pakom\u0101tā.
               </p>
             </div>
           </div>
@@ -646,8 +646,8 @@ export function ProductForm({
             <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white">Esi ārpus piegāžu zonas?</p>
               <p className="mt-1 text-xs text-gray-300 leading-relaxed">
-                Piedāvājam uzglabāt Tavu preci kādā no mūsu <strong className="text-white">{activeLockers.length} pakomātiem</strong>{comingSoonCount > 0 ? <span className="text-[#53F3A4]"> (+{comingSoonCount} drīzumā)</span> : null}{" "}
-                un nodrošinām komplektēšanu un visus piegādes veidus tieši no pakomāta.
+                Piedāvājam uzglabāt Tavu preci kādā no mūsu <strong className="text-white">{activeLockers.length} p\u0101rtikas pakom\u0101tiem</strong>{comingSoonCount > 0 ? <span className="text-[#53F3A4]"> (+{comingSoonCount} drīzumā)</span> : null}{" "}
+                un nodrošinām komplektēšanu un visus piegādes veidus tieši no p\u0101rtikas pakom\u0101ta.
               </p>
               <div className="mt-2.5 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5 text-xs text-gray-300">

@@ -42,7 +42,7 @@ export default function PrivatumsPage() {
         <h2>2. Kādus datus mēs vācam</h2>
         <p>Atkarībā no tā, kā tu mijiedarbojies ar platformu, mēs apstrādājam:</p>
         <ul>
-          <li><strong>Pircēji:</strong> vārds, uzvārds, e-pasts, tālrunis, piegādes adrese, izvēlētais pakomāts, pasūtījumu vēsture, maksājumu informācija (tikai darījuma identifikators — pilna kartes informācija glabājas Paysera sistēmā)</li>
+          <li><strong>Pircēji:</strong> vārds, uzvārds, e-pasts, tālrunis, piegādes adrese, izvēlētais p\u0101rtikas pakom\u0101ts, pasūtījumu vēsture, maksājumu informācija (tikai darījuma identifikators — pilna kartes informācija glabājas Paysera sistēmā)</li>
           <li><strong>Tirgotāji:</strong> visa augšminētā plus juridiskais nosaukums, reģistrācijas numurs, PVN reģistrācijas numurs (ja attiecināms), juridiskā adrese, bankas konta numurs (IBAN), self-billing kārtības piekrišana</li>
           <li><strong>Apmeklētāji bez konta:</strong> IP adrese, pārlūka informācija, sīkdatnes (sk. 8. sadaļu)</li>
           <li><strong>Push paziņojumu abonenti:</strong> pārlūka push subscription identifikators (endpoint, p256dh, auth atslēgas)</li>
@@ -68,7 +68,7 @@ export default function PrivatumsPage() {
           <li><strong>Supabase</strong> (ES reģions) — datubāze un autentifikācija</li>
           <li><strong>Vercel</strong> (ES reģions) — vietnes hosting</li>
           <li><strong>Paysera LT, UAB</strong> (Lietuva) — maksājumu apstrāde</li>
-          <li><strong>SIA IziPizi</strong> — pakomātu tīkla operators (saņem tikai pakomāta nr. un saņēmēja vārdu/tālruni)</li>
+          <li><strong>SIA IziPizi</strong> — p\u0101rtikas pakom\u0101tu tīkla operators (saņem tikai p\u0101rtikas pakom\u0101ta nr. un saņēmēja vārdu/tālruni)</li>
           <li><strong>Web Push API</strong> (Apple, Google, Mozilla) — push paziņojumu piegāde</li>
         </ul>
         <p>

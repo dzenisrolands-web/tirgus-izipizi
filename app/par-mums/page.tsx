@@ -108,7 +108,7 @@ export default function ParMumsPage() {
             <p>
               2026. gadā mēs apvienojām spēkus ar <strong>SIA &quot;IziPizi&quot;</strong>,
               kas operē Latvijas pārtikas pakomātu tīklu. Pateicoties šai sadarbībai, ražotāji
-              piegādā produktus uz pakomātiem ar temperatūras kontroli, kā arī izmantojam
+              piegādā produktus uz p\u0101rtikas pakom\u0101tiem ar temperatūras kontroli, kā arī izmantojam
               kurjera un ekspres piegādes pakalpojumus, lai pircēji saņem svaigu
               pārtiku tā, kā tiem ērti.
             </p>
@@ -127,7 +127,7 @@ export default function ParMumsPage() {
             <ValueCard
               icon={<Truck size={18} className="text-brand-600" />}
               title="Trīs piegādes veidi"
-              text="Pakomāts 24/7 ar temperatūras kontroli, kurjers uz mājas adresi vai ekspres piegāde tajā pašā dienā Rīgā un Pierīgā — izvēlies ērtāko."
+              text="p\u0101rtikas pakom\u0101ts 24/7 ar temperatūras kontroli, kurjers uz mājas adresi vai ekspres piegāde tajā pašā dienā Rīgā un Pierīgā — izvēlies ērtāko."
             />
             <ValueCard
               icon={<Store size={18} className="text-brand-600" />}

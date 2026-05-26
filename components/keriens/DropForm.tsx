@@ -98,7 +98,7 @@ export function DropForm({
     if (!form.title.trim())              return setError("Nosaukums ir obligāts");
     if (form.price_cents <= 0)           return setError("Ievadi derīgu cenu");
     if (form.total_quantity <= 0)        return setError("Daudzumam jābūt > 0");
-    if (!form.pickup_locker_id)          return setError("Izvēlies pakomātu");
+    if (!form.pickup_locker_id)          return setError("Izvēlies p\u0101rtikas pakom\u0101tu");
     if (new Date(form.expires_at) <= new Date()) return setError("Termiņš nedrīkst būt pagātnē");
 
     setSaving(true);

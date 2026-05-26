@@ -6,8 +6,8 @@ import { isPublicReady } from "@/lib/utils";
 
 export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
-  description: "Pārlūko svaigus produktus no Latvijas ražotājiem. Filtrē pēc kategorijas, pilsētas un uzglabāšanas veida. Saņem pasūtījumu izipizi pakomātā.",
-  keywords: ["latvijas ražotāji", "svaigi produkti", "pakomāts", "bioloģiski", "vietējā pārtika"],
+  description: "Pārlūko svaigus produktus no Latvijas ražotājiem. Filtrē pēc kategorijas, pilsētas un uzglabāšanas veida. Saņem pasūtījumu izipizi p\u0101rtikas pakom\u0101tā.",
+  keywords: ["latvijas ražotāji", "svaigi produkti", "p\u0101rtikas pakom\u0101ts", "bioloģiski", "vietējā pārtika"],
   alternates: { canonical: "/catalog" },
   openGraph: {
     title: "Produktu katalogs — tirgus.izipizi.lv",

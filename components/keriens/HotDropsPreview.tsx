@@ -35,7 +35,7 @@ export async function HotDropsPreview() {
               Sludinājumu dēlis
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Tieši no ražotāja — pievienots šodien, pieejams tavā pakomātā
+              Tieši no ražotāja — pievienots šodien, pieejams tavā p\u0101rtikas pakom\u0101tā
             </p>
           </div>
           <Link href="/keriens"
@@ -72,14 +72,14 @@ export async function HotDropsPreview() {
               </div>
               <h3 className="mt-4 text-lg font-extrabold text-gray-900">Kas ir Sludinājumu dēlis?</h3>
               <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                Dzīvas ziņas no ražotāja — produkts, ko viņš tikko ievieto pakomātā.
-                Tieši no fermas vai tirgus, ar pārdevēja seju un balsi. Abonē savu pakomātu un saņem paziņojumu.
+                Dzīvas ziņas no ražotāja — produkts, ko viņš tikko ievieto p\u0101rtikas pakom\u0101tā.
+                Tieši no fermas vai tirgus, ar pārdevēja seju un balsi. Abonē savu p\u0101rtikas pakom\u0101tu un saņem paziņojumu.
               </p>
               <ul className="mt-4 space-y-2 text-sm text-gray-600">
                 {[
                   { icon: <Clock size={14} className="text-orange-400 shrink-0" />, text: "Pievienots tagad — pieejams līdz aizvākšanai" },
                   { icon: <Package size={14} className="text-orange-400 shrink-0" />, text: "Tieši no ražotāja — bez starpniekiem" },
-                  { icon: <ShoppingBag size={14} className="text-orange-400 shrink-0" />, text: "Rezervē un saņem pakomātā" },
+                  { icon: <ShoppingBag size={14} className="text-orange-400 shrink-0" />, text: "Rezervē un saņem p\u0101rtikas pakom\u0101tā" },
                 ].map((f, i) => (
                   <li key={i} className="flex items-center gap-2">
                     {f.icon} {f.text}

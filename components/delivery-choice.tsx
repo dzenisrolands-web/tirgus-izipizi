@@ -39,7 +39,7 @@ export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false 
 
   const lockerFee = LOCKER_FEE;
 
-  // Compute effective courier zone = MAX(seller pakomāts zona, pircēja zona)
+  // Compute effective courier zone = MAX(seller p\u0101rtikas pakom\u0101ts zona, pircēja zona)
   const effectiveZone = effectiveCourierZone(locker.id, buyerAddress?.zone);
   const effectivePricing = pricingForZone(effectiveZone);
   const sellerZone = LOCKER_ZONES[locker.id];
@@ -195,7 +195,7 @@ export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false 
       )}
       {buyerAddress && !courierAvailableNow && (
         <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-          ⚠️ Tavā adresē kurjers nav pieejams — vari saņemt pakomātā par {LOCKER_FEE.toFixed(2)} €.
+          ⚠️ Tavā adresē kurjers nav pieejams — vari saņemt p\u0101rtikas pakom\u0101tā par {LOCKER_FEE.toFixed(2)} €.
         </div>
       )}
 
@@ -206,7 +206,7 @@ export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false 
           {nearestLockers.length > 0 ? (
             <div>
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-700">
-                Saņem savā tuvākajā pakomātā · no {LOCKER_FEE.toFixed(2)} €
+                Saņem savā tuvākajā p\u0101rtikas pakom\u0101tā · no {LOCKER_FEE.toFixed(2)} €
               </p>
               <div className="grid grid-cols-3 gap-1.5">
                 {nearestLockers.map((l, idx) => (
@@ -257,7 +257,7 @@ export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false 
                     <p className="text-sm font-semibold text-gray-900">{locker.name}</p>
                     {isHomeLocker && (
                       <span className="rounded-full bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700">
-                        Mājas pakomāts
+                        Mājas p\u0101rtikas pakom\u0101ts
                       </span>
                     )}
                   </div>

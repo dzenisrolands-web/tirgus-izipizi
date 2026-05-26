@@ -248,7 +248,7 @@ export function CartPage() {
     if (!form.name.trim()) missing.push("Vārds, uzvārds");
     if (!form.phone.trim()) missing.push("Tālrunis");
     if (!form.email.trim()) missing.push("E-pasts");
-    if (deliveryMethod === "locker" && !lockerId) missing.push("Pakomāts");
+    if (deliveryMethod === "locker" && !lockerId) missing.push("p\u0101rtikas pakom\u0101ts");
     if (deliveryMethod === "courier" || deliveryMethod === "express") {
       if (!zoneResult.found) missing.push("Pasta indekss (derīgā zonā)");
       if (!address.trim()) missing.push("Iela un mājas nr.");
@@ -459,7 +459,7 @@ export function CartPage() {
                   selected={deliveryMethod === "locker"}
                   onSelect={() => setDeliveryMethod("locker")}
                   icon={<Package size={18} />}
-                  label="Pakomāts"
+                  label="p\u0101rtikas pakom\u0101ts"
                   price={sellerGroups.length > 0
                     ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : `${LOCKER_FEE.toFixed(2)} €/skapītis`}
@@ -504,7 +504,7 @@ export function CartPage() {
               {/* Method-specific details */}
               {deliveryMethod === "locker" && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-gray-900">Izvēlies pakomātu</h3>
+                  <h3 className="text-sm font-bold text-gray-900">Izvēlies p\u0101rtikas pakom\u0101tu</h3>
                   {lockers.map((l) => (
                     <label key={l.id}
                       className={cn(
@@ -533,7 +533,7 @@ export function CartPage() {
                         </div>
                         {l.pickup_only && (
                           <p className="mt-1 text-[11px] text-amber-700">
-                            ⚠ Šis pakomāts apkalpo tikai vietējo ražotāju produktus. Kurjerpiegāde uz šo pakomātu nav pieejama.
+                            ⚠ Šis p\u0101rtikas pakom\u0101ts apkalpo tikai vietējo ražotāju produktus. Kurjerpiegāde uz šo p\u0101rtikas pakom\u0101tu nav pieejama.
                           </p>
                         )}
                       </div>
@@ -686,7 +686,7 @@ export function CartPage() {
                     <p className="text-xs text-amber-700">
                       {zoneResult.reason === "invalid_format"
                         ? "Ievadi 4-ciparu Latvijas pasta indeksu"
-                        : `Indekss LV-${zoneResult.code} nav mūsu apkalpotajās zonās — sazinies ar mums vai izvēlies pakomātu`}
+                        : `Indekss LV-${zoneResult.code} nav mūsu apkalpotajās zonās — sazinies ar mums vai izvēlies p\u0101rtikas pakom\u0101tu`}
                     </p>
                   )}
                   {zonePricing && (
@@ -824,7 +824,7 @@ export function CartPage() {
                         <Package size={18} className="text-brand-700" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">Pakomāts — {l.city} — {l.name}</p>
+                        <p className="font-semibold text-gray-900">p\u0101rtikas pakom\u0101ts — {l.city} — {l.name}</p>
                         <p className="text-xs text-gray-500">{l.address} · {l.hours}</p>
                       </div>
                     </div>

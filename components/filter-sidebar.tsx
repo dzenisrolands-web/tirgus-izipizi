@@ -141,7 +141,7 @@ export function FilterSidebar({ filters, onChange }: Props) {
             { value: "all", label: "Visi veidi" },
             { value: "courier", label: "🚚 Kurjerpiegāde" },
             { value: "express", label: "⚡ Eksprespiegāde" },
-            { value: "locker", label: "📦 Pakomāts" },
+            { value: "locker", label: "📦 p\u0101rtikas pakom\u0101ts" },
           ] as const).map((opt) => (
             <button key={opt.value}
               onClick={() => onChange({ ...filters, delivery: opt.value })}

@@ -323,7 +323,7 @@ export default function DashboardPasutijumiPage() {
                   <KeyRound size={16} className="text-brand-600" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-gray-900">Atzīmēt kā ievietotu pakomātā</h3>
+                  <h3 className="font-extrabold text-gray-900">Atzīmēt kā ievietotu p\u0101rtikas pakom\u0101tā</h3>
                   <p className="text-xs text-gray-500">{shipDialog.order_number}</p>
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function DashboardPasutijumiPage() {
             </div>
 
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">PIN kods pakomātam *</label>
+              <label className="block text-sm font-medium text-gray-700">PIN kods p\u0101rtikas pakom\u0101tam *</label>
               <p className="mt-1 text-xs text-gray-500">
                 Pircējs saņems push paziņojumu ar šo kodu, lai izņemtu pasūtījumu.
               </p>
