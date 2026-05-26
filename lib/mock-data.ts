@@ -4,6 +4,8 @@ export type Locker = {
   id: string; name: string; address: string; city: string; hours: string;
   /** true = local sellers can place products here for pickup, but no courier deliveries TO this locker */
   pickup_only?: boolean;
+  /** true = location announced but not yet open */
+  coming_soon?: boolean;
 };
 export type Seller = {
   id: string; name: string; farmName: string; avatar: string;
@@ -81,6 +83,47 @@ export const lockers: Locker[] = [
     "address": "Iūkstes iela 40A",
     "city": "Rīga",
     "hours": "24/7"
+  },
+  // --- Drīzumā (nākamie pakomāti) ---
+  {
+    "id": "saga",
+    "name": "TC Saga",
+    "address": "Stirnu iela 14 / TC Saga",
+    "city": "Rīga",
+    "hours": "24/7",
+    "coming_soon": true
+  },
+  {
+    "id": "business_garden",
+    "name": "Business Garden Mārupe",
+    "address": "Jūrmalas gatve 74/76 / Business Garden",
+    "city": "Mārupe",
+    "hours": "24/7",
+    "coming_soon": true
+  },
+  {
+    "id": "sigulda",
+    "name": "Siguldas tirgus",
+    "address": "Raīņa iela 3 / Tirgus",
+    "city": "Sigulda",
+    "hours": "24/7",
+    "coming_soon": true
+  },
+  {
+    "id": "tinuzi",
+    "name": "Tinūžu NESTE",
+    "address": "Siguldas šoseja / NESTE",
+    "city": "Tinūži",
+    "hours": "24/7",
+    "coming_soon": true
+  },
+  {
+    "id": "kekava",
+    "name": "Ķekavas NESTE",
+    "address": "Rīgas iela / NESTE",
+    "city": "Ķekava",
+    "hours": "24/7",
+    "coming_soon": true
   }
 ];
 

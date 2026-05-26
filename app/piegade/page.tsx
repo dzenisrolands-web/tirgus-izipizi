@@ -174,16 +174,27 @@ export default function PiegadePage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lockers.filter(l => !l.pickup_only).map((locker) => (
-              <div key={locker.id} className="flex gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+              <div key={locker.id} className={`relative flex gap-4 rounded-2xl border p-5 shadow-sm ${
+                locker.coming_soon ? "border-dashed border-amber-200 bg-amber-50/50" : "border-gray-100 bg-white"
+              }`}>
+                {locker.coming_soon && (
+                  <span className="absolute right-3 top-3 inline-flex items-center rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                    Drīzumā
+                  </span>
+                )}
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                  locker.coming_soon ? "bg-amber-100 text-amber-600" : "bg-brand-100 text-brand-600"
+                }`}>
                   <MapPin size={18} />
                 </div>
-                <div>
+                <div className="pr-12">
                   <p className="font-bold text-gray-900 text-sm">{locker.name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{locker.address}</p>
                   <p className="text-xs text-gray-400">{locker.city}</p>
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-green-700">
-                    <CheckCircle size={11} /> {locker.hours}
+                  <span className={`mt-2 inline-flex items-center gap-1 text-[11px] font-semibold ${
+                    locker.coming_soon ? "text-amber-600" : "text-green-700"
+                  }`}>
+                    <CheckCircle size={11} /> {locker.coming_soon ? "Atveras drīzumā" : locker.hours}
                   </span>
                 </div>
               </div>
