@@ -79,8 +79,8 @@ export const lockers: Locker[] = [
   },
   {
     "id": "iukstes",
-    "name": "Iūkstes iela 40A",
-    "address": "Iūkstes iela 40A",
+    "name": "Ilūkstes iela 40A",
+    "address": "Ilūkstes iela 40A",
     "city": "Rīga",
     "hours": "24/7"
   },

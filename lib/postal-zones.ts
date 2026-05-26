@@ -122,7 +122,7 @@ export const LOCKER_ZONES: Record<string, DeliveryZone> = {
   ikskile:    3, // Ikšķile (reģionālā)
   tukums:     3, // Tukums (reģionālā, kurjēra vajadzībām)
   dundaga:    3, // Dundaga (reģionālā, kurjēra vajadzībām)
-  iukstes:    0, // Rīga, īūkstes iela (centrs)
+  iukstes:    1, // Rīga, Ilūkstes iela (Vidzemes prieċp.
 };
 
 /**
@@ -169,7 +169,7 @@ const LOCKER_COORDS: Record<string, { lat: number; lng: number; name: string; ci
   ikskile:    { lat: 56.8359, lng: 24.5026, name: "Ikšķile",              city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode", hours: "10:00–20:00" },
   tukums:     { lat: 56.9692, lng: 23.1611, name: "Tukuma tirgus",        city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus",   hours: "24/7" },
   dundaga:    { lat: 57.5074, lng: 22.3506, name: "Dundagas tirgus",      city: "Dundaga",   address: "Pils 3B / Tirgus",            hours: "24/7" },
-  iukstes:    { lat: 56.9536, lng: 24.1367, name: "Iūkstes iela 40A",       city: "Rīga",      address: "Iūkstes iela 40A",               hours: "24/7" },
+  iukstes:    { lat: 56.9360, lng: 24.1830, name: "Ilūkstes iela 40A",      city: "Rīga",      address: "Ilūkstes iela 40A",              hours: "24/7" },
 };
 
 // Approximate centroid + place name for each postal code.
