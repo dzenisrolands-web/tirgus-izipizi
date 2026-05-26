@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   if (!seller.self_billing_agreed) missing.push("Self-billing piekrišana");
   const hasLocker = seller.home_locker_ids && seller.home_locker_ids.length > 0;
   const hasPickup = !!seller.courier_pickup_address?.trim();
-  if (!hasLocker && !hasPickup) missing.push("Nodošanas vietas (p\u0101rtikas pakom\u0101ts vai kurjera adrese)");
+  if (!hasLocker && !hasPickup) missing.push("Nodošanas vietas (pārtikas pakomāts vai kurjera adrese)");
 
   if (missing.length === 0) {
     return NextResponse.json({ ok: true, message: "Nothing missing", sent: false });

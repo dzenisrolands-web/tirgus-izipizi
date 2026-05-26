@@ -38,7 +38,7 @@ export default function RegisterChooserPage() {
             </div>
             <h2 className="mt-5 text-2xl font-extrabold text-gray-900">Esmu pircējs</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              Iepērcies tieši no Latvijas ražotājiem — svaiga pārtika no fermas līdz p\u0101rtikas pakom\u0101tam vai mājām.
+              Iepērcies tieši no Latvijas ražotājiem — svaiga pārtika no fermas līdz pārtikas pakomātam vai mājām.
             </p>
             <ul className="mt-5 space-y-2 text-sm text-gray-700">
               <li className="flex items-center gap-2">
@@ -72,7 +72,7 @@ export default function RegisterChooserPage() {
             </div>
             <h2 className="mt-5 text-2xl font-extrabold">Esmu ražotājs</h2>
             <p className="mt-2 text-sm leading-relaxed text-gray-300">
-              Pārdod savus produktus caur izipizi p\u0101rtikas pakom\u0101tu tīklu — bez tirgus telts un bez gaidīšanas.
+              Pārdod savus produktus caur izipizi pārtikas pakomātu tīklu — bez tirgus telts un bez gaidīšanas.
             </p>
             <ul className="mt-5 space-y-2 text-sm text-gray-200">
               <li className="flex items-center gap-2">

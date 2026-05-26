@@ -61,7 +61,7 @@ export function DropFilters({
               ? "bg-orange-500 text-white border-orange-500"
               : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
           )}>
-          Visi p\u0101rtikas pakom\u0101ti
+          Visi pārtikas pakomāti
         </button>
         {lockers.map((l) => {
           const isSubscribed = subscribedLockerIds.includes(l.id);
@@ -77,7 +77,7 @@ export function DropFilters({
                   ? "bg-brand-50 text-brand-700 border-brand-300 hover:bg-brand-100"
                   : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
               )}
-              title={isSubscribed ? "Tavs abonētais p\u0101rtikas pakom\u0101ts" : undefined}
+              title={isSubscribed ? "Tavs abonētais pārtikas pakomāts" : undefined}
             >
               {isSubscribed && <Bell size={10} className={isSelected ? "text-white" : "text-brand-600"} />}
               {l.name}

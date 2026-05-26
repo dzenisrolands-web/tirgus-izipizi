@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
   const description = listing.description
     ? `${listing.description.slice(0, 140)}…`
-    : `${listing.title} no ${listing.seller.farmName}. ${formatPrice(listing.price)} / ${listing.unit}. Saņem izipizi p\u0101rtikas pakom\u0101tā.`;
+    : `${listing.title} no ${listing.seller.farmName}. ${formatPrice(listing.price)} / ${listing.unit}. Saņem izipizi pārtikas pakomātā.`;
   return {
     title,
     description,

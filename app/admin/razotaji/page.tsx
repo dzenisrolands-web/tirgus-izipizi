@@ -601,7 +601,7 @@ export default function AdminRazotajiPage() {
                           ? "bg-brand-50 text-brand-700 hover:bg-brand-100"
                           : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                       }`}
-                      title="Mājas p\u0101rtikas pakom\u0101ti"
+                      title="Mājas pārtikas pakomāti"
                     >
                       <Home size={11} />
                       {homeLockers.length > 0 ? homeLockers.length : <Plus size={10} />}
@@ -832,7 +832,7 @@ export default function AdminRazotajiPage() {
                 {isLockerOpen && (
                   <div className="border-t border-gray-50 bg-white px-5 py-3">
                     <p className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Mājas p\u0101rtikas pakom\u0101ti
+                      Mājas pārtikas pakomāti
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {LOCKERS.map(locker => {

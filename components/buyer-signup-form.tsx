@@ -90,7 +90,7 @@ export function BuyerSignupForm() {
           </div>
           <h1 className="mt-4 text-2xl font-extrabold text-gray-900">Reģistrējies kā pircējs</h1>
           <p className="mt-2 text-sm text-gray-500">
-            Pērc no vietējā, saņem ērti — p\u0101rtikas pakom\u0101tā vai uz mājām.
+            Pērc no vietējā, saņem ērti — pārtikas pakomātā vai uz mājām.
           </p>
 
           {/* Google */}
@@ -187,7 +187,7 @@ export function BuyerSignupForm() {
             <MapPin size={16} className="mt-0.5 shrink-0 text-amber-600" />
             <div>
               <p className="text-sm font-semibold text-gray-900">Saglabā adreses</p>
-              <p className="text-xs text-gray-500">Saglabā piegādes adreses un mīļāko p\u0101rtikas pakom\u0101tu — ātrāka kase</p>
+              <p className="text-xs text-gray-500">Saglabā piegādes adreses un mīļāko pārtikas pakomātu — ātrāka kase</p>
             </div>
           </div>
         </div>

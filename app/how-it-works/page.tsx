@@ -18,11 +18,11 @@ export const metadata: Metadata = {
 };
 
 const FAQ_HOW = [
-  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi p\u0101rtikas pakom\u0101ts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ p\u0101rtikas pakom\u0101tiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
-  { q: "Kādā termiņā produkti jāizņem no p\u0101rtikas pakom\u0101ta?", a: "Produkti p\u0101rtikas pakom\u0101tā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam." },
-  { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "p\u0101rtikas pakom\u0101ta pasūtījumiem — uz e-pastu un SMS atsūtīsim p\u0101rtikas pakom\u0101ta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
+  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
+  { q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?", a: "Produkti pārtikas pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam." },
+  { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "pārtikas pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pārtikas pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
   { q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?", a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas." },
-  { q: "Vai var pārdot arī saldētas preces?", a: "Jā — IziPizi p\u0101rtikas pakom\u0101ti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C." },
+  { q: "Vai var pārdot arī saldētas preces?", a: "Jā — IziPizi pārtikas pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C." },
   { q: "Kāda ir komisija pārdevējiem?", a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas)." },
 ];
 
@@ -45,7 +45,7 @@ const buyerSteps = [
   {
     icon: <Truck size={22} />,
     title: "Izvēlies piegādes veidu",
-    desc: "p\u0101rtikas pakom\u0101ts (3 €/skapītis), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
+    desc: "pārtikas pakomāts (3 €/skapītis), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
   },
   {
     icon: <CreditCard size={22} />,
@@ -55,7 +55,7 @@ const buyerSteps = [
   {
     icon: <Bell size={22} />,
     title: "Saņem pasūtījumu",
-    desc: "p\u0101rtikas pakom\u0101ta gadījumā uz e-pastu un SMS atsūtām kodu — izņem 48h laikā. Kurjeru un ekspres piegādi nogādājam tieši uz tavu adresi.",
+    desc: "pārtikas pakomāta gadījumā uz e-pastu un SMS atsūtām kodu — izņem 48h laikā. Kurjeru un ekspres piegādi nogādājam tieši uz tavu adresi.",
   },
 ];
 
@@ -68,12 +68,12 @@ const sellerSteps = [
   {
     icon: <ClipboardList size={22} />,
     title: "Pievieno produktus",
-    desc: "Pievienot foto, cenu, daudzumu, kategoriju un izvēlies p\u0101rtikas pakom\u0101tu, kurā izvieto produktus.",
+    desc: "Pievienot foto, cenu, daudzumu, kategoriju un izvēlies pārtikas pakomātu, kurā izvieto produktus.",
   },
   {
     icon: <PackageCheck size={22} />,
     title: "Saņem pasūtījumu",
-    desc: "Kad klients pasūta, tu saņem paziņojumu. Ievieto produktu p\u0101rtikas pakom\u0101tā norādītajā laika logā.",
+    desc: "Kad klients pasūta, tu saņem paziņojumu. Ievieto produktu pārtikas pakomātā norādītajā laika logā.",
   },
   {
     icon: <CreditCard size={22} />,
@@ -86,7 +86,7 @@ const features = [
   { icon: <Shield size={20} />, title: "Droši darījumi", desc: "Paysera maksājumu aizsardzība" },
   { icon: <Leaf size={20} />, title: "Vietējie produkti", desc: "Tieši no Latvijas ražotājiem" },
   { icon: <Star size={20} />, title: "Kvalitātes kontrole", desc: "Katrs pārdevējs tiek apstiprināts" },
-  { icon: <Truck size={20} />, title: "3 piegādes veidi", desc: "p\u0101rtikas pakom\u0101ts, kurjers vai ekspres" },
+  { icon: <Truck size={20} />, title: "3 piegādes veidi", desc: "pārtikas pakomāts, kurjers vai ekspres" },
 ];
 
 export default function HowItWorksPage() {
@@ -99,7 +99,7 @@ export default function HowItWorksPage() {
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Kā tas strādā?</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-500">
           tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar pircējiem —
-          ar piegādi p\u0101rtikas pakom\u0101tā, kurjeru uz adresi vai ekspres piegādi. Cena atkarīga no attāluma līdz ražotājam.
+          ar piegādi pārtikas pakomātā, kurjeru uz adresi vai ekspres piegādi. Cena atkarīga no attāluma līdz ražotājam.
         </p>
       </div>
 
@@ -188,15 +188,15 @@ export default function HowItWorksPage() {
           {[
             {
               q: "Kādi piegādes veidi ir pieejami?",
-              a: "Trīs varianti: (1) IziPizi p\u0101rtikas pakom\u0101ts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ p\u0101rtikas pakom\u0101tiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
+              a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
             },
             {
-              q: "Kādā termiņā produkti jāizņem no p\u0101rtikas pakom\u0101ta?",
-              a: "Produkti p\u0101rtikas pakom\u0101tā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam. Kurjera un ekspres piegādei termiņš netiek piemērots — saņem pie durvīm.",
+              q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?",
+              a: "Produkti pārtikas pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam. Kurjera un ekspres piegādei termiņš netiek piemērots — saņem pie durvīm.",
             },
             {
               q: "Kā saņemšu paziņojumu par pasūtījumu?",
-              a: "p\u0101rtikas pakom\u0101ta pasūtījumiem — uz e-pastu un SMS atsūtīsim p\u0101rtikas pakom\u0101ta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās. Visi atjauninājumi pieejami arī tavā kontā.",
+              a: "pārtikas pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pārtikas pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās. Visi atjauninājumi pieejami arī tavā kontā.",
             },
             {
               q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?",
@@ -204,7 +204,7 @@ export default function HowItWorksPage() {
             },
             {
               q: "Vai var pārdot arī saldētas preces?",
-              a: "Jā — IziPizi p\u0101rtikas pakom\u0101ti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C. Kurjera un ekspres piegādei izmantojam termo iesaiņojumu.",
+              a: "Jā — IziPizi pārtikas pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C. Kurjera un ekspres piegādei izmantojam termo iesaiņojumu.",
             },
             {
               q: "Kāda ir komisija pārdevējiem?",

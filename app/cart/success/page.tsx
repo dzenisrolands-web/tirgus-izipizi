@@ -248,7 +248,7 @@ function CartSuccessContent() {
         <div className="space-y-4">
           {[
             { n: 1, title: "Ražotājs apstiprina", desc: "1–2 darba dienu laikā saņemsi apstiprinājumu." },
-            { n: 2, title: "Produkts tiek ievietots p\u0101rtikas pakom\u0101tā", desc: `Tavs produkts tiks nogādāts uz ${order.delivery_info?.locker_city ?? ""} p\u0101rtikas pakom\u0101tu.` },
+            { n: 2, title: "Produkts tiek ievietots pārtikas pakomātā", desc: `Tavs produkts tiks nogādāts uz ${order.delivery_info?.locker_city ?? ""} pārtikas pakomātu.` },
             { n: 3, title: "Saņem locker kodu", desc: "Push paziņojumu / e-pastu ar PIN kodu, kad gatavs." },
           ].map(({ n, title, desc }) => (
             <div key={n} className="flex gap-3">

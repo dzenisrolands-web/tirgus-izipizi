@@ -6,7 +6,7 @@ import { fetchApprovedSellers } from "@/lib/db-listings";
 export const metadata: Metadata = {
   title: "Ražotāji — vietējie pārtikas ražotāji",
   description:
-    "Latvijas pārtikas ražotāji vienuviet — bio dārzeņi, gaļa, jūras veltes, konditoreja un mājražotāju produkti. Pasūti un saņem IziPizi p\u0101rtikas pakom\u0101tā.",
+    "Latvijas pārtikas ražotāji vienuviet — bio dārzeņi, gaļa, jūras veltes, konditoreja un mājražotāju produkti. Pasūti un saņem IziPizi pārtikas pakomātā.",
   keywords: [
     "latvijas ražotāji",
     "vietējā pārtika",
@@ -42,7 +42,7 @@ export default async function RazotajiPage() {
         <p className="mt-3 text-gray-500">
           Vietējie Latvijas pārtikas ražotāji un uzņēmumi — bio dārzeņi, savvaļas
           gaļa, jūras veltes, konditoreja un daudz kas cits. Pasūti tieši no
-          ražotāja un saņem IziPizi p\u0101rtikas pakom\u0101tā.
+          ražotāja un saņem IziPizi pārtikas pakomātā.
         </p>
       </div>
 

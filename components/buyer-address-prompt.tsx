@@ -29,7 +29,7 @@ export function BuyerAddressPrompt() {
   // ─── Persistent chip when address is set ──────────────────────
   if (address) {
     const zoneLabel = address.outsideZones
-      ? "Pārējā Latvija — tikai p\u0101rtikas pakom\u0101ts"
+      ? "Pārējā Latvija — tikai pārtikas pakomāts"
       : address.zone !== null
         ? `Zona ${address.zone} · ${address.pricing?.area ?? ""}`
         : `LV-${address.postalCode}`;

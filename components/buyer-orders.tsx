@@ -23,7 +23,7 @@ const statusMap: Record<string, { label: string; cls: string }> = {
   pending:    { label: "Gaida apmaksu", cls: "bg-amber-100 text-amber-700" },
   paid:       { label: "Apmaksāts",     cls: "bg-blue-100 text-blue-700" },
   processing: { label: "Apstrādē",      cls: "bg-indigo-100 text-indigo-700" },
-  shipped:    { label: "p\u0101rtikas pakom\u0101tā",      cls: "bg-purple-100 text-purple-700" },
+  shipped:    { label: "pārtikas pakomātā",      cls: "bg-purple-100 text-purple-700" },
   delivered:  { label: "Saņemts",       cls: "bg-green-100 text-green-700" },
   cancelled:  { label: "Atcelts",       cls: "bg-red-100 text-red-600" },
 };

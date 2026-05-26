@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   if (!body.totalCents || body.totalCents <= 0) return NextResponse.json({ error: "Nederīga summa" }, { status: 400 });
 
   if (deliveryType === "locker" && !body.locker?.id && !body.deliveryInfo?.locker_id) {
-    return NextResponse.json({ error: "Nav izvēlēts p\u0101rtikas pakom\u0101ts" }, { status: 400 });
+    return NextResponse.json({ error: "Nav izvēlēts pārtikas pakomāts" }, { status: 400 });
   }
   if ((deliveryType === "courier" || deliveryType === "express") &&
       (!body.deliveryInfo?.address || !body.deliveryInfo?.city)) {

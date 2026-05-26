@@ -96,7 +96,7 @@ export function LockerSubscribeButton({
             ? "bg-brand-100 text-brand-700 hover:bg-brand-200"
             : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
         } ${className}`}
-        title={subscribed ? "Atrakstīties no šī p\u0101rtikas pakom\u0101ta" : "Saņemt paziņojumus par šo p\u0101rtikas pakom\u0101tu"}
+        title={subscribed ? "Atrakstīties no šī pārtikas pakomāta" : "Saņemt paziņojumus par šo pārtikas pakomātu"}
       >
         {loading ? (
           <Loader2 size={iconSize} className="animate-spin" />

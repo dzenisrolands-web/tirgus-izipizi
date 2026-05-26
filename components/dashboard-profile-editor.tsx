@@ -169,7 +169,7 @@ export function DashboardProfileEditor() {
     const hasLocker = profile.home_locker_ids && profile.home_locker_ids.length > 0;
     const hasPickupAddress = !!profile.courier_pickup_address?.trim();
     if (!hasLocker && !hasPickupAddress) {
-      setSaveError("Pirms apstiprināšanas obligāti jāatzīmē vismaz viens p\u0101rtikas pakom\u0101ts vai jānorāda kurjera saņemšanas adrese sadaļā “Nodošanas vietas”.");
+      setSaveError("Pirms apstiprināšanas obligāti jāatzīmē vismaz viens pārtikas pakomāts vai jānorāda kurjera saņemšanas adrese sadaļā “Nodošanas vietas”.");
       setEditSection("dropoff");
       return;
     }
@@ -384,22 +384,22 @@ export function DashboardProfileEditor() {
           );
         })()}
 
-        {/* ── NODOŠANAS VIETAS — p\u0101rtikas pakom\u0101ti + kurjera saņemšanas adrese ── */}
+        {/* ── NODOŠANAS VIETAS — pārtikas pakomāti + kurjera saņemšanas adrese ── */}
         <div className="px-4 py-4 sm:px-6 lg:px-8 mt-4">
           <EditableSection
             id="dropoff"
             editSection={editSection}
             setEditSection={setEditSection}
-            label="Nodošanas vietas — p\u0101rtikas pakom\u0101ti un kurjera saņemšana"
+            label="Nodošanas vietas — pārtikas pakomāti un kurjera saņemšana"
             required={profile.home_locker_ids.length === 0 && !profile.courier_pickup_address}
             editContent={
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    p\u0101rtikas pakom\u0101ti, kurus izmanto produktu ielikšanai
+                    pārtikas pakomāti, kurus izmanto produktu ielikšanai
                   </label>
                   <p className="text-xs text-gray-500 mb-3">
-                    Atzīmē p\u0101rtikas pakom\u0101tus, kuros pats vari ielikt produktus. Pircēji redzēs šos p\u0101rtikas pakom\u0101tus kā nosūtīšanas vietas.
+                    Atzīmē pārtikas pakomātus, kuros pats vari ielikt produktus. Pircēji redzēs šos pārtikas pakomātus kā nosūtīšanas vietas.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {LOCKERS.map((l) => {
@@ -446,7 +446,7 @@ export function DashboardProfileEditor() {
                     Kurjera saņemšanas adrese <span className="text-gray-400 font-normal">(neobligāti)</span>
                   </label>
                   <p className="text-xs text-gray-500 mb-3">
-                    Ja vēlies, lai kurjers paņem produktus tieši no tevis. Ja atstāj tukšu, kurjers paņems no tava izvēlētā p\u0101rtikas pakom\u0101ta vai juridiskās adreses.
+                    Ja vēlies, lai kurjers paņem produktus tieši no tevis. Ja atstāj tukšu, kurjers paņems no tava izvēlētā pārtikas pakomāta vai juridiskās adreses.
                   </p>
                   <LvAddressAutocomplete
                     value={profile.courier_pickup_address}
@@ -467,7 +467,7 @@ export function DashboardProfileEditor() {
                   {profile.home_locker_ids.length > 0 && (
                     <div className="rounded-xl bg-gray-50 px-3 py-2.5">
                       <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                        <Package size={10} className="inline mr-1" /> p\u0101rtikas pakom\u0101ti ({profile.home_locker_ids.length})
+                        <Package size={10} className="inline mr-1" /> pārtikas pakomāti ({profile.home_locker_ids.length})
                       </p>
                       <p className="text-sm text-gray-700 mt-0.5">
                         {profile.home_locker_ids
@@ -489,7 +489,7 @@ export function DashboardProfileEditor() {
                 </div>
               ) : (
                 <p className="mt-3 text-sm italic text-gray-300">
-                  + Norādi, kuros p\u0101rtikas pakom\u0101tos liksi produktus vai kurjera saņemšanas adresi
+                  + Norādi, kuros pārtikas pakomātos liksi produktus vai kurjera saņemšanas adresi
                 </p>
               )}
             </div>

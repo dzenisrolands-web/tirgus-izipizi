@@ -117,7 +117,7 @@ export function ReservePanel({ drop }: { drop: HotDropWithSeller }) {
       )}
 
       <p className="text-center text-[11px] text-gray-400">
-        🔒 Droša apmaksa caur Paysera · Saņemšana p\u0101rtikas pakom\u0101tā
+        🔒 Droša apmaksa caur Paysera · Saņemšana pārtikas pakomātā
       </p>
     </div>
   );

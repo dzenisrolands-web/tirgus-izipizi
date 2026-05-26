@@ -30,7 +30,7 @@ const CATEGORIES: Category[] = [
     key: "functional",
     title: "Funkcionālās",
     description:
-      "Uzlabo lietošanas pieredzi — push paziņojumu abonements, izvēles iegaumēšana (piem., izvēlētais p\u0101rtikas pakom\u0101ts).",
+      "Uzlabo lietošanas pieredzi — push paziņojumu abonements, izvēles iegaumēšana (piem., izvēlētais pārtikas pakomāts).",
   },
   {
     key: "analytics",

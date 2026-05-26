@@ -130,7 +130,7 @@ export default function SelfBillingAgreementPage() {
         <h2>5. Komisija</h2>
         <p>
           5.1. Operatora komisija ir <strong>5 % līdz 20 %</strong> no katra pasūtījuma
-          bruto summas. Komisija sedz: maksājumu apstrādi (Paysera), p\u0101rtikas pakom\u0101tu tīklu un
+          bruto summas. Komisija sedz: maksājumu apstrādi (Paysera), pārtikas pakomātu tīklu un
           piegādes infrastruktūru, klientu atbalstu un atgriešanu apstrādi, platformas
           mārketingu un uzturēšanu.
         </p>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export const metadata = {
   title: "IziPizi RECEPTE",
   description:
-    "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi p\u0101rtikas pakom\u0101tu.",
+    "Iedvesma virtuvē — receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas caur IziPizi pārtikas pakomātu.",
   alternates: { canonical: "/receptes" },
   // Pirms launch saturs vēl nav sakārtots → izņemts no nav/footer/sitemap
   // un noindexēts. Atjaunot, kad teksti, bildes un produktu saites būs pareizi.

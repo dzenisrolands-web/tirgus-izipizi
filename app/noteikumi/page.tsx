@@ -40,7 +40,7 @@ export default function NoteikumiPage() {
         <p>
           Platforma ir B2C tirgus vieta, kurā Latvijas pārtikas ražotāji (turpmāk —
           Tirgotāji) piedāvā savus produktus pircējiem. Pasūtījumu izpilde notiek caur
-          <strong> izipizi p\u0101rtikas pakom\u0101tu tīklu</strong> vai kurjeru piegādi.
+          <strong> izipizi pārtikas pakomātu tīklu</strong> vai kurjeru piegādi.
         </p>
 
         <h2>3. Reģistrācija un konts</h2>
@@ -54,7 +54,7 @@ export default function NoteikumiPage() {
 
         <h2>4. Pasūtīšana un samaksa</h2>
         <ul>
-          <li>Pasūtījums tiek noformēts, izvēloties produktus, p\u0101rtikas pakom\u0101tu un veicot apmaksu caur Paysera</li>
+          <li>Pasūtījums tiek noformēts, izvēloties produktus, pārtikas pakomātu un veicot apmaksu caur Paysera</li>
           <li>Cenas norādītas eiro (€), iekļauj 21% PVN, ja vien nav norādīts citādi</li>
           <li>Piegādes maksa tiek aprēķināta atsevišķi un norādīta pirms apmaksas</li>
           <li>Pasūtījums uzskatāms par noslēgtu pēc veiksmīgas Paysera apmaksas un mūsu apstiprinājuma</li>
@@ -67,7 +67,7 @@ export default function NoteikumiPage() {
           <Link href="/piegade">piegādes lapā</Link>. Galvenais:
         </p>
         <ul>
-          <li><strong>p\u0101rtikas pakom\u0101ts:</strong> 24/7 pieejams ar temperatūras kontroli (+2°C – +6°C dzesētiem, −18°C saldētiem). Uzglabāšana līdz 48h</li>
+          <li><strong>pārtikas pakomāts:</strong> 24/7 pieejams ar temperatūras kontroli (+2°C – +6°C dzesētiem, −18°C saldētiem). Uzglabāšana līdz 48h</li>
           <li><strong>Kurjers:</strong> 4 zonas — Rīga, Pierīga un reģionālie centri (Zonas 0–3), cenas un laika logi piegādes lapā</li>
           <li><strong>Eksprespiegāde:</strong> 2–5 stundas tikai Rīgā un Pierīgā, tikai produktiem ar ⚡ atzīmi</li>
         </ul>
@@ -85,7 +85,7 @@ export default function NoteikumiPage() {
         <ul>
           <li>Pārdot tikai produktus, kuriem ir tiesības tirgot Latvijā (atbilstība pārtikas drošības un higiēnas prasībām)</li>
           <li>Norādīt precīzu informāciju par produktu (sastāvdaļas, alergēni, derīguma termiņš, uzglabāšanas temperatūra)</li>
-          <li>Apstiprināt pasūtījumus 1–2 darba dienu laikā un savlaicīgi nogādāt tos p\u0101rtikas pakom\u0101tā</li>
+          <li>Apstiprināt pasūtījumus 1–2 darba dienu laikā un savlaicīgi nogādāt tos pārtikas pakomātā</li>
           <li>Aizpildīt juridisko informāciju (juridiskais nosaukums, reģ. nr., PVN status, IBAN)</li>
           <li>Piekrist <Link href="/noteikumi/self-billing">self-billing rēķinu kārtībai</Link></li>
         </ul>

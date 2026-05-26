@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${drop.title} — ${drop.seller.name}`;
   const description = drop.description
     ? drop.description.slice(0, 155)
-    : `${drop.title} no ${drop.seller.name}. €${(drop.price_cents / 100).toFixed(2)}/${drop.unit}. Tieši no ražotāja, pieejams p\u0101rtikas pakom\u0101tā.`;
+    : `${drop.title} no ${drop.seller.name}. €${(drop.price_cents / 100).toFixed(2)}/${drop.unit}. Tieši no ražotāja, pieejams pārtikas pakomātā.`;
   const ogImage = drop.cover_image_url
     ? [{ url: drop.cover_image_url, width: 1200, height: 630, alt: drop.title }]
     : undefined;
@@ -167,7 +167,7 @@ export default async function DropDetailPage({ params }: { params: Promise<{ id:
                   <MapPin size={18} className="text-brand-700" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-brand-600">Saņemšanas p\u0101rtikas pakom\u0101ts</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-brand-600">Saņemšanas pārtikas pakomāts</p>
                   <p className="mt-0.5 font-bold text-gray-900">{drop.pickup_locker.name}</p>
                   <p className="text-sm text-gray-600">{drop.pickup_locker.address}</p>
                   <p className="mt-1 text-xs text-gray-500">
@@ -180,7 +180,7 @@ export default async function DropDetailPage({ params }: { params: Promise<{ id:
               {/* Subscribe CTA */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3 py-3 border border-brand-100">
                 <p className="text-xs leading-snug text-gray-600">
-                  🔔 <strong className="text-gray-900">Abonē šo p\u0101rtikas pakom\u0101tu</strong> — saņem
+                  🔔 <strong className="text-gray-900">Abonē šo pārtikas pakomātu</strong> — saņem
                   paziņojumu, kad jauns sludinājums šeit
                 </p>
                 <LockerSubscribeButton lockerId={drop.pickup_locker.id} size="sm" />

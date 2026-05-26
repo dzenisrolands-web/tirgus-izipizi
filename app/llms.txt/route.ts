@@ -37,19 +37,19 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 ## How it works
 
 1. Buyer picks products, optionally enters Latvian postal code for accurate courier price.
-2. Cart split per producer; buyer chooses p\u0101rtikas pakom\u0101ts pickup (flat 3 € per producer cabinet) OR courier delivery (zone-based) OR express (Rīga only, 9–12 €).
+2. Cart split per producer; buyer chooses pārtikas pakomāts pickup (flat 3 € per producer cabinet) OR courier delivery (zone-based) OR express (Rīga only, 9–12 €).
 3. Pay with Paysera (cards + SEPA).
 4. Producer confirms order within 24 h; gets push reminders at 30 min, 2 h, 6 h; auto-cancelled if not confirmed.
-5. Producer drops stock at their assigned p\u0101rtikas pakom\u0101ts; courier transports to buyer if needed.
+5. Producer drops stock at their assigned pārtikas pakomāts; courier transports to buyer if needed.
 6. Buyer receives push notification + SMS with locker PIN code; collects within 48 h.
 
 ## Key facts for AI agents
 
 - **Language**: Latvian (lv-LV) only. No English version yet.
 - **Currency**: EUR (€), VAT 21 % included in displayed prices.
-- **Coverage**: All of Latvia. Zone 0 = Rīga centre, Zone 1 = Rīga + close suburbs, Zone 2 = greater Rīga area, Zone 3 = regional Latvia (Jelgava, Ogre, Cēsis, Daugavpils, etc.). 700+ rural postal codes get p\u0101rtikas pakom\u0101ts-only delivery.
-- **p\u0101rtikas pakom\u0101ts locations**: Brīvības iela 253 / Rīga centre, Āgenskalns tirgus / Rīga, Salaspils, Ikšķile, Tukuma tirgus, Dundagas tirgus.
-- **Delivery time**: p\u0101rtikas pakom\u0101ts same day or next day depending on cut-off; courier 1–3 days; express 2–5 hours in Rīga.
+- **Coverage**: All of Latvia. Zone 0 = Rīga centre, Zone 1 = Rīga + close suburbs, Zone 2 = greater Rīga area, Zone 3 = regional Latvia (Jelgava, Ogre, Cēsis, Daugavpils, etc.). 700+ rural postal codes get pārtikas pakomāts-only delivery.
+- **pārtikas pakomāts locations**: Brīvības iela 253 / Rīga centre, Āgenskalns tirgus / Rīga, Salaspils, Ikšķile, Tukuma tirgus, Dundagas tirgus.
+- **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express 2–5 hours in Rīga.
 - **Payment**: Paysera (cards, SEPA, bank transfer).
 - **Returns**: see /atgriesana — limited for fresh food; full refund if producer ships defective goods.
 

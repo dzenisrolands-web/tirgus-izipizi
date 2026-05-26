@@ -102,7 +102,7 @@ export function OnboardingForm() {
   async function handleSubmit() {
     setError("");
     if (form.home_locker_ids.length === 0 && !form.courier_pickup_address.trim()) {
-      setError("Atzīmē vismaz vienu p\u0101rtikas pakom\u0101tu vai norādi kurjera saņemšanas adresi sadaļā “Nodošana”.");
+      setError("Atzīmē vismaz vienu pārtikas pakomātu vai norādi kurjera saņemšanas adresi sadaļā “Nodošana”.");
       setStep(4);
       return;
     }
@@ -333,9 +333,9 @@ export function OnboardingForm() {
                 <Package size={24} className={form.delivery_mode === "locker" ? "text-brand-600" : "text-gray-400"} />
                 <div>
                   <p className={cn("font-semibold text-sm", form.delivery_mode === "locker" ? "text-brand-900" : "text-gray-700")}>
-                    Pats lieku p\u0101rtikas pakom\u0101tā
+                    Pats lieku pārtikas pakomātā
                   </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Es piegādāju produktus uz IziPizi p\u0101rtikas pakom\u0101tu</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Es piegādāju produktus uz IziPizi pārtikas pakomātu</p>
                 </div>
                 {form.delivery_mode === "locker" && <CheckCircle size={16} className="text-brand-600" />}
               </button>
@@ -366,7 +366,7 @@ export function OnboardingForm() {
             {form.delivery_mode === "locker" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Izvēlies p\u0101rtikas pakom\u0101tus, kuros liksi produktus *
+                  Izvēlies pārtikas pakomātus, kuros liksi produktus *
                 </label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {LOCKERS.map((l) => {
@@ -405,7 +405,7 @@ export function OnboardingForm() {
               <div>
                 <div className="mb-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
                   <p className="font-semibold text-amber-800">Kurjera izmaksas: <span className="text-amber-900">€3,50 par katru piegādi</span></p>
-                  <p className="text-xs text-amber-700 mt-0.5">Summa tiek ieturēta no Tavas izmaksas par katru pasūtījumu. p\u0101rtikas pakom\u0101ta režīmā — bez maksas.</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Summa tiek ieturēta no Tavas izmaksas par katru pasūtījumu. pārtikas pakomāta režīmā — bez maksas.</p>
                 </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Adrese, kur kurjers paņems produktus *
@@ -454,7 +454,7 @@ export function OnboardingForm() {
         {triedNext && step === 4 && !canNext() && (
           <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {form.delivery_mode === "locker"
-              ? "✗ Atvēlī vismaz vienu p\u0101rtikas pakom\u0101tu"
+              ? "✗ Atvēlī vismaz vienu pārtikas pakomātu"
               : "✗ Ievadi adresi, kur kurjers paņems produktus"}
           </div>
         )}

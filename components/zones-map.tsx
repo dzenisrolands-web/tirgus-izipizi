@@ -44,7 +44,7 @@ const ZONE_3_CITIES: { name: string; lat: number; lng: number; codes: string }[]
   { name: "Ventspils",  lat: 57.3955, lng: 21.5774, codes: "5052" },
 ];
 
-// IziPizi p\u0101rtikas pakom\u0101ti
+// IziPizi pārtikas pakomāti
 const LOCKERS: { id: string; name: string; lat: number; lng: number; address: string; hours: string }[] = [
   { id: "brivibas",   name: "Brīvības 253",     lat: 56.9716, lng: 24.1404, address: "Brīvības iela 253 / NESTE",   hours: "24/7" },
   { id: "agenskalna", name: "Āgenskalna tirgus", lat: 56.9377, lng: 24.0859, address: "Nometņu iela 64 / Tirgus",    hours: "24/7" },
@@ -59,7 +59,7 @@ const ZONE_STYLES = {
   1: { stroke: "#3b82f6", fill: "#60a5fa", fillOpacity: 0.40, name: "Mikrorajoni + Pierīga", price: "6.66€" },
   2: { stroke: "#a855f7", fill: "#c084fc", fillOpacity: 0.30, name: "Tālākā Pierīga",        price: "9.08€" },
   3: { stroke: "#ec4899", fill: "#f472b6", fillOpacity: 0.55, name: "Reģionālā Latvija",     price: "10.77€" },
-  4: { stroke: "#94a3b8", fill: "#cbd5e1", fillOpacity: 0.20, name: "Pārējā Latvija",        price: "tikai p\u0101rtikas pakom\u0101ts" },
+  4: { stroke: "#94a3b8", fill: "#cbd5e1", fillOpacity: 0.20, name: "Pārējā Latvija",        price: "tikai pārtikas pakomāts" },
 };
 
 export function ZonesMap() {
@@ -124,7 +124,7 @@ export function ZonesMap() {
         `<div style="${popupStyle}">
           <div style="font-weight:800;color:#475569;margin-bottom:4px">Pārējā Latvija</div>
           <div style="color:#64748b;font-size:11px;margin-bottom:6px">Vietas ārpus 4 zonām</div>
-          <div style="font-size:12px"><b>Tikai p\u0101rtikas pakom\u0101ts</b> · 3€ / skapītis<br/>Kurjers/ekspres šeit nav pieejams</div>
+          <div style="font-size:12px"><b>Tikai pārtikas pakomāts</b> · 3€ / skapītis<br/>Kurjers/ekspres šeit nav pieejams</div>
         </div>`
       );
 
@@ -200,7 +200,7 @@ export function ZonesMap() {
       // Add labels layer on top of polygons
       (tileMode === "dark" ? labelsDark : labelsTiles).addTo(map);
 
-      // p\u0101rtikas pakom\u0101ti — branded markers
+      // pārtikas pakomāti — branded markers
       const lockerIcon = L.divIcon({
         className: "",
         html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#53F3A4,#AD47FF);border:2.5px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.3)"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="9" y1="6" x2="9" y2="20"/><line x1="15" y1="6" x2="15" y2="20"/></svg></div>`,
@@ -293,7 +293,7 @@ export function ZonesMap() {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
               }}
             />
-            <span className="font-semibold text-gray-700">p\u0101rtikas pakom\u0101ts</span>
+            <span className="font-semibold text-gray-700">pārtikas pakomāts</span>
             <span className="ml-auto pl-2 font-mono text-[10px] text-gray-400">3€</span>
           </div>
         </div>
