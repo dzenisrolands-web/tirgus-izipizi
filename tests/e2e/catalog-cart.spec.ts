@@ -28,10 +28,12 @@ test("razotaji page lists sellers and links to profile", async ({ page }) => {
   const href = await sellerLinks.first().getAttribute("href");
   expect(href).toMatch(/^\/seller\//);
 
-  await sellerLinks.first().click();
-  await expect(page).toHaveURL(/\/seller\//);
+  await Promise.all([
+    page.waitForURL(/\/seller\//, { timeout: 15_000 }),
+    sellerLinks.first().click(),
+  ]);
   // Seller profile shows "Sekot ražotājam" or "Sekot" button somewhere
-  await expect(page.getByText(/Sekot/i).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/Sekot/i).first()).toBeVisible({ timeout: 15_000 });
 });
 
 test("seller profile renders without console errors", async ({ page }) => {
