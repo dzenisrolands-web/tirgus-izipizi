@@ -49,6 +49,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   if (!listing) notFound();
   // Hide products without a valid image — they should not be public
   if (!hasValidImage(listing)) notFound();
+  // Hide expired products — redirect to 404
+  if (daysUntil(listing.freshnessDate) < 0) notFound();
 
   const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
