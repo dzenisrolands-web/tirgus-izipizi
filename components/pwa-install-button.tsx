@@ -5,21 +5,35 @@ import { useEffect, useState } from "react";
 
 // Captures the browser's beforeinstallprompt event and exposes a button.
 // Hidden when:
-//   • we never received the event (browser doesn't support PWA install, or user
-//     already installed, or quota not yet met),
-//   • the page is already running standalone (PWA already installed),
-//   • the user dismissed our promo this session (sessionStorage flag).
+//   • app is running in standalone mode (already installed as PWA)
+//   • getInstalledRelatedApps() reports the app is installed
+//   • user dismissed within the last 30 days (localStorage TTL)
+//   • browser never fires beforeinstallprompt (unsupported)
 //
-// On iOS Safari there's no beforeinstallprompt — instead we show a one-line
-// "Pievienot sākumekrānam: Share → Add to Home Screen" hint when the user
-// looks like they're on iOS Safari and not already installed.
+// Positioned bottom-LEFT to avoid conflict with Paysera quality badge
+// and the feedback widget (both bottom-right).
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISS_KEY = "tirgus.pwa.installPromptDismissed";
+const DISMISS_KEY = "tirgus.pwa.dismissedAt";
+const DISMISS_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function isDismissed(): boolean {
+  try {
+    const ts = localStorage.getItem(DISMISS_KEY);
+    if (!ts) return false;
+    return Date.now() - Number(ts) < DISMISS_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+function saveDismiss() {
+  try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
+}
 
 export function PWAInstallButton() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
@@ -28,15 +42,28 @@ export function PWAInstallButton() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem(DISMISS_KEY)) return;
 
-    // Already installed?
+    // Already dismissed recently?
+    if (isDismissed()) return;
+
+    // Already running as installed PWA?
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     if (isStandalone) return;
 
-    // iOS Safari fallback
+    // Check via getInstalledRelatedApps if available (Chrome Android)
+    type NavWithInstalled = Navigator & {
+      getInstalledRelatedApps?: () => Promise<unknown[]>;
+    };
+    (navigator as NavWithInstalled).getInstalledRelatedApps?.().then((apps) => {
+      if (apps && apps.length > 0) {
+        // App is already installed — keep button hidden
+        saveDismiss();
+      }
+    }).catch(() => {});
+
+    // iOS Safari: no beforeinstallprompt, show manual hint instead
     const ua = navigator.userAgent;
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
     const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
@@ -47,11 +74,12 @@ export function PWAInstallButton() {
     }
 
     function onBeforeInstallPrompt(e: Event) {
-      e.preventDefault(); // hold the prompt; we'll fire it on click
+      e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
       setHidden(false);
     }
     function onAppInstalled() {
+      saveDismiss();
       setHidden(true);
       setDeferred(null);
     }
@@ -65,7 +93,7 @@ export function PWAInstallButton() {
   }, []);
 
   function dismiss() {
-    sessionStorage.setItem(DISMISS_KEY, "1");
+    saveDismiss();
     setHidden(true);
   }
 
@@ -74,7 +102,10 @@ export function PWAInstallButton() {
     try {
       await deferred.prompt();
       const choice = await deferred.userChoice;
-      if (choice.outcome === "accepted") setHidden(true);
+      if (choice.outcome === "accepted") {
+        saveDismiss();
+        setHidden(true);
+      }
     } catch {
       // ignore
     } finally {
@@ -84,10 +115,13 @@ export function PWAInstallButton() {
 
   if (hidden) return null;
 
+  // Shared card style — bottom-LEFT to avoid Paysera badge + feedback widget (both right)
+  const cardCls = "fixed bottom-20 left-3 z-40 w-[300px] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-gray-200 bg-white p-3 shadow-lg md:bottom-5";
+
   // iOS hint variant
   if (iosHint) {
     return (
-      <div className="fixed bottom-20 left-3 right-3 z-40 mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-3 shadow-lg sm:bottom-3 md:bottom-4 md:left-auto md:right-4">
+      <div className={cardCls}>
         <button onClick={dismiss} aria-label="Aizvērt"
           className="absolute right-2 top-2 rounded p-1 text-gray-400 hover:bg-gray-100">
           <X size={14} />
@@ -109,7 +143,7 @@ export function PWAInstallButton() {
 
   // Native install prompt (Android Chrome / desktop)
   return (
-    <div className="fixed bottom-20 left-3 right-3 z-40 mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-3 shadow-lg sm:bottom-3 md:bottom-4 md:left-auto md:right-4">
+    <div className={cardCls}>
       <button onClick={dismiss} aria-label="Aizvērt"
         className="absolute right-2 top-2 rounded p-1 text-gray-400 hover:bg-gray-100">
         <X size={14} />
@@ -120,7 +154,7 @@ export function PWAInstallButton() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-gray-900">Instalē Tirgu</p>
-          <p className="text-xs text-gray-500">Ātrāk · push paziņojumi · pilnekrānā</p>
+          <p className="text-xs text-gray-500">Ātrāk · push paņojumi · piln ekrānā</p>
         </div>
         <button onClick={install}
           className="shrink-0 rounded-xl bg-[#53F3A4] px-3 py-1.5 text-xs font-bold text-[#192635] hover:brightness-95">
