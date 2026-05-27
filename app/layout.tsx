@@ -10,6 +10,7 @@ import { StorageTypesProvider } from "@/lib/storage-types-context";
 import { BuyerAddressProvider } from "@/lib/buyer-address-context";
 import { BuyerAddressPrompt } from "@/components/buyer-address-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { PWAInstallTracker } from "@/components/pwa-install-tracker";
@@ -183,6 +184,7 @@ export default function RootLayout({
           </BuyerAddressProvider>
         </CartProvider>
         <CookieConsent />
+        <FeedbackWidget />
         <footer className="mt-20 border-t border-gray-100 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
