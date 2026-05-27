@@ -43,7 +43,7 @@ export function FeedbackWidget() {
         <button
           onClick={() => setPhase("open")}
           title="Pamanīji kļūdu? Raksti mums!"
-          className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#192635] text-white shadow-lg transition hover:scale-105 hover:shadow-xl md:bottom-6"
+          className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#192635] text-white shadow-lg transition hover:scale-105 hover:shadow-xl md:bottom-16"
         >
           <MessageSquarePlus size={22} />
         </button>
@@ -51,7 +51,7 @@ export function FeedbackWidget() {
 
       {/* Feedback panel */}
       {phase !== "closed" && (
-        <div className="fixed bottom-20 right-4 z-50 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white shadow-2xl md:bottom-6">
+        <div className="fixed bottom-20 right-4 z-50 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white shadow-2xl md:bottom-16">
           {/* Header */}
           <div className="flex items-center justify-between rounded-t-2xl bg-[#192635] px-4 py-3">
             <div className="flex items-center gap-2">
