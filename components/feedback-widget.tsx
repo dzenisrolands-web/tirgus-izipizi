@@ -42,10 +42,10 @@ export function FeedbackWidget() {
       {phase === "closed" && (
         <button
           onClick={() => setPhase("open")}
-          title="Pamanīji kļūdu? Raksti mums!"
-          className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#192635] text-white shadow-lg transition hover:scale-105 hover:shadow-xl md:bottom-16"
+          className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full bg-[#192635] px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.03] hover:shadow-xl md:bottom-16"
         >
-          <MessageSquarePlus size={22} />
+          <MessageSquarePlus size={18} />
+          Pamanīji kļūdu?
         </button>
       )}
 
