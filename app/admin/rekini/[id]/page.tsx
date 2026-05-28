@@ -245,14 +245,9 @@ export default function AdminInvoiceDetailPage() {
               <span>Operatora komisija:</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
-              <div className="flex justify-between text-gray-500 text-xs">
-                <span>t.sk. PVN ({invoice.vat_rate}%) par komisiju:</span>
-                <span className="font-mono">{eur(invoice.vat_amount_cents)}</span>
-              </div>
-            )}
+            {/* Commission VAT removed — flat 15% commission, no additional VAT */}
             <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-extrabold text-gray-900">
-              <span>Izmaksājams Tirgotājam:</span>
+              <span>Izmaksājams (85% no bruto):</span>
               <span className="font-mono text-green-700">{eur(invoice.total_net_cents)}</span>
             </div>
           </div>

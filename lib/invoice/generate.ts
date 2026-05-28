@@ -213,15 +213,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
     const invoiceNumber = numData as unknown as string;
 
-    // VAT on commission: SIA Svaigi (platform) is VAT registered, charges 21% VAT
-    // on its commission service. This reduces seller's net payout.
-    const commissionVatRate = 21;
-    const commissionVatCents = Math.round(agg.commissionCents * (commissionVatRate / 100));
+    // Commission is a flat 15% of gross. No additional VAT is charged on top.
+    // Seller receives exactly: gross - 15% = 85% of gross.
+    const commissionVatRate = 0;
+    const commissionVatCents = 0;
     // Product VAT: informational — seller owes this to VID separately
     const productVatCents = agg.productVatCents;
     const exVatGrossCents = agg.grossCents - productVatCents;
-    // Final net to seller = gross - commission - VAT on commission
-    const finalNetCents = agg.netCents - commissionVatCents;
+    // Final net to seller = gross - commission (15%)
+    const finalNetCents = agg.netCents; // gross - 15%
 
     // Insert invoice
     const { data: invoice, error: invErr } = await supabase
@@ -235,8 +235,8 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         total_ex_vat_cents: exVatGrossCents,
         total_product_vat_cents: productVatCents,
         total_commission_cents: agg.commissionCents,
-        commission_vat_rate: commissionVatRate,
-        commission_vat_cents: commissionVatCents,
+        commission_vat_rate: 0,
+        commission_vat_cents: 0,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,
