@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
-import { COMMISSION_RATE, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
@@ -81,10 +81,8 @@ export function ProductForm({
   }, []);
 
   const priceNum = Number(form.price) || 0;
-  const commissionEur = commissionForPrice(priceNum);
-  const netToSeller = netForPrice(priceNum);
+  const cb = commissionBreakdown(priceNum, form.vat_rate);
   const vatAmt = vatAmountFromInclusive(priceNum, form.vat_rate);
-  const exVat = exVatPrice(priceNum, form.vat_rate);
 
   // Active (open) lockers — exclude pickup_only and coming_soon
   const activeLockers = lockers.filter(l => !l.pickup_only && !l.coming_soon);
@@ -401,42 +399,51 @@ export function ProductForm({
         </h2>
 
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs leading-relaxed text-blue-800">
-          Komisija ir <strong>{COMMISSION_RATE}%</strong> no pārdošanas cenas (ieskaitot PVN). Ietver platformas uzturēšanu, maksājumu apkalpošanu un piegādes līdzmaksājumu.
+          Komisija ir <strong>{COMMISSION_RATE}%</strong> no cenas <strong>bez produkta PVN</strong> + {COMMISSION_SERVICE_VAT}% PVN par komisijas pakalpojumu (SIA Svaigi ir PVN maksātājs). Produkta PVN ({form.vat_rate}%) noēmsi no saņemtās summas un maksāsi VID paš
         </div>
 
         {priceNum > 0 && (
           <div className="space-y-2">
-            {/* Price row */}
+            {/* Gross price */}
             <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5">
               <span className="text-sm text-gray-600">Pārdošanas cena (ar PVN {form.vat_rate}%)</span>
               <span className="font-bold text-gray-900">{priceNum.toFixed(2)} €</span>
             </div>
-            {/* VAT row */}
+            {/* Product VAT */}
             {form.vat_rate > 0 && (
               <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
                 <div>
-                  <span className="text-sm text-purple-800">PVN daļa ({form.vat_rate}%)</span>
-                  <p className="text-[10px] text-purple-600">Cena bez PVN: {exVat.toFixed(2)} €</p>
+                  <span className="text-sm text-purple-800">Produkta PVN {form.vat_rate}% (maxā VID)</span>
+                  <p className="text-[10px] text-purple-600">Cena bez PVN: {cb.exVat.toFixed(2)} €</p>
                 </div>
                 <span className="font-bold text-purple-700">{vatAmt.toFixed(2)} €</span>
               </div>
             )}
-            {/* Commission row */}
+            {/* Commission net */}
             <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5">
-              <span className="text-sm text-amber-800">Platformas komisija ({COMMISSION_RATE}%)</span>
-              <span className="font-bold text-amber-700">−{commissionEur.toFixed(2)} €</span>
+              <div>
+                <span className="text-sm text-amber-800">Platformas komisija {COMMISSION_RATE}% (no cenas bez PVN)</span>
+                <p className="text-[10px] text-amber-600">{cb.exVat.toFixed(2)} € × {COMMISSION_RATE}%</p>
+              </div>
+              <span className="font-bold text-amber-700">−{cb.commissionNet.toFixed(2)} €</span>
             </div>
-            {/* Net row */}
+            {/* Commission VAT */}
+            <div className="flex items-center justify-between rounded-xl bg-orange-50 border border-orange-200 px-4 py-2.5">
+              <div>
+                <span className="text-sm text-orange-800">PVN par komisijas pakalpojumu ({COMMISSION_SERVICE_VAT}%)</span>
+                <p className="text-[10px] text-orange-600">{cb.commissionNet.toFixed(2)} € × {COMMISSION_SERVICE_VAT}%</p>
+              </div>
+              <span className="font-bold text-orange-700">−{cb.commissionVat.toFixed(2)} €</span>
+            </div>
+            {/* Net to seller */}
             <div className="flex items-center justify-between rounded-xl bg-green-50 border border-green-300 px-4 py-3">
               <div>
                 <span className="text-sm font-bold text-green-900">Tu saņemsi</span>
-                {form.vat_rate > 0 && (
-                  <p className="text-[10px] text-green-700">
-                    (ieskaitot PVN {vatAmt.toFixed(2)} €)
-                  </p>
-                )}
+                <p className="text-[10px] text-green-700">
+                  Kopā ieturēts: −{cb.commissionTotal.toFixed(2)} € (komisija + PVN)
+                </p>
               </div>
-              <span className="text-lg font-extrabold text-green-700">{netToSeller.toFixed(2)} €</span>
+              <span className="text-lg font-extrabold text-green-700">{cb.netToSeller.toFixed(2)} €</span>
             </div>
           </div>
         )}

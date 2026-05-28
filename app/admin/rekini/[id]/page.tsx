@@ -242,12 +242,17 @@ export default function AdminInvoiceDetailPage() {
               <span className="font-mono">{eur(invoice.total_gross_cents)}</span>
             </div>
             <div className="flex justify-between text-amber-700">
-              <span>Operatora komisija:</span>
+              <span>Komisija 15% (no cenas bez PVN):</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {/* Commission VAT removed — flat 15% commission, no additional VAT */}
+            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
+              <div className="flex justify-between text-orange-700 text-xs">
+                <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
+                <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-extrabold text-gray-900">
-              <span>Izmaksājams (85% no bruto):</span>
+              <span>Izmaksājams:</span>
               <span className="font-mono text-green-700">{eur(invoice.total_net_cents)}</span>
             </div>
           </div>

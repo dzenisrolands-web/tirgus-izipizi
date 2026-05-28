@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
-import { COMMISSION_RATE, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
 import type { Period } from "./period";
 
 type OrderItem = {
@@ -128,7 +128,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       const lineGross = unitPriceCents * Number(item.quantity);
       const lineVatAmount = Math.round(vatAmountFromInclusive(lineGross / 100, vatRate) * 100);
       const lineExVat = lineGross - lineVatAmount;
-      const lineCommission = Math.round(lineGross * (rate / 100));
+      // Commission: 15% of ex-VAT price + 21% VAT on commission
+      const cb = commissionBreakdown(lineGross / 100, vatRate);
+      const lineCommission = Math.round(cb.commissionTotal * 100); // total incl. service VAT
       const lineNet = lineGross - lineCommission;
 
       let agg = bySeller.get(sellerId);
@@ -213,15 +215,22 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
     const invoiceNumber = numData as unknown as string;
 
-    // Commission is a flat 15% of gross. No additional VAT is charged on top.
-    // Seller receives exactly: gross - 15% = 85% of gross.
-    const commissionVatRate = 0;
-    const commissionVatCents = 0;
-    // Product VAT: informational — seller owes this to VID separately
+    // Commission breakdown:
+    //   commissionNet = 15% of ex-VAT (operator's revenue)
+    //   commissionVat = 21% VAT on commissionNet (operator remits to VID)
+    //   commissionTotal = commissionNet + commissionVat (deducted from seller)
+    //   netToSeller = gross - commissionTotal
+    //
+    // Note: for 21% VAT products commissionTotal = 15% of gross (same as before).
+    // For reduced VAT products (5%, 12%) the operator VAT is proportionally larger.
+    const commissionVatRate = COMMISSION_SERVICE_VAT;
+    // Recompute net & commission VAT from aggregated cents
+    // (individual lines already have correct commissionCents from commissionBreakdown)
+    const commissionVatCents = Math.round(agg.commissionCents * (commissionVatRate / 100));
     const productVatCents = agg.productVatCents;
     const exVatGrossCents = agg.grossCents - productVatCents;
-    // Final net to seller = gross - commission (15%)
-    const finalNetCents = agg.netCents; // gross - 15%
+    // finalNet = gross - (commissionNet + commissionVat)
+    const finalNetCents = agg.grossCents - agg.commissionCents - commissionVatCents;
 
     // Insert invoice
     const { data: invoice, error: invErr } = await supabase
@@ -235,8 +244,8 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         total_ex_vat_cents: exVatGrossCents,
         total_product_vat_cents: productVatCents,
         total_commission_cents: agg.commissionCents,
-        commission_vat_rate: 0,
-        commission_vat_cents: 0,
+        commission_vat_rate: commissionVatRate,
+        commission_vat_cents: commissionVatCents,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,

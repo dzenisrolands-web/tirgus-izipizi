@@ -6,11 +6,48 @@
  * product form, checkout, invoices, statistics.
  */
 
-/** Commission rate in percent (e.g. 15 = 15 %). */
+/** Commission rate in percent — applied to the ex-VAT (net of product VAT) price. */
 export const COMMISSION_RATE = 15;
 
 /** Fraction form of the rate (0.15). */
 export const COMMISSION_FRACTION = COMMISSION_RATE / 100;
+
+/**
+ * VAT rate charged by the operator (SIA Svaigi) ON ITS COMMISSION SERVICE.
+ * The operator is VAT-registered; its commission is a taxable service.
+ */
+export const COMMISSION_SERVICE_VAT = 21;
+
+/**
+ * Full commission breakdown for a product.
+ *
+ * Law: commission is 15% of the ex-VAT (net) price.
+ * SIA Svaigi adds 21% VAT on top of that as a taxable service provider.
+ *
+ * Example (21% product VAT, 10€ price):
+ *   exVat         = 10 / 1.21       = 8.26 €
+ *   commissionNet = 8.26 × 0.15    = 1.24 €  (operator's net revenue)
+ *   commissionVat = 1.24 × 0.21    = 0.26 €  (operator remits to VID)
+ *   commissionTotal                = 1.50 €
+ *   netToSeller   = 10 - 1.50      = 8.50 €  (= 85%)
+ */
+export function commissionBreakdown(
+  price: number,
+  productVatRate: number,
+): {
+  exVat: number;          // price without product VAT
+  commissionNet: number;  // 15% of exVat (operator's net revenue)
+  commissionVat: number;  // 21% VAT on commissionNet (operator remits to VID)
+  commissionTotal: number; // commissionNet + commissionVat (total deducted from seller)
+  netToSeller: number;    // price - commissionTotal
+} {
+  const exVat    = Math.round(price / (1 + productVatRate / 100) * 100) / 100;
+  const cNet     = Math.round(exVat * (COMMISSION_RATE / 100) * 100) / 100;
+  const cVat     = Math.round(cNet * (COMMISSION_SERVICE_VAT / 100) * 100) / 100;
+  const cTotal   = Math.round((cNet + cVat) * 100) / 100;
+  const net      = Math.round((price - cTotal) * 100) / 100;
+  return { exVat, commissionNet: cNet, commissionVat: cVat, commissionTotal: cTotal, netToSeller: net };
+}
 
 /**
  * Courier pickup fee charged to the seller per order.
@@ -19,14 +56,19 @@ export const COMMISSION_FRACTION = COMMISSION_RATE / 100;
  */
 export const COURIER_FEE = 3.50;
 
-/** Calculate commission amount for a given price. */
+/**
+ * Commission amount for a given gross price (assuming 21% product VAT).
+ * For 21% VAT products: equals commissionBreakdown(price, 21).commissionTotal.
+ * Use commissionBreakdown() for exact per-VAT-rate calculation.
+ */
 export function commissionForPrice(price: number): number {
-  return Math.round(price * COMMISSION_FRACTION * 100) / 100;
+  const { commissionTotal } = commissionBreakdown(price, 21);
+  return commissionTotal;
 }
 
-/** Calculate net-to-seller amount (commission only, no courier fee). */
+/** Net-to-seller for 21% VAT products. */
 export function netForPrice(price: number): number {
-  return Math.round((price - commissionForPrice(price)) * 100) / 100;
+  return commissionBreakdown(price, 21).netToSeller;
 }
 
 /**
