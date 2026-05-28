@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
   Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3, UserCog,
+  FileText, MessageSquarePlus, Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ const NAV = [
   { href: "/admin/nedelas-piedavajums",  label: "Nedēļas piedāvājums", icon: Star },
   { href: "/admin/pasutijumi",           label: "Pasūtījumi",          icon: ShoppingBag },
   { href: "/admin/pirceji",              label: "Pircēji",             icon: UserCheck },
+  { href: "/admin/rekini",               label: "Rēķini",              icon: FileText },
+  { href: "/admin/feedback",             label: "Kļūdu ziņojumi",      icon: MessageSquarePlus },
   { href: "/admin/komanda",              label: "Komanda",             icon: UserCog },
 ];
 
@@ -92,17 +95,26 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingProducts, setPendingProducts] = useState(0);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) { router.push("/login"); return; }
-      const { data: profile } = await supabase
+    supabase.auth.getUser().then(async ({ data, error }) => {
+      if (error || !data.user) { router.push("/login"); return; }
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", data.user.id)
         .single();
+      if (profileError) {
+        // Network/DB issue — don't kick out, just log
+        console.warn("[admin] profile fetch error:", profileError.message);
+        setEmail(data.user.email ?? "");
+        setAuthChecked(true);
+        return;
+      }
       if (profile?.role !== "super_admin") { router.push("/"); return; }
       setEmail(data.user.email ?? "");
+      setAuthChecked(true);
     });
     async function fetchPending() {
       const [{ count: sellers }, { count: products }] = await Promise.all([
@@ -120,6 +132,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  // Show spinner until auth is confirmed — prevents flash redirect on slow networks
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <Loader2 size={28} className="animate-spin text-gray-400" />
+      </div>
+    );
   }
 
   return (
