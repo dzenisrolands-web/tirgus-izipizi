@@ -23,7 +23,7 @@ const FAQ_HOW = [
   { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "pārtikas pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pārtikas pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
   { q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?", a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas." },
   { q: "Vai var pārdot arī saldētas preces?", a: "Jā — IziPizi pārtikas pakomāti atbalsta saldēšanas režīmu −18°C un atdzesēšanu +2°C līdz +6°C." },
-  { q: "Kāda ir komisija pārdevējiem?", a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas)." },
+  { q: "Kāda ir komisija pārdevējiem?", a: "Platforma ietūr 15% no cenas bez produkta PVN, pievienojot 21% PVN par komisijas pakalpojumu (SIA Svaigi ir PVN maksātājs). Piemaksās nav. Produktam ar 21% PVN tu saņem 85% no pārdošanas cenas. Produktiem ar 12% PVN — ~83.8%, ar 5% PVN — ~82.7%. Precizu aprēķinu redzi produkta pievienošanas formā." },
 ];
 
 const faqJsonLd = {
@@ -208,7 +208,7 @@ export default function HowItWorksPage() {
             },
             {
               q: "Kāda ir komisija pārdevējiem?",
-              a: "Komisija tiek aprēķināta procentuāli no katras pārdošanas (5–20% atkarībā no kategorijas). Konkrēts apmērs tiek apspriests un apstiprināts pirms produkta publicēšanas.",
+              a: "Platforma ietūra 15% no cenas bez produkta PVN + 21% PVN par komisijas pakalpojumu (SIA Svaigi ir PVN maksātājs). Nav citu maksu. Piemers: produkts 10€ ar 21% PVN — tu saņem 8.50€ (85%). Ar 12% PVN — 8.38€ (~83.8%). Ar 5% PVN — 8.27€ (~82.7%). Precizu aprēķinu redzi produkta pievienošanas formā sadaļā 'Komisija un PVN aprēķins'.",
             },
             {
               q: "Kad un kā tiek izmaksāts maksājums pārdevējam?",

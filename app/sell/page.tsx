@@ -42,7 +42,7 @@ const steps = [
 ];
 
 const benefits = [
-  { icon: <Percent size={20} />, title: "Komisija tikai no pārdošanas", desc: "Nav abonēšanas maksas. Maksā tikai tad, kad pārdod." },
+  { icon: <Percent size={20} />, title: "15% komisija (bez PVN)", desc: "15% no cenas bez produkta PVN + 21% PVN par komisijas pakalpojumu. Produktam ar 21% PVN tu saņem 85%." },
   { icon: <Clock size={20} />, title: "Ātrs sākums", desc: "Apstiprināšana līdz 24 stundām. Sāc pārdot jau šodien." },
   { icon: <Shield size={20} />, title: "Drosi maksājumi", desc: "Paysera maksājumu sistēma — droša un uzticīga." },
   { icon: <CreditCard size={20} />, title: "Izmaksa 2× mēnesī", desc: "Maksājumi uz tavu bankas kontu divas reizes mēnesī. Reversais rēķins — mums." },
@@ -80,6 +80,63 @@ export default function SellPage() {
             <p className="mt-1 text-sm text-gray-500">{b.desc}</p>
           </div>
         ))}
+      </div>
+
+      {/* Commission breakdown table */}
+      <div className="mt-14 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Komisijas aprēķins</h2>
+        <p className="text-sm text-gray-500 mb-5">
+          Komisija = 15% no cenas bez produkta PVN + 21% PVN par komisijas pakalpojumu.
+          Produkta PVN noēmsi no saņemtās summas un maksāsi VID pats.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                <th className="pb-2 pr-4">Piemērs (10€)</th>
+                <th className="pb-2 pr-4 text-right">PVN 5%</th>
+                <th className="pb-2 pr-4 text-right">PVN 12%</th>
+                <th className="pb-2 text-right">PVN 21%</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              <tr>
+                <td className="py-2 pr-4 text-gray-600">Cena bez produkta PVN</td>
+                <td className="py-2 pr-4 text-right font-mono">9.52 €</td>
+                <td className="py-2 pr-4 text-right font-mono">8.93 €</td>
+                <td className="py-2 text-right font-mono">8.26 €</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 text-amber-700">Komisija 15%</td>
+                <td className="py-2 pr-4 text-right font-mono text-amber-700">−1.43 €</td>
+                <td className="py-2 pr-4 text-right font-mono text-amber-700">−1.34 €</td>
+                <td className="py-2 text-right font-mono text-amber-700">−1.24 €</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4 text-orange-600">PVN 21% par komisiju</td>
+                <td className="py-2 pr-4 text-right font-mono text-orange-600">−0.30 €</td>
+                <td className="py-2 pr-4 text-right font-mono text-orange-600">−0.28 €</td>
+                <td className="py-2 text-right font-mono text-orange-600">−0.26 €</td>
+              </tr>
+              <tr className="border-t-2 border-gray-300">
+                <td className="py-2 pr-4 font-bold text-green-800">Tu saņemsi</td>
+                <td className="py-2 pr-4 text-right font-bold font-mono text-green-700">8.27 €</td>
+                <td className="py-2 pr-4 text-right font-bold font-mono text-green-700">8.38 €</td>
+                <td className="py-2 text-right font-bold font-mono text-green-700">8.50 €</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-4 text-xs text-gray-400">% no cenas</td>
+                <td className="py-1 pr-4 text-right text-xs text-gray-400">82.7%</td>
+                <td className="py-1 pr-4 text-right text-xs text-gray-400">83.8%</td>
+                <td className="py-1 text-right text-xs text-gray-400">85.0%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-4 text-xs text-gray-400">
+          * Produkta PVN (šajā piemērā nav ierēķināts) ir jādeklarē VID pats.
+          Precizu aprēķinu konkrētai cenai redzi produkta pievienošanas formā.
+        </p>
       </div>
 
       {/* Steps */}
