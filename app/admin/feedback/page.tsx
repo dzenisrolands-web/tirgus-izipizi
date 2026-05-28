@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { MessageSquarePlus, Check, Eye, Loader2, ExternalLink, RefreshCw } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
-function svc() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+async function getToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
 }
 
 type Feedback = {
@@ -38,21 +36,34 @@ export default function AdminFeedbackPage() {
 
   async function load() {
     setLoading(true);
-    const supabase = svc();
-    const { data } = await supabase
-      .from("feedback")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setItems((data ?? []) as Feedback[]);
-    setLoading(false);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/admin/feedback", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data as Feedback[] : []);
+    } catch (e) {
+      console.error("[feedback] load error:", e);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function setStatus(id: string, status: Feedback["status"]) {
     setUpdating(id);
-    const supabase = svc();
-    await supabase.from("feedback").update({ status }).eq("id", id);
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
-    setUpdating(null);
+    try {
+      const token = await getToken();
+      await fetch("/api/admin/feedback", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ id, status }),
+      });
+      setItems((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
+    } finally {
+      setUpdating(null);
+    }
   }
 
   const visible = filter === "all" ? items : items.filter((i) => i.status === filter);
