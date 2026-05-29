@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, ChevronRight, Loader2, RefreshCw, Search } from "lucide-react";
+import { FileText, ChevronRight, Loader2, RefreshCw, Search, CalendarDays } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+
+async function getToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
 
 type Invoice = {
   id: string;
@@ -34,6 +39,8 @@ export default function AdminRekiniPage() {
   const [search, setSearch] = useState("");
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState("");
+  const [generateOk, setGenerateOk] = useState<boolean | null>(null);
+  const [periodOverride, setPeriodOverride] = useState(""); // YYYY-MM-DD
 
   useEffect(() => { load(); }, []);
 
@@ -49,20 +56,36 @@ export default function AdminRekiniPage() {
   async function manualGenerate() {
     setGenerating(true);
     setGenerateMsg("");
+    setGenerateOk(null);
     try {
-      const cronSecret = prompt("Ievadi CRON_SECRET (no .env):");
-      if (!cronSecret) { setGenerating(false); return; }
-      const res = await fetch("/api/cron/generate-invoices", {
-        headers: { Authorization: `Bearer ${cronSecret}` },
+      const token = await getToken();
+      if (!token) {
+        setGenerateMsg("Nav aktīvas sesijas. Lūdzu, piesakies vēlreiz.");
+        setGenerateOk(false);
+        return;
+      }
+      const url = periodOverride
+        ? `/api/admin/generate-invoices?period=${encodeURIComponent(periodOverride)}`
+        : "/api/admin/generate-invoices";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setGenerateMsg(
-        data.ok
-          ? `Ģenerēti ${data.generated?.length ?? 0} rēķini · izlaists ${data.skipped?.length ?? 0}`
-          : `Kļūda: ${data.error}`
-      );
-      await load();
+      if (data.ok) {
+        const gen = data.generated?.length ?? 0;
+        const skipped = data.skipped?.length ?? 0;
+        setGenerateOk(true);
+        setGenerateMsg(
+          `Periods: ${data.period} · Ģenerēti ${gen} rēķin${gen === 1 ? "s" : "i"} · Izlaists ${skipped}`
+        );
+        await load();
+      } else {
+        setGenerateOk(false);
+        setGenerateMsg(`Kļūda: ${data.error}`);
+      }
     } catch (e) {
+      setGenerateOk(false);
       setGenerateMsg(`Kļūda: ${e instanceof Error ? e.message : "unknown"}`);
     } finally {
       setGenerating(false);
@@ -87,15 +110,31 @@ export default function AdminRekiniPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Rēķini</h1>
           <p className="mt-0.5 text-sm text-gray-500">{invoices.length} kopā</p>
         </div>
-        <button onClick={manualGenerate} disabled={generating}
-          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-          {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          Ģenerēt manuāli
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <CalendarDays size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={periodOverride}
+              onChange={(e) => setPeriodOverride(e.target.value)}
+              placeholder="YYYY-MM-DD (pēc noklusēj.)"
+              className="rounded-xl border border-gray-200 bg-white pl-8 pr-3 py-2 text-xs text-gray-600 w-48 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            />
+          </div>
+          <button onClick={manualGenerate} disabled={generating}
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+            {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Ģenerēt manuāli
+          </button>
+        </div>
       </div>
 
       {generateMsg && (
-        <div className="mb-4 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+        <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+          generateOk === false
+            ? "bg-red-50 border-red-200 text-red-800"
+            : "bg-blue-50 border-blue-200 text-blue-800"
+        }`}>
           {generateMsg}
         </div>
       )}
