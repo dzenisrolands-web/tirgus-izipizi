@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MessageSquarePlus, X, Send, CheckCircle, Loader2 } from "lucide-react";
 
-type Phase = "closed" | "open" | "sending" | "done";
+type Phase = "closed" | "open" | "sending" | "done" | "error";
 
 export function FeedbackWidget() {
   const [phase, setPhase] = useState<Phase>("closed");
@@ -21,18 +21,19 @@ export function FeedbackWidget() {
     if (!message.trim()) return;
     setPhase("sending");
     try {
-      await fetch("/api/feedback", {
+      const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: message.trim(), email: email.trim() || null, page_url: pageUrl }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setPhase("done");
       setMessage("");
       setEmail("");
       // Auto-close after 3s
       setTimeout(() => setPhase("closed"), 3000);
     } catch {
-      setPhase("open"); // revert on error
+      setPhase("error");
     }
   }
 
@@ -70,7 +71,18 @@ export function FeedbackWidget() {
             <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
               <CheckCircle size={32} className="text-green-500" />
               <p className="font-semibold text-gray-900">Paldies!</p>
-              <p className="text-sm text-gray-500">Mēs to izlabosim pēc iespējas ātrāk.</p>
+              <p className="text-sm text-gray-500">Mēs to izlabōsim pēc iespējas ātrāk.</p>
+            </div>
+          ) : phase === "error" ? (
+            <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
+              <p className="text-2xl">⚠️</p>
+              <p className="font-semibold text-gray-900">Neizdevās nosūtīt</p>
+              <p className="text-sm text-gray-500">Lūdzu sazinieties tieši: birojs@izipizi.lv</p>
+              <button
+                onClick={() => setPhase("open")}
+                className="mt-1 text-xs text-brand-600 hover:underline">
+                Mēģināt vēlreiz
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
