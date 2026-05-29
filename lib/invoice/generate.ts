@@ -108,7 +108,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }[];
     grossCents: number;
     productVatCents: number;
-    commissionCents: number;
+    commissionCents: number;   // total deducted = commissionNet + commissionVat
+    commissionNetCents: number; // operator's net revenue (15% of ex-VAT)
+    commissionVatCents: number; // 21% service VAT operator remits to VID
     netCents: number;
   };
   const bySeller = new Map<string, Aggregate>();
@@ -130,12 +132,14 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       const lineExVat = lineGross - lineVatAmount;
       // Commission: 15% of ex-VAT price + 21% VAT on commission
       const cb = commissionBreakdown(lineGross / 100, vatRate);
-      const lineCommission = Math.round(cb.commissionTotal * 100); // total incl. service VAT
+      const lineCommissionNet = Math.round(cb.commissionNet * 100); // operator net (before service VAT)
+      const lineCommissionVat = Math.round(cb.commissionVat * 100); // 21% service VAT
+      const lineCommission = lineCommissionNet + lineCommissionVat;  // total deduction
       const lineNet = lineGross - lineCommission;
 
       let agg = bySeller.get(sellerId);
       if (!agg) {
-        agg = { sellerId, lines: [], grossCents: 0, productVatCents: 0, commissionCents: 0, netCents: 0 };
+        agg = { sellerId, lines: [], grossCents: 0, productVatCents: 0, commissionCents: 0, commissionNetCents: 0, commissionVatCents: 0, netCents: 0 };
         bySeller.set(sellerId, agg);
       }
       agg.lines.push({
@@ -157,6 +161,8 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       agg.grossCents += lineGross;
       agg.productVatCents += lineVatAmount;
       agg.commissionCents += lineCommission;
+      agg.commissionNetCents += lineCommissionNet;
+      agg.commissionVatCents += lineCommissionVat;
       agg.netCents += lineNet;
     }
   }
@@ -224,13 +230,13 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     // Note: for 21% VAT products commissionTotal = 15% of gross (same as before).
     // For reduced VAT products (5%, 12%) the operator VAT is proportionally larger.
     const commissionVatRate = COMMISSION_SERVICE_VAT;
-    // Recompute net & commission VAT from aggregated cents
-    // (individual lines already have correct commissionCents from commissionBreakdown)
-    const commissionVatCents = Math.round(agg.commissionCents * (commissionVatRate / 100));
+    // Use per-line breakdowns accumulated during aggregation — no re-computation needed.
+    // agg.commissionNetCents = 15% of ex-VAT (operator net revenue)
+    // agg.commissionVatCents = 21% service VAT on that net (operator remits to VID)
+    // agg.netCents           = gross - (commissionNet + commissionVat) per line
     const productVatCents = agg.productVatCents;
     const exVatGrossCents = agg.grossCents - productVatCents;
-    // finalNet = gross - (commissionNet + commissionVat)
-    const finalNetCents = agg.grossCents - agg.commissionCents - commissionVatCents;
+    const finalNetCents = agg.netCents;
 
     // Insert invoice
     const { data: invoice, error: invErr } = await supabase
@@ -243,9 +249,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         total_gross_cents: agg.grossCents,
         total_ex_vat_cents: exVatGrossCents,
         total_product_vat_cents: productVatCents,
-        total_commission_cents: agg.commissionCents,
+        total_commission_cents: agg.commissionNetCents,
         commission_vat_rate: commissionVatRate,
-        commission_vat_cents: commissionVatCents,
+        commission_vat_cents: agg.commissionVatCents,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,
