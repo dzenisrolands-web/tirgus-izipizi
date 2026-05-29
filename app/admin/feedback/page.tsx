@@ -5,6 +5,10 @@ import { MessageSquarePlus, Check, Eye, Loader2, ExternalLink, RefreshCw } from 
 import { supabase } from "@/lib/supabase";
 
 async function getToken(): Promise<string | null> {
+  // getUser() makes a network call to verify/refresh the token — more reliable
+  // than getSession() which only reads from local storage.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
@@ -29,6 +33,7 @@ const statusCfg = {
 export default function AdminFeedbackPage() {
   const [items, setItems] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "new" | "seen" | "done">("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -36,15 +41,30 @@ export default function AdminFeedbackPage() {
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     try {
       const token = await getToken();
+      if (!token) {
+        setLoadError("Nav aktīvas sesijas. Lūdzu, piesakies vēlreiz.");
+        setLoading(false);
+        return;
+      }
       const res = await fetch("/api/admin/feedback", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setItems(Array.isArray(data) ? data as Feedback[] : []);
+      if (!res.ok) {
+        setLoadError(`API kļūda ${res.status}: ${data?.error ?? "nezināms"}`);
+        setItems([]);
+      } else if (!Array.isArray(data)) {
+        setLoadError(`Negaidīts API atbildes formāts: ${JSON.stringify(data)}`);
+        setItems([]);
+      } else {
+        setItems(data as Feedback[]);
+      }
     } catch (e) {
       console.error("[feedback] load error:", e);
+      setLoadError(e instanceof Error ? e.message : "Nezināma kļūda");
       setItems([]);
     } finally {
       setLoading(false);
@@ -95,6 +115,12 @@ export default function AdminFeedbackPage() {
           <RefreshCw size={14} /> Atjaunināt
         </button>
       </div>
+
+      {loadError && (
+        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <strong>Kļūda ielādējot:</strong> {loadError}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="mb-5 flex gap-2 border-b border-gray-200 pb-1">

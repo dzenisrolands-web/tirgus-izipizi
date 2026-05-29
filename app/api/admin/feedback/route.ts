@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { supabase as anonClient } from "@/lib/supabase";
-
 function svc() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,13 +8,16 @@ function svc() {
 }
 
 async function isAdmin(req: Request): Promise<boolean> {
-  // Verify the caller has a valid super_admin session
+  // Verify the caller has a valid super_admin session.
+  // Use the service-role client for getUser() — avoids module-level browser
+  // singleton issues in server API routes and works reliably server-side.
   const authHeader = req.headers.get("authorization") ?? "";
   const token = authHeader.replace("Bearer ", "");
   if (!token) return false;
-  const { data: { user } } = await anonClient.auth.getUser(token);
+  const client = svc();
+  const { data: { user } } = await client.auth.getUser(token);
   if (!user) return false;
-  const { data: profile } = await svc()
+  const { data: profile } = await client
     .from("profiles")
     .select("role")
     .eq("id", user.id)

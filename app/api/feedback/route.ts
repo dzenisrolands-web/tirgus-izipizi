@@ -31,8 +31,9 @@ export async function POST(req: Request) {
     });
 
     if (error) {
-      console.error("[feedback] insert error:", error.message);
-      return NextResponse.json({ error: "db error" }, { status: 500 });
+      console.error("[feedback] insert error:", error.code, error.message);
+      // Surface the error code so Vercel logs show the root cause (e.g. 42P01 = table not found)
+      return NextResponse.json({ error: "db error", code: error.code }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
