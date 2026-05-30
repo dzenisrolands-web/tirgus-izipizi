@@ -117,9 +117,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         .single();
 
       if (!seller) {
-        // No seller profile yet — still in onboarding
+        // No seller profile record yet — user hasn't completed onboarding
         setSellerStatus("draft");
-        setMissingCount(99);
+        setMissingCount(-1); // sentinel: profile doesn't exist yet
         return;
       }
 
@@ -136,7 +136,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       if (!hasLocation) missing++;
       setMissingCount(missing);
     })();
-  }, [router]);
+  }, [router, pathname]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -207,14 +207,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   </span>
                 ) : (
                   <span className="text-blue-800">
-                    {missingCount > 0 ? (
+                    {missingCount === -1 ? (
+                      // No seller record yet
                       <>
-                        <strong>Aizpildi profilu</strong> — vēl trūkst {missingCount} lauki.
+                        <strong>Izveido savu profilu</strong> — aizpildi nepieciešamo informāciju, lai sāktu pārdot.
+                        {" "}<Link href="/dashboard/profils" className="font-semibold underline">Sākt →</Link>
+                      </>
+                    ) : missingCount > 0 ? (
+                      // Profile exists but incomplete
+                      <>
+                        <strong>Profils nepilnīgs</strong> — vēl trūkst {missingCount} obligāt{missingCount === 1 ? "s lauks" : "ie lauki"}.
                         {" "}<Link href="/dashboard/profils" className="font-semibold underline">Aizpildīt tagad →</Link>
                       </>
                     ) : (
+                      // All fields filled, submit for approval
                       <>
-                        <strong>Profils gatavs!</strong> Tas patsīd apstiprināšanai. Gaidiet admina apstiprinājumu.
+                        <strong>Profils gatavs!</strong> Iesniedz to apstiprināšanai, lai sāktu pievienot produktus.
+                        {" "}<Link href="/dashboard/profils" className="font-semibold underline">Iesniegt →</Link>
                       </>
                     )}
                   </span>
