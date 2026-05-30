@@ -6,6 +6,8 @@ export type Locker = {
   pickup_only?: boolean;
   /** true = location announced but not yet open */
   coming_soon?: boolean;
+  /** short label shown on opening_soon lockers, e.g. "Nākamnedēļ!" */
+  opening_label?: string;
 };
 export type Seller = {
   id: string; name: string; farmName: string; avatar: string;
@@ -82,7 +84,9 @@ export const lockers: Locker[] = [
     "name": "Ilūkstes iela 40A",
     "address": "Ilūkstes iela 40A",
     "city": "Rīga",
-    "hours": "24/7"
+    "hours": "24/7",
+    "coming_soon": true,
+    "opening_label": "Nākamnedēļ!"
   },
   // --- Drīzumā (nākamie pakomāti) ---
   {
