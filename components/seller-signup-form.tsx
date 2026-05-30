@@ -46,6 +46,11 @@ export function SellerSignupForm() {
         },
       });
       if (error) throw error;
+      // Sign out immediately so the new seller session doesn't replace
+      // the current user's session (e.g. an admin testing the form).
+      // When email confirmation is disabled Supabase auto-logs in the new user;
+      // we clear that session here and direct them to log in manually.
+      await supabase.auth.signOut();
       setDone(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Kļūda");
@@ -59,12 +64,12 @@ export function SellerSignupForm() {
       <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-[#192635] px-4">
         <div className="max-w-sm rounded-3xl bg-white p-8 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl">
-            ✉️
+            ✅
           </div>
-          <h1 className="mt-5 text-2xl font-extrabold text-gray-900">Pārbaudi e-pastu!</h1>
+          <h1 className="mt-5 text-2xl font-extrabold text-gray-900">Konts izveidots!</h1>
           <p className="mt-3 text-sm text-gray-500">
-            Nosūtījām apstiprinājuma saiti uz <strong>{email}</strong>.<br />
-            Pēc apstiprināšanas tiks izveidots tavs ražotāja profils.
+            Konts <strong>{email}</strong> ir ve iksmīgi izveidots.<br />
+            Piesakies un aizpildi ražotāja profilu, lai sāktu pārdot.
           </p>
           <Link href="/login" className="btn-primary mt-6 inline-block">
             Pieslēgties
