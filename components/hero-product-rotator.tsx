@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { listingUrl } from "@/lib/utils";
 
 type HeroProduct = {
   id: string;
@@ -10,6 +11,7 @@ type HeroProduct = {
   image: string;
   sellerName: string;
   createdAt: string;
+  slug?: string | null;
 };
 
 const GROUP_SIZE = 4;
@@ -44,7 +46,7 @@ export function HeroProductRotator({ products }: { products: HeroProduct[] }) {
         {visible.map((p, i) => (
           <Link
             key={`${groupIdx}-${i}`}
-            href={`/listing/${p.id}`}
+            href={listingUrl(p)}
             className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:border-white/20 hover:shadow-[0_0_20px_rgba(83,243,164,0.15)]"
             style={{
               animation: `heroTileReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${i * 90}ms both`,

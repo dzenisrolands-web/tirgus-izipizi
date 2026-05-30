@@ -5,7 +5,7 @@ import Image from "next/image";
 import { MapPin, Star, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
-import { formatPrice, daysUntil, getStorageType, storageConfig } from "@/lib/utils";
+import { formatPrice, daysUntil, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useStorageTypes } from "@/lib/storage-types-context";
@@ -32,7 +32,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     // With variants the user must pick a size before adding — let the card
     // navigate to the listing page instead of adding the wrong/cheapest one.
     if (hasVariants) {
-      window.location.href = `/listing/${listing.id}`;
+      window.location.href = listingUrl(listing);
       return;
     }
     addItem({
@@ -54,7 +54,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
 
   return (
-    <Link href={`/listing/${listing.id}`} className="group block">
+    <Link href={listingUrl(listing)} className="group block">
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill

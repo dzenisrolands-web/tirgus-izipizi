@@ -7,6 +7,7 @@ import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircl
 import { supabase } from "@/lib/supabase";
 import { lockers, categories } from "@/lib/mock-data";
 import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
+import { toUniqueSlug } from "@/lib/utils";
 
 const UNITS = ["gab.", "kg", "g", "L", "ml", "100g", "500g", "komplekts", "paka"];
 const CATS = categories.filter(c => c !== "Visi");
@@ -160,6 +161,7 @@ export function ProductForm({
         user_id: user.id,
         seller_id: seller?.id ?? null,
         title: form.title.trim(),
+        slug: productId ? undefined : toUniqueSlug(form.title.trim(), crypto.randomUUID()),
         description: form.description.trim(),
         price: variantsJson.length > 0
           ? Math.min(...variantsJson.map(v => v.price))

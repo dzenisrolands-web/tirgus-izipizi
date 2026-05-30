@@ -29,6 +29,8 @@ export type Listing = {
   express_delivery?: boolean;
   courier_delivery?: boolean;
   dispatch_days?: string[];
+  /** SEO-friendly URL slug, e.g. "brieza-galas-pelmeni-400g-9ec5de" */
+  slug?: string;
 };
 export type Review = {
   id: string; listingId: string; buyerName: string; buyerAvatar: string;

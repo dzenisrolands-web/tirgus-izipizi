@@ -1,11 +1,11 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
 import { listings, sellerHomeLockers } from "@/lib/mock-data";
-import { fetchListingById } from "@/lib/db-listings";
-import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig, hasValidImage } from "@/lib/utils";
+import { fetchListingById, fetchListingBySlug } from "@/lib/db-listings";
+import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig, hasValidImage, listingUrl } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSectionDb } from "@/components/reviews-section-db";
@@ -19,10 +19,27 @@ export async function generateStaticParams() {
   return listings.map((l) => ({ id: l.id }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveListing(idOrSlug: string) {
+  // Mock data first (by id)
+  const mock = listings.find((l) => l.id === idOrSlug);
+  if (mock) return { listing: mock, isUuid: false };
+  // UUID → fetch by ID, then redirect to slug URL
+  if (UUID_RE.test(idOrSlug)) {
+    const l = await fetchListingById(idOrSlug);
+    return { listing: l, isUuid: true };
+  }
+  // Slug → fetch by slug
+  const l = await fetchListingBySlug(idOrSlug);
+  return { listing: l, isUuid: false };
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const listing = listings.find((l) => l.id === id) ?? await fetchListingById(id);
+  const { listing } = await resolveListing(id);
   if (!listing) return {};
+  const canonicalSlug = listing.slug ?? listing.id;
   const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
   const description = listing.description
     ? `${listing.description.slice(0, 140)}…`
@@ -30,11 +47,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
-    alternates: { canonical: `/listing/${id}` },
+    alternates: { canonical: `/listing/${canonicalSlug}` },
     openGraph: {
       title,
       description,
-      url: `https://tirgus.izipizi.lv/listing/${id}`,
+      url: `https://tirgus.izipizi.lv/listing/${canonicalSlug}`,
       images: [{ url: listing.image, alt: listing.title }],
       type: "website",
       siteName: "tirgus.izipizi.lv",
@@ -45,12 +62,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ListingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const listing = listings.find((l) => l.id === id) ?? await fetchListingById(id);
+  const { listing, isUuid } = await resolveListing(id);
   if (!listing) notFound();
   // Hide products without a valid image — they should not be public
   if (!hasValidImage(listing)) notFound();
   // Hide expired products — redirect to 404
   if (daysUntil(listing.freshnessDate) < 0) notFound();
+  // UUID accessed directly — 301 redirect to SEO-friendly slug URL
+  if (isUuid && listing.slug) redirect(`/listing/${listing.slug}`);
 
   const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
@@ -71,7 +90,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       priceCurrency: "EUR",
       availability: listing.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      url: `https://tirgus.izipizi.lv/listing/${listing.id}`,
+      url: `https://tirgus.izipizi.lv${listingUrl(listing)}`,
       seller: {
         "@type": "Organization",
         name: listing.seller.farmName,
@@ -94,7 +113,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       { "@type": "ListItem", position: 1, name: "Sākums", item: "https://tirgus.izipizi.lv" },
       { "@type": "ListItem", position: 2, name: "Katalogs", item: "https://tirgus.izipizi.lv/catalog" },
       { "@type": "ListItem", position: 3, name: listing.category, item: `https://tirgus.izipizi.lv/catalog?category=${encodeURIComponent(listing.category)}` },
-      { "@type": "ListItem", position: 4, name: listing.title, item: `https://tirgus.izipizi.lv/listing/${listing.id}` },
+      { "@type": "ListItem", position: 4, name: listing.title, item: `https://tirgus.izipizi.lv${listingUrl(listing)}` },
     ],
   };
 

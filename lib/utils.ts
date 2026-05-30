@@ -90,3 +90,39 @@ export function daysUntil(dateString: string): number {
   const diff = target.getTime() - today.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
+
+/**
+ * Convert a product title to a URL-safe slug, handling Latvian diacritics.
+ * e.g. "Brieža gaļas pelmeņi 400g" → "brieza-galas-pelmeni-400g"
+ */
+export function toSlug(title: string): string {
+  const lv: [RegExp, string][] = [
+    [/[āĀ]/g, 'a'], [/[čČ]/g, 'c'], [/[ēĒ]/g, 'e'], [/[ģĢ]/g, 'g'],
+    [/[īĪ]/g, 'i'], [/[ķĶ]/g, 'k'], [/[ļĻ]/g, 'l'], [/[ņŅ]/g, 'n'],
+    [/[ōŌ]/g, 'o'], [/[ŗŖ]/g, 'r'], [/[šŠ]/g, 's'], [/[ūŪ]/g, 'u'],
+    [/[žŽ]/g, 'z'],
+  ];
+  let s = title.toLowerCase();
+  for (const [r, c] of lv) s = s.replace(r, c);
+  return s
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+/**
+ * Generate a guaranteed-unique slug by appending the first 6 chars of the UUID.
+ * Used for backfilling existing listings where two products may have the same title.
+ */
+export function toUniqueSlug(title: string, id: string): string {
+  return `${toSlug(title)}-${id.slice(0, 6)}`;
+}
+
+/**
+ * Canonical URL for a listing page.
+ * Uses slug if available, falls back to UUID for listings that haven't been
+ * backfilled yet or are from mock data.
+ */
+export function listingUrl(l: { id: string; slug?: string | null }): string {
+  return `/listing/${l.slug ?? l.id}`;
+}

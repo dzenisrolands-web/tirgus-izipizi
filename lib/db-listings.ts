@@ -29,7 +29,7 @@ function mapVariants(raw: unknown): Variant[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing {
+function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing & { slug?: string } {
   const locker = lockers.find((l) => l.id === item.locker_id) ?? lockers[0];
   const freshnessDate = new Date(
     new Date(item.created_at as string).getTime() + 60 * 24 * 60 * 60 * 1000
@@ -62,13 +62,14 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
     express_delivery: (item.express_delivery as boolean) ?? false,
     courier_delivery: (item.courier_delivery as boolean) ?? true,
     dispatch_days: Array.isArray(item.dispatch_days) ? (item.dispatch_days as string[]) : [],
+    slug: (item.slug as string | undefined) ?? undefined,
   };
 }
 
 export async function fetchActiveListings(): Promise<Listing[]> {
   const { data: rows, error } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, express_delivery, courier_delivery, dispatch_days")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, express_delivery, courier_delivery, dispatch_days, slug")
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
@@ -148,7 +149,7 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
   const listingIds = featured.map((f) => f.listing_id);
   const { data: rows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, slug")
     .in("id", listingIds)
     .eq("status", "active");
 
@@ -172,8 +173,20 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
 export async function fetchListingById(id: string): Promise<Listing | null> {
   const { data: item, error } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, slug")
     .eq("id", id)
+    .single();
+  if (error || !item) return null;
+  const { data: s } = await supabase
+    .from("sellers").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
+  return mapRow(item, s);
+}
+
+export async function fetchListingBySlug(slug: string): Promise<Listing | null> {
+  const { data: item, error } = await supabase
+    .from("listings")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, slug")
+    .eq("slug", slug)
     .single();
   if (error || !item) return null;
   const { data: s } = await supabase
@@ -230,7 +243,7 @@ export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile 
 
   const { data: listingsRows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, slug")
     .eq("seller_id", id).eq("status", "active");
 
   return {
@@ -252,7 +265,7 @@ export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   const sellerIds = rows.map((s) => s.id);
   const { data: listingsRows } = await supabase
     .from("listings")
-    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants")
+    .select("id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, slug")
     .eq("status", "active")
     .in("seller_id", sellerIds);
 
