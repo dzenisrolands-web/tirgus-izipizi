@@ -504,8 +504,8 @@ export function CartPage() {
               {/* Method-specific details */}
               {deliveryMethod === "locker" && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-gray-900">Izvēlies pārtikas pakomātu</h3>
-                  {lockers.map((l) => (
+                <h3 className="text-sm font-bold text-gray-900">Izvēlies pārtikas pakomātu</h3>
+                  {lockers.filter(l => !l.coming_soon).map((l) => (
                     <label key={l.id}
                       className={cn(
                         "flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition",
