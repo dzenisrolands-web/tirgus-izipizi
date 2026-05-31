@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -9,75 +9,91 @@ import { Suspense } from "react";
 function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     async function handle() {
-      const type = searchParams.get("type");
-      const tokenHash = searchParams.get("token_hash");
+      try {
+        const type = searchParams.get("type");
+        const tokenHash = searchParams.get("token_hash");
 
-      // Password recovery flow
-      if (type === "recovery" && tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
-        if (!error) { router.replace("/update-password"); return; }
-      }
+        // Password recovery
+        if (type === "recovery" && tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+          if (error) throw error;
+          router.replace("/update-password");
+          return;
+        }
 
-      // Magic link flow (used by admin impersonation & email invites)
-      if (type === "magiclink" && tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "magiclink" });
-        if (error) {
-          console.error("Magic link verification failed:", error.message);
+        // Magic link / email invite
+        if ((type === "magiclink" || type === "invite") && tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "magiclink" | "invite" });
+          if (error) throw error;
+        }
+
+        // OAuth PKCE — exchange code for session
+        const code = searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        // Get the authenticated user (more reliable than getSession after PKCE)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
           router.replace("/login");
           return;
         }
-      }
 
-      // Email invite flow
-      if (type === "invite" && tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "invite" });
-        if (error) {
-          console.error("Invite verification failed:", error.message);
-          router.replace("/login");
-          return;
+        // Ensure profile exists with correct role.
+        // If no profile yet, create one (buyer by default, seller if ?role=seller).
+        // NEVER downgrade an existing role.
+        const requestedRole = searchParams.get("role");
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        let effectiveRole = existingProfile?.role;
+        if (!effectiveRole) {
+          const newRole = requestedRole === "seller" ? "seller" : "buyer";
+          await supabase
+            .from("profiles")
+            .upsert({ id: user.id, role: newRole }, { onConflict: "id" });
+          effectiveRole = newRole;
         }
+
+        // Redirect based on role
+        const next = searchParams.get("next");
+        if (next) { router.replace(next); return; }
+
+        if (effectiveRole === "super_admin") router.replace("/admin");
+        else if (effectiveRole === "seller") router.replace("/dashboard");
+        else router.replace("/");
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[auth/callback] error:", msg);
+        setErrorMsg(msg);
       }
-
-      // OAuth PKCE flow — exchange the code for a session
-      const code = searchParams.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error("OAuth code exchange failed:", error.message);
-          router.replace("/login");
-          return;
-        }
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.replace("/login"); return; }
-
-      // Role from signup URL (?role=buyer|seller) wins on first login —
-      // sets the canonical role for users who came in via Google OAuth
-      // and have no profile row yet.
-      const requestedRole = searchParams.get("role");
-      const { data: existingProfile } = await supabase
-        .from("profiles").select("role").eq("id", session.user.id).single();
-
-      let effectiveRole = existingProfile?.role;
-      if (!effectiveRole) {
-        const newRole = requestedRole === "seller" ? "seller" : "buyer";
-        await supabase.from("profiles").upsert({ id: session.user.id, role: newRole });
-        effectiveRole = newRole;
-      }
-
-      const next = searchParams.get("next");
-      if (next) { router.replace(next); return; }
-
-      if (effectiveRole === "super_admin") router.replace("/admin");
-      else if (effectiveRole === "seller") router.replace("/dashboard");
-      else router.replace("/");
     }
     handle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (errorMsg) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-sm text-red-600 max-w-sm">
+          Pieslēgšanās kļūda: {errorMsg}
+        </p>
+        <a href="/login" className="text-sm font-semibold text-brand-600 underline">
+          Atpakaļ uz pieslēgšanos
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
