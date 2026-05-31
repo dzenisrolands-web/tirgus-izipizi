@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Package, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Package, ChevronDown, ChevronUp, MapPin, CreditCard } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -33,6 +33,29 @@ export function BuyerOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+
+  async function handleRetryPayment(e: React.MouseEvent, orderNumber: string) {
+    e.stopPropagation();
+    setPaying(orderNumber);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/checkout/retry-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ orderNumber }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Kļūda");
+      window.location.href = json.paymentUrl;
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Neizdevās uzsākt maksājumu");
+      setPaying(null);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -102,11 +125,24 @@ export function BuyerOrders() {
                       <Package size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-bold text-gray-900">#{order.order_number}</p>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${status.cls}`}>
                           {status.label}
                         </span>
+                        {order.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleRetryPayment(e, order.order_number)}
+                            disabled={paying === order.order_number}
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-600 disabled:opacity-60 transition"
+                          >
+                            {paying === order.order_number
+                              ? <Loader2 size={10} className="animate-spin" />
+                              : <CreditCard size={10} />}
+                            Veikt apmaksu
+                          </button>
+                        )}
                       </div>
                       <p className="mt-0.5 text-xs text-gray-500">
                         {new Date(order.created_at).toLocaleDateString("lv-LV", { day: "numeric", month: "long", year: "numeric" })}

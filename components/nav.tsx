@@ -12,6 +12,7 @@ export function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [role, setRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { count } = useCart();
 
@@ -27,17 +28,27 @@ export function Nav() {
   }
 
   useEffect(() => {
+    function extractName(user: { user_metadata?: Record<string, string>; email?: string } | null | undefined): string | null {
+      if (!user) return null;
+      const full = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
+      const first = full.trim().split(/\s+/)[0];
+      return first || (user.email ? user.email.split("@")[0] : null);
+    }
     async function loadRole(userId: string) {
       const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
       setRole(data?.role ?? "buyer");
     }
     supabase.auth.getSession().then(({ data }) => {
       setAuthed(!!data.session);
-      if (data.session?.user) loadRole(data.session.user.id);
+      if (data.session?.user) {
+        loadRole(data.session.user.id);
+        setUserName(extractName(data.session.user));
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
       setAuthed(!!s);
-      if (s?.user) loadRole(s.user.id); else setRole(null);
+      if (s?.user) { loadRole(s.user.id); setUserName(extractName(s.user)); }
+      else { setRole(null); setUserName(null); }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -106,8 +117,9 @@ export function Nav() {
               )}
             </Link>
             {authed ? (
-              <Link href={accountHref} className="btn-outline text-sm">
-                Konts
+              <Link href={accountHref} className="btn-outline text-sm flex flex-col items-center leading-none gap-0.5">
+                {userName && <span className="text-[10px] font-normal text-gray-400 leading-none">{userName}</span>}
+                <span>Konts</span>
               </Link>
             ) : (
               <Link href="/login" className="btn-outline text-sm">
@@ -175,7 +187,7 @@ export function Nav() {
             {authed ? (
               <Link href={accountHref} className="mt-2 btn-outline text-center text-sm"
                 onClick={() => setMobileOpen(false)}>
-                Konts
+                {userName ? `${userName} · Konts` : "Konts"}
               </Link>
             ) : (
               <Link href="/login" className="mt-2 btn-outline text-center text-sm"
