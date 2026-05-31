@@ -32,16 +32,23 @@ function CallbackHandler() {
         }
 
         // OAuth PKCE — exchange code for session
+        let user = null;
         const code = searchParams.get("code");
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+          // Use user directly from the exchange response — avoids getUser() race condition
+          user = exchangeData.session?.user ?? null;
         }
 
-        // Get the authenticated user (more reliable than getSession after PKCE)
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) throw new Error(`Session error: ${userError.message}`);
-        if (!user) throw new Error("No user session after authentication. Try again.");
+        // For non-PKCE flows (magic link, invite) — get user from storage
+        if (!user) {
+          const { data, error: userError } = await supabase.auth.getUser();
+          if (userError) throw new Error(`Session error: ${userError.message}`);
+          user = data.user;
+        }
+
+        if (!user) throw new Error("Nav sesijas. Lūdzu mēģini vēlreiz.");
 
         // Ensure profile exists with correct role.
         // If no profile yet, create one (buyer by default, seller if ?role=seller).
