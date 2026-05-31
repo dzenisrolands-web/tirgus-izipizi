@@ -40,10 +40,8 @@ function CallbackHandler() {
 
         // Get the authenticated user (more reliable than getSession after PKCE)
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          router.replace("/login");
-          return;
-        }
+        if (userError) throw new Error(`Session error: ${userError.message}`);
+        if (!user) throw new Error("No user session after authentication. Try again.");
 
         // Ensure profile exists with correct role.
         // If no profile yet, create one (buyer by default, seller if ?role=seller).
