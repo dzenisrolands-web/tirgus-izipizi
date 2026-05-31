@@ -320,6 +320,14 @@ export function CartPage() {
           contact: { name: form.name, email: form.email, phone: form.phone },
           sellerIds: uniqueSellerIds,
           totalCents: Math.round(grandTotal * 100),
+          // Delivery fee breakdown — one fee per seller, commission per product
+          deliveryFeeCents: Math.round(deliveryFee * 100),
+          deliveryFeesBySeller: sellerGroups.map((g) => ({
+            sellerId: g.sellerId ?? null,
+            sellerName: g.sellerName,
+            feeCents: Math.round(g.activeFee * 100),
+            method: deliveryMethod,
+          })),
         }),
       });
 

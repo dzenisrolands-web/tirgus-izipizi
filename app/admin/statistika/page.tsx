@@ -104,20 +104,21 @@ export default async function StatistikaPage() {
   const commissionMonth = Math.round(gmvMonth * COMMISSION_FRACTION);
 
   // D7 — courier fees earned in last 30 days
-  // Count orders from sellers with delivery_mode = 'courier'
+  // Count per-seller-per-order: if order has 2 courier sellers, that's 2 courier fees
   const courierSellerIds = new Set(
     sellers.filter(s => s.delivery_mode === "courier").map(s => s.id)
   );
-  // For each paid order, check if any seller is courier mode
-  // (simplified: count order if seller_ids overlap with courier sellers)
-  const courierOrdersMonth = ordersMonth.filter(o => {
-    // orders don't store seller_ids in the stats query, use item lookup
-    const sellerIds = new Set(
+  let courierFeeCount = 0;
+  for (const o of ordersMonth) {
+    // Find unique courier sellers in this order
+    const orderSellerIds = new Set(
       (o.items ?? []).map(it => it.id ? listingById.get(it.id)?.seller_id : null).filter(Boolean)
     );
-    return [...sellerIds].some(sid => courierSellerIds.has(sid as string));
-  });
-  const courierFeesMonth = Math.round(courierOrdersMonth.length * COURIER_FEE * 100);
+    for (const sid of orderSellerIds) {
+      if (courierSellerIds.has(sid as string)) courierFeeCount++;
+    }
+  }
+  const courierFeesMonth = Math.round(courierFeeCount * COURIER_FEE * 100);
 
   // D4 — Top 10 products (by units sold in last 30 days)
   const productCounts = new Map<string, { id: string; title: string; units: number; revenueCents: number }>();
@@ -208,7 +209,7 @@ export default async function StatistikaPage() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi title={`Komisija (${COMMISSION_RATE}%)`} value={formatPrice(commissionMonth / 100)} sub="pēdējās 30d" tone="brand" />
-        <Kpi title="Kurjera maksa (€3,50)" value={formatPrice(courierFeesMonth / 100)} sub={`${courierOrdersMonth.length} kur. pasūt.`} tone="brand" />
+        <Kpi title="Kurjera maksa (€3,50)" value={formatPrice(courierFeesMonth / 100)} sub={`${courierFeeCount} kur. pārdevēji×pasūt.`} tone="brand" />
         <Kpi title="Aktīvi produkti" value={`${listingStatusCounts.active ?? 0}`} sub={`${listings.length} kopā`} />
         <Kpi title="Beidzas drīz" value={`${expiring.length}`} sub="nāk. 3 dienās" tone={expiring.length > 0 ? "warn" : "ok"} />
         <Kpi
