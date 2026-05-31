@@ -28,6 +28,8 @@ export async function POST(req: Request) {
     contact: { name: string; email: string; phone: string };
     sellerIds: string[];
     totalCents: number;
+    deliveryFeeCents?: number;
+    deliveryFeesBySeller?: { sellerId: string | null; sellerName: string; feeCents: number; method: string }[];
   };
 
   try {
@@ -93,6 +95,14 @@ export async function POST(req: Request) {
             locker_city: body.locker.city,
           }
         : {});
+
+  // Merge delivery fee breakdown into delivery info
+  if (body.deliveryFeeCents !== undefined) {
+    finalDeliveryInfo.delivery_fee_cents = body.deliveryFeeCents;
+  }
+  if (body.deliveryFeesBySeller) {
+    finalDeliveryInfo.delivery_fees_by_seller = body.deliveryFeesBySeller;
+  }
 
   // Insert order
   const { data: order, error: insertErr } = await supabase

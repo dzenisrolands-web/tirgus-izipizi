@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
-import { COMMISSION_RATE, COURIER_FEE, commissionForPrice, netForPrice, netForPriceWithDelivery } from "@/lib/commission";
+import { COMMISSION_RATE, COURIER_FEE, commissionForPrice } from "@/lib/commission";
 
 type Order = {
   id: string;
@@ -14,7 +14,7 @@ type Order = {
   buyer_email: string;
   buyer_phone: string;
   delivery_info: { locker_name: string; locker_city: string };
-  items: { title: string; quantity: number; price: number; unit: string }[];
+  items: { title: string; quantity: number; price: number; unit: string; seller_id?: string | null }[];
   total_cents: number;
   paid_at: string | null;
   created_at: string;
@@ -39,6 +39,7 @@ export default function DashboardPasutijumiPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [shipDialog, setShipDialog] = useState<Order | null>(null);
   const [lockerCodeDraft, setLockerCodeDraft] = useState("");
+  const [sellerId, setSellerId] = useState("");
 
   const NEXT_STATUS: Record<string, { label: string; next: string }> = {
     paid:       { label: "Apstiprināt pasūtījumu", next: "processing" },
@@ -111,6 +112,7 @@ export default function DashboardPasutijumiPage() {
         .from("sellers").select("id, delivery_mode").eq("user_id", user.id).single();
       if (seller?.delivery_mode === "courier") setDeliveryMode("courier");
       if (!seller) { setLoading(false); return; }
+      setSellerId(seller.id);
       const { data } = await supabase
         .from("orders").select("*")
         .contains("seller_ids", [seller.id])
@@ -240,36 +242,47 @@ export default function DashboardPasutijumiPage() {
                       </div>
                     </div>
 
-                    {/* Commission breakdown */}
-                    <div className="rounded-xl bg-gray-100/60 px-4 py-3 space-y-1.5">
-                      <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                        <Percent size={10} /> Izmaksu sīkumsājums
-                      </p>
-                      {/* Commission per item */}
-                      {order.items.map((item, i) => {
-                        const lineTotal = item.price * item.quantity;
-                        const lineComm = commissionForPrice(lineTotal);
-                        return (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500 truncate flex-1 mr-2">
-                              {item.title} ×{item.quantity}
-                            </span>
-                            <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)} ({COMMISSION_RATE}%)</span>
+                    {/* Commission breakdown — only THIS seller's items */}
+                    {(() => {
+                      // Filter items to show only products belonging to this seller
+                      const myItems = sellerId
+                        ? order.items.filter((item) => item.seller_id === sellerId)
+                        : order.items; // fallback: show all if sellerId unknown
+                      const mySubtotal = myItems.reduce((s, it) => s + it.price * it.quantity, 0);
+                      const myCommission = myItems.reduce((s, it) => s + commissionForPrice(it.price * it.quantity), 0);
+                      const myNet = Math.round((mySubtotal - myCommission - (deliveryMode === "courier" ? COURIER_FEE : 0)) * 100) / 100;
+                      return (
+                        <div className="rounded-xl bg-gray-100/60 px-4 py-3 space-y-1.5">
+                          <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                            <Percent size={10} /> Izmaksu sīkumsājums
+                          </p>
+                          {/* Commission per item */}
+                          {myItems.map((item, i) => {
+                            const lineTotal = item.price * item.quantity;
+                            const lineComm = commissionForPrice(lineTotal);
+                            return (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500 truncate flex-1 mr-2">
+                                  {item.title} ×{item.quantity}
+                                </span>
+                                <span className="text-amber-600 shrink-0">−{formatPrice(lineComm)} ({COMMISSION_RATE}%)</span>
+                              </div>
+                            );
+                          })}
+                          {/* Courier fee — 1x per order regardless of item count */}
+                          {deliveryMode === "courier" && (
+                            <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-1.5">
+                              <span className="text-gray-500">Kurjera savakšana <span className="text-gray-400">(1× par pasūtījumu)</span></span>
+                              <span className="text-amber-600">−{formatPrice(COURIER_FEE)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm">
+                            <span className="font-semibold text-gray-700">Tu saņemsi</span>
+                            <span className="font-bold text-green-700">{formatPrice(myNet)}</span>
                           </div>
-                        );
-                      })}
-                      {/* Courier fee — 1x per order regardless of item count */}
-                      {deliveryMode === "courier" && (
-                        <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-1.5">
-                          <span className="text-gray-500">Kurjera savakšana <span className="text-gray-400">(1× par pasūtījumu)</span></span>
-                          <span className="text-amber-600">−{formatPrice(COURIER_FEE)}</span>
                         </div>
-                      )}
-                      <div className="flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm">
-                        <span className="font-semibold text-gray-700">Tu saņemsi</span>
-                        <span className="font-bold text-green-700">{formatPrice(netForPriceWithDelivery(order.total_cents / 100, deliveryMode === "courier"))}</span>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                       <div className="flex items-center gap-1.5 text-xs text-gray-400">

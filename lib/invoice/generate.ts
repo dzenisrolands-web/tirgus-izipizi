@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
-import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, COURIER_FEE, commissionBreakdown, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
 import type { Period } from "./period";
 
 type OrderItem = {
@@ -38,6 +38,7 @@ type SellerRow = {
   bank_name: string | null;
   bank_iban: string | null;
   self_billing_agreed: boolean | null;
+  delivery_mode: string | null;
 };
 
 type GenerateResult = {
@@ -175,7 +176,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   const sellerIds = Array.from(bySeller.keys());
   const { data: sellers } = await supabase
     .from("sellers")
-    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed")
+    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed, delivery_mode")
     .in("id", sellerIds);
   const sellerMap = new Map<string, SellerRow>();
   for (const s of (sellers ?? []) as SellerRow[]) sellerMap.set(s.id, s);
@@ -236,7 +237,12 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     // agg.netCents           = gross - (commissionNet + commissionVat) per line
     const productVatCents = agg.productVatCents;
     const exVatGrossCents = agg.grossCents - productVatCents;
-    const finalNetCents = agg.netCents;
+
+    // Courier fee: deduct COURIER_FEE once per unique order if seller uses courier mode
+    const isCourier = seller.delivery_mode === "courier";
+    const uniqueOrderIds = new Set(agg.lines.map((l) => l.order_id));
+    const courierFeeCents = isCourier ? Math.round(COURIER_FEE * 100) * uniqueOrderIds.size : 0;
+    const finalNetCents = agg.netCents - courierFeeCents;
 
     // Insert invoice
     const { data: invoice, error: invErr } = await supabase
@@ -252,6 +258,8 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         total_commission_cents: agg.commissionNetCents,
         commission_vat_rate: commissionVatRate,
         commission_vat_cents: agg.commissionVatCents,
+        courier_fee_cents: courierFeeCents,
+        courier_order_count: isCourier ? uniqueOrderIds.size : 0,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,

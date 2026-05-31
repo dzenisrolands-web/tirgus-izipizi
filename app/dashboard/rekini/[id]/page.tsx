@@ -17,6 +17,8 @@ type Invoice = {
   total_net_cents: number;
   vat_rate: number | null;
   vat_amount_cents: number | null;
+  courier_fee_cents: number | null;
+  courier_order_count: number | null;
   status: string;
   generated_at: string;
   seller_legal_name: string | null;
@@ -183,6 +185,12 @@ export default function InvoiceDetailPage() {
               <div className="flex justify-between text-orange-700 text-xs">
                 <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
                 <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+              </div>
+            )}
+            {!!invoice.courier_fee_cents && invoice.courier_fee_cents > 0 && (
+              <div className="flex justify-between text-gray-600 text-xs">
+                <span>Kurjera savakšana ({invoice.courier_order_count ?? 1}× par pasūtījumu à 3,50 €):</span>
+                <span className="font-mono">−{eur(invoice.courier_fee_cents)}</span>
               </div>
             )}
             <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-extrabold text-gray-900">
