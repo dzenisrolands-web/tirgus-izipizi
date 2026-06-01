@@ -67,11 +67,12 @@ export function CatalogClient({
     if (filters.delivery === "locker") result = result.filter((l) => !l.courier_delivery && !l.express_delivery);
     if (filters.day) result = result.filter((l) => !l.dispatch_days?.length || l.dispatch_days.includes(filters.day));
     result = result.filter((l) => l.price <= filters.maxPrice);
-    if (sort === "price_asc") result.sort((a, b) => a.price - b.price);
-    else if (sort === "price_desc") result.sort((a, b) => b.price - a.price);
-    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv"));
-    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv"));
-    else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Stable sort: use id as tie-breaker so order never shuffles between loads
+    if (sort === "price_asc") result.sort((a, b) => a.price - b.price || a.id.localeCompare(b.id));
+    else if (sort === "price_desc") result.sort((a, b) => b.price - a.price || a.id.localeCompare(b.id));
+    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv") || a.id.localeCompare(b.id));
+    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv") || a.id.localeCompare(b.id));
+    else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
     return result;
   }, [filters, query, sort, storageTypes]);
 
