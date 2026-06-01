@@ -17,6 +17,36 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
+/**
+ * Round-robin interleave: take one product per seller in turn.
+ * Preserves relative order within each seller’s products (newest first).
+ * Deterministic — same input always produces same output.
+ */
+function interleaveBySeller(items: Listing[]): Listing[] {
+  // Group by seller, preserving order within each group
+  const groups = new Map<string, Listing[]>();
+  for (const item of items) {
+    const key = item.sellerId || item.seller?.name || "_";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  // Round-robin pick
+  const queues = [...groups.values()];
+  // Sort queues by first item’s date (newest seller first) for stable ordering
+  queues.sort((a, b) => b[0].createdAt.localeCompare(a[0].createdAt));
+  const out: Listing[] = [];
+  let remaining = items.length;
+  while (remaining > 0) {
+    for (const q of queues) {
+      if (q.length > 0) {
+        out.push(q.shift()!);
+        remaining--;
+      }
+    }
+  }
+  return out;
+}
+
 export function CatalogClient({
   listings,
   weeklyFeatured = [],
@@ -72,7 +102,12 @@ export function CatalogClient({
     else if (sort === "price_desc") result.sort((a, b) => b.price - a.price || a.id.localeCompare(b.id));
     else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv") || a.id.localeCompare(b.id));
     else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv") || a.id.localeCompare(b.id));
-    else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+    else {
+      // "newest" — sort by date, then interleave sellers so one seller’s products
+      // don’t dominate the top. Round-robin: take one product per seller in turn.
+      result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+      result = interleaveBySeller(result);
+    }
     return result;
   }, [filters, query, sort, storageTypes]);
 
