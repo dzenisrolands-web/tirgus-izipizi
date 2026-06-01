@@ -16,6 +16,7 @@ import {
   type LegalData,
 } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
+import { SellerCostCalculator } from "@/components/seller-cost-calculator";
 
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
@@ -490,10 +491,15 @@ export function DashboardProfileEditor() {
               ) : (
                 <p className="mt-3 text-sm italic text-gray-300">
                   + Norādi, kuros pārtikas pakomātos liksi produktus vai kurjera saņemšanas adresi
-                </p>
-              )}
-            </div>
+              </p>
+            )}
+          </div>
           </EditableSection>
+
+          {/* ── IZMAKSU KALKULATORS ── */}
+          <div className="mt-4">
+            <SellerCostCalculator isCourier={!!profile.courier_pickup_address && profile.home_locker_ids.length === 0} />
+          </div>
         </div>
 
         <div className="grid gap-10 lg:grid-cols-5 mt-4">
