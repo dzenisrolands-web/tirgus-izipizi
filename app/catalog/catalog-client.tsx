@@ -17,6 +17,36 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
+/**
+ * Round-robin interleave: take one product per seller in turn.
+ * Preserves relative order within each seller’s products (newest first).
+ * Deterministic — same input always produces same output.
+ */
+function interleaveBySeller(items: Listing[]): Listing[] {
+  // Group by seller, preserving order within each group
+  const groups = new Map<string, Listing[]>();
+  for (const item of items) {
+    const key = item.sellerId || item.seller?.name || "_";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  // Round-robin pick
+  const queues = [...groups.values()];
+  // Sort queues by first item’s date (newest seller first) for stable ordering
+  queues.sort((a, b) => b[0].createdAt.localeCompare(a[0].createdAt));
+  const out: Listing[] = [];
+  let remaining = items.length;
+  while (remaining > 0) {
+    for (const q of queues) {
+      if (q.length > 0) {
+        out.push(q.shift()!);
+        remaining--;
+      }
+    }
+  }
+  return out;
+}
+
 export function CatalogClient({
   listings,
   weeklyFeatured = [],
@@ -65,13 +95,22 @@ export function CatalogClient({
     if (filters.delivery === "courier") result = result.filter((l) => l.courier_delivery);
     if (filters.delivery === "express") result = result.filter((l) => l.express_delivery);
     if (filters.delivery === "locker") result = result.filter((l) => !l.courier_delivery && !l.express_delivery);
-    if (filters.day) result = result.filter((l) => !l.dispatch_days?.length || l.dispatch_days.includes(filters.day));
+    // Day filter: show only products that explicitly list the selected day.
+    // Products with no dispatch_days set are hidden when a specific day is selected
+    // (they haven't configured their availability).
+    if (filters.day) result = result.filter((l) => l.dispatch_days?.length && l.dispatch_days.includes(filters.day));
     result = result.filter((l) => l.price <= filters.maxPrice);
-    if (sort === "price_asc") result.sort((a, b) => a.price - b.price);
-    else if (sort === "price_desc") result.sort((a, b) => b.price - a.price);
-    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv"));
-    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv"));
-    else result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // Stable sort: use id as tie-breaker so order never shuffles between loads
+    if (sort === "price_asc") result.sort((a, b) => a.price - b.price || a.id.localeCompare(b.id));
+    else if (sort === "price_desc") result.sort((a, b) => b.price - a.price || a.id.localeCompare(b.id));
+    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv") || a.id.localeCompare(b.id));
+    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv") || a.id.localeCompare(b.id));
+    else {
+      // "newest" — sort by date, then interleave sellers so one seller’s products
+      // don’t dominate the top. Round-robin: take one product per seller in turn.
+      result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+      result = interleaveBySeller(result);
+    }
     return result;
   }, [filters, query, sort, storageTypes]);
 

@@ -13,6 +13,8 @@ type OrderRow = {
   payment_status: string | null;
   total_cents: number;
   items: Array<{ id?: string; title?: string; quantity?: number; price?: number }> | null;
+  delivery_type: string | null;
+  delivery_info: Record<string, unknown> | null;
   paid_at: string | null;
   created_at: string;
 };
@@ -51,11 +53,12 @@ export default async function StatistikaPage() {
     pwaShownRes,
     pwaAcceptedRes,
     pwaStandaloneRes,
+    lookupsRes,
   ] = await Promise.all([
     // Paid orders in the last ~50 days (covers month timeline + revenue stats)
     supabase
       .from("orders")
-      .select("id, status, payment_status, total_cents, items, paid_at, created_at")
+      .select("id, status, payment_status, total_cents, items, delivery_type, delivery_info, paid_at, created_at")
       .or(`paid_at.gte.${fortyNineDaysAgo},and(payment_status.eq.paid,created_at.gte.${fortyNineDaysAgo}),and(status.in.(paid,processing,shipped,delivered),created_at.gte.${fortyNineDaysAgo})`)
       .order("paid_at", { ascending: false }),
     // All orders (any status) for the status split
@@ -76,6 +79,12 @@ export default async function StatistikaPage() {
     supabase.from("pwa_events").select("*", { count: "exact", head: true }).eq("event_type", "prompt_shown"),
     supabase.from("pwa_events").select("*", { count: "exact", head: true }).eq("event_type", "prompt_accepted"),
     supabase.from("pwa_events").select("*", { count: "exact", head: true }).eq("event_type", "standalone_visit"),
+    // Address lookups (last 30 days)
+    supabase
+      .from("delivery_lookups")
+      .select("postal_code, city, address, zone, outside_zones, created_at")
+      .gte("created_at", monthStart)
+      .order("created_at", { ascending: false }),
   ]);
 
   const paidOrders = (paidOrdersRes.data ?? []) as OrderRow[];
@@ -169,6 +178,62 @@ export default async function StatistikaPage() {
     m[l.status] = (m[l.status] ?? 0) + 1;
     return m;
   }, {});
+
+  // D8 — Delivery method split + top addresses (last 30 days)
+  const deliveryMethodCounts: Record<string, number> = {};
+  const addressCounts = new Map<string, { address: string; city: string; postalCode: string; count: number; gmvCents: number }>();
+  const lockerCounts = new Map<string, { name: string; count: number }>();
+  for (const o of ordersMonth) {
+    const dt = (o.delivery_type as string) ?? "locker";
+    deliveryMethodCounts[dt] = (deliveryMethodCounts[dt] ?? 0) + 1;
+    const di = o.delivery_info as Record<string, unknown> | null;
+    if (di) {
+      if (dt === "locker") {
+        const name = (di.locker_name as string) ?? (di.locker_city as string) ?? "(nezināms)";
+        const cur = lockerCounts.get(name) ?? { name, count: 0 };
+        cur.count++;
+        lockerCounts.set(name, cur);
+      } else {
+        const addr = (di.address as string) ?? "";
+        const city = (di.city as string) ?? "";
+        const pc = (di.postal_code as string) ?? "";
+        if (addr || city) {
+          const key = `${addr}|${city}|${pc}`;
+          const cur = addressCounts.get(key) ?? { address: addr, city, postalCode: pc, count: 0, gmvCents: 0 };
+          cur.count++;
+          cur.gmvCents += o.total_cents ?? 0;
+          addressCounts.set(key, cur);
+        }
+      }
+    }
+  }
+  const topAddresses = [...addressCounts.values()].sort((a, b) => b.count - a.count).slice(0, 10);
+  const topLockers = [...lockerCounts.values()].sort((a, b) => b.count - a.count);
+  const deliveryMethodLabels: Record<string, string> = {
+    locker: "Pakomāts", courier: "Kurjers", express: "Ekspres",
+  };
+
+  // D9 — Address lookups (demand analytics — all visitors, not just buyers)
+  type LookupRow = { postal_code: string | null; city: string | null; address: string | null; zone: number | null; outside_zones: boolean };
+  const lookups = (lookupsRes.data ?? []) as LookupRow[];
+  const lookupByPostal = new Map<string, { postalCode: string; city: string; count: number; zone: number | null; outsideZones: boolean }>();
+  const lookupByCity = new Map<string, { city: string; count: number }>();
+  let lookupOutsideCount = 0;
+  for (const l of lookups) {
+    if (l.postal_code) {
+      const cur = lookupByPostal.get(l.postal_code) ?? { postalCode: l.postal_code, city: l.city ?? "", count: 0, zone: l.zone, outsideZones: l.outside_zones };
+      cur.count++;
+      lookupByPostal.set(l.postal_code, cur);
+    }
+    if (l.city) {
+      const cur = lookupByCity.get(l.city) ?? { city: l.city, count: 0 };
+      cur.count++;
+      lookupByCity.set(l.city, cur);
+    }
+    if (l.outside_zones) lookupOutsideCount++;
+  }
+  const topLookupPostals = [...lookupByPostal.values()].sort((a, b) => b.count - a.count).slice(0, 15);
+  const topLookupCities = [...lookupByCity.values()].sort((a, b) => b.count - a.count).slice(0, 10);
 
   // Build per-day buckets for the timeline (last 30 days)
   const days: { date: string; count: number; gmvCents: number }[] = [];
@@ -304,6 +369,110 @@ export default async function StatistikaPage() {
           )}
         </section>
       </div>
+
+      {/* D8 — Delivery stats */}
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Piegādes veidi · 30d</h2>
+          <ul className="mt-3 space-y-2">
+            {Object.entries(deliveryMethodCounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+              <li key={k} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">{deliveryMethodLabels[k] ?? k}</span>
+                <span className="font-semibold text-gray-900">{n}</span>
+              </li>
+            ))}
+            {Object.keys(deliveryMethodCounts).length === 0 && (
+              <li className="text-sm text-gray-400">Nav datu.</li>
+            )}
+          </ul>
+        </section>
+
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Top pakomāti · 30d</h2>
+          {topLockers.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-400">Nav pakomātu pasūtījumu.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {topLockers.map((l) => (
+                <li key={l.name} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">{l.name}</span>
+                  <span className="font-semibold text-gray-900">{l.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Top adreses (kurjers) · 30d</h2>
+          {topAddresses.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-400">Nav kurjera pasūtījumu.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {topAddresses.map((a, i) => (
+                <li key={i} className="text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700 truncate">{a.address}{a.city ? `, ${a.city}` : ""}</span>
+                    <span className="font-semibold text-gray-900 shrink-0 ml-2">{a.count}×</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>LV-{a.postalCode}</span>
+                    <span>{formatPrice(a.gmvCents / 100)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      {/* D9 — Address lookups (demand analytics) */}
+      <section className="mt-8 rounded-xl border border-purple-200 bg-purple-50 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold text-purple-900">Adrešu meklējumi · 30d</h2>
+          <p className="text-xs text-purple-700 mt-0.5">
+            Visas adreses, ko lietotāji ievadījuši piegādes laukā (arī bez pirkuma). Kopā: <strong>{lookups.length}</strong>
+            {lookupOutsideCount > 0 && <> · ārpus zonām: <strong>{lookupOutsideCount}</strong></>}
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2">Top pasta indeksi</p>
+            {topLookupPostals.length === 0 ? (
+              <p className="text-sm text-purple-300 italic">Vēl nav datu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {topLookupPostals.map((l) => (
+                  <li key={l.postalCode} className="flex items-center justify-between text-sm">
+                    <span className="text-purple-900">
+                      <span className="font-mono font-semibold">LV-{l.postalCode}</span>
+                      {l.city && <span className="text-purple-600 ml-1.5">{l.city}</span>}
+                      {l.zone !== null && <span className="text-purple-400 ml-1 text-xs">(Z{l.zone})</span>}
+                      {l.outsideZones && <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold text-amber-700">ārpus</span>}
+                    </span>
+                    <span className="font-bold text-purple-900">{l.count}×</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2">Top pilsētas</p>
+            {topLookupCities.length === 0 ? (
+              <p className="text-sm text-purple-300 italic">Vēl nav datu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {topLookupCities.map((c) => (
+                  <li key={c.city} className="flex items-center justify-between text-sm">
+                    <span className="text-purple-900">{c.city}</span>
+                    <span className="font-bold text-purple-900">{c.count}×</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* G3 expiring soon */}
       <section className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5">
