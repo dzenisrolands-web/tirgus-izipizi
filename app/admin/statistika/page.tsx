@@ -54,6 +54,7 @@ export default async function StatistikaPage() {
     pwaAcceptedRes,
     pwaStandaloneRes,
     lookupsRes,
+    pageViewsRes,
   ] = await Promise.all([
     // Paid orders in the last ~50 days (covers month timeline + revenue stats)
     supabase
@@ -85,6 +86,11 @@ export default async function StatistikaPage() {
       .select("postal_code, city, address, zone, outside_zones, created_at")
       .gte("created_at", monthStart)
       .order("created_at", { ascending: false }),
+    // Page views (last 30 days)
+    supabase
+      .from("page_views")
+      .select("path, created_at")
+      .gte("created_at", monthStart),
   ]);
 
   const paidOrders = (paidOrdersRes.data ?? []) as OrderRow[];
@@ -235,6 +241,32 @@ export default async function StatistikaPage() {
   const topLookupPostals = [...lookupByPostal.values()].sort((a, b) => b.count - a.count).slice(0, 15);
   const topLookupCities = [...lookupByCity.values()].sort((a, b) => b.count - a.count).slice(0, 10);
 
+  // D10 — Page views (visitor analytics)
+  type PvRow = { path: string; created_at: string };
+  const pageViews = (pageViewsRes.data ?? []) as PvRow[];
+  const pvToday = pageViews.filter((p) => inRange(p.created_at, todayStart)).length;
+  const pvWeek = pageViews.filter((p) => inRange(p.created_at, weekStart)).length;
+  const pvMonth = pageViews.length;
+  // Top pages
+  const pvByPath = new Map<string, number>();
+  const pvByDay = new Map<string, number>();
+  for (const p of pageViews) {
+    pvByPath.set(p.path, (pvByPath.get(p.path) ?? 0) + 1);
+    const day = p.created_at?.split("T")[0] ?? "";
+    if (day) pvByDay.set(day, (pvByDay.get(day) ?? 0) + 1);
+  }
+  const topPages = [...pvByPath.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([path, count]) => ({ path, count }));
+  // Daily trend
+  const pvDays: { date: string; views: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    pvDays.push({ date: key, views: pvByDay.get(key) ?? 0 });
+  }
+
   // Build per-day buckets for the timeline (last 30 days)
   const days: { date: string; count: number; gmvCents: number }[] = [];
   for (let i = 29; i >= 0; i--) {
@@ -267,9 +299,9 @@ export default async function StatistikaPage() {
 
       {/* Top KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi title="Šodien" value={`${ordersToday.length}`} sub="pasūtījumi" />
-        <Kpi title="Nedēļa" value={`${ordersWeek.length}`} sub="pasūtījumi" />
-        <Kpi title="Mēnesis" value={`${ordersMonth.length}`} sub="pasūtījumi" />
+        <Kpi title="Šodien" value={`${ordersToday.length}`} sub={`${pvToday} skatījumi`} />
+        <Kpi title="Nedēļa" value={`${ordersWeek.length}`} sub={`${pvWeek} skatījumi`} />
+        <Kpi title="Mēnesis" value={`${ordersMonth.length}`} sub={`${pvMonth} skatījumi`} />
         <Kpi title="GMV / 30d" value={formatPrice(gmvMonth / 100)} sub={`vid. ${formatPrice(aovMonth / 100)}/pas.`} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -470,6 +502,55 @@ export default async function StatistikaPage() {
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* D10 — Visitor stats */}
+      <section className="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold text-blue-900">Lapas apmeklējumi · 30d</h2>
+          <p className="text-xs text-blue-700 mt-0.5">
+            Kopā: <strong>{pvMonth}</strong> · šodien: <strong>{pvToday}</strong> · nedēļā: <strong>{pvWeek}</strong>
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-2">Top lapas</p>
+            {topPages.length === 0 ? (
+              <p className="text-sm text-blue-300 italic">Vēl nav datu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {topPages.map((p) => (
+                  <li key={p.path} className="flex items-center justify-between text-sm">
+                    <span className="text-blue-900 font-mono text-xs truncate">{p.path}</span>
+                    <span className="font-bold text-blue-900 shrink-0 ml-2">{p.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-2">Pa dienām</p>
+            <div className="flex items-end gap-px h-24">
+              {pvDays.map((d) => {
+                const max = Math.max(...pvDays.map((x) => x.views), 1);
+                const h = Math.max(2, (d.views / max) * 100);
+                return (
+                  <div key={d.date} className="flex-1 group relative">
+                    <div
+                      className="w-full rounded-t bg-blue-400 hover:bg-blue-600 transition"
+                      style={{ height: `${h}%` }}
+                      title={`${d.date}: ${d.views}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[9px] text-blue-400 mt-1">
+              <span>{pvDays[0]?.date.slice(5)}</span>
+              <span>{pvDays[pvDays.length - 1]?.date.slice(5)}</span>
+            </div>
           </div>
         </div>
       </section>
