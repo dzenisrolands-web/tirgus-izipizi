@@ -78,6 +78,19 @@ export function BuyerAddressProvider({ children }: { children: ReactNode }) {
     }
     setAddressState(next);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+
+    // Track address lookup for demand analytics (fire-and-forget)
+    fetch("/api/track-address", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        postal_code: next.postalCode,
+        city: next.city,
+        address: next.fullText,
+        zone: next.zone,
+        outside_zones: next.outsideZones,
+      }),
+    }).catch(() => {});
   }
 
   function clear() {
