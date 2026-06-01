@@ -13,6 +13,8 @@ type OrderRow = {
   payment_status: string | null;
   total_cents: number;
   items: Array<{ id?: string; title?: string; quantity?: number; price?: number }> | null;
+  delivery_type: string | null;
+  delivery_info: Record<string, unknown> | null;
   paid_at: string | null;
   created_at: string;
 };
@@ -55,7 +57,7 @@ export default async function StatistikaPage() {
     // Paid orders in the last ~50 days (covers month timeline + revenue stats)
     supabase
       .from("orders")
-      .select("id, status, payment_status, total_cents, items, paid_at, created_at")
+      .select("id, status, payment_status, total_cents, items, delivery_type, delivery_info, paid_at, created_at")
       .or(`paid_at.gte.${fortyNineDaysAgo},and(payment_status.eq.paid,created_at.gte.${fortyNineDaysAgo}),and(status.in.(paid,processing,shipped,delivered),created_at.gte.${fortyNineDaysAgo})`)
       .order("paid_at", { ascending: false }),
     // All orders (any status) for the status split
@@ -169,6 +171,40 @@ export default async function StatistikaPage() {
     m[l.status] = (m[l.status] ?? 0) + 1;
     return m;
   }, {});
+
+  // D8 — Delivery method split + top addresses (last 30 days)
+  const deliveryMethodCounts: Record<string, number> = {};
+  const addressCounts = new Map<string, { address: string; city: string; postalCode: string; count: number; gmvCents: number }>();
+  const lockerCounts = new Map<string, { name: string; count: number }>();
+  for (const o of ordersMonth) {
+    const dt = (o.delivery_type as string) ?? "locker";
+    deliveryMethodCounts[dt] = (deliveryMethodCounts[dt] ?? 0) + 1;
+    const di = o.delivery_info as Record<string, unknown> | null;
+    if (di) {
+      if (dt === "locker") {
+        const name = (di.locker_name as string) ?? (di.locker_city as string) ?? "(nezināms)";
+        const cur = lockerCounts.get(name) ?? { name, count: 0 };
+        cur.count++;
+        lockerCounts.set(name, cur);
+      } else {
+        const addr = (di.address as string) ?? "";
+        const city = (di.city as string) ?? "";
+        const pc = (di.postal_code as string) ?? "";
+        if (addr || city) {
+          const key = `${addr}|${city}|${pc}`;
+          const cur = addressCounts.get(key) ?? { address: addr, city, postalCode: pc, count: 0, gmvCents: 0 };
+          cur.count++;
+          cur.gmvCents += o.total_cents ?? 0;
+          addressCounts.set(key, cur);
+        }
+      }
+    }
+  }
+  const topAddresses = [...addressCounts.values()].sort((a, b) => b.count - a.count).slice(0, 10);
+  const topLockers = [...lockerCounts.values()].sort((a, b) => b.count - a.count);
+  const deliveryMethodLabels: Record<string, string> = {
+    locker: "Pakomāts", courier: "Kurjers", express: "Ekspres",
+  };
 
   // Build per-day buckets for the timeline (last 30 days)
   const days: { date: string; count: number; gmvCents: number }[] = [];
@@ -301,6 +337,62 @@ export default async function StatistikaPage() {
                 ))}
               </tbody>
             </table>
+          )}
+        </section>
+      </div>
+
+      {/* D8 — Delivery stats */}
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Piegādes veidi · 30d</h2>
+          <ul className="mt-3 space-y-2">
+            {Object.entries(deliveryMethodCounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+              <li key={k} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">{deliveryMethodLabels[k] ?? k}</span>
+                <span className="font-semibold text-gray-900">{n}</span>
+              </li>
+            ))}
+            {Object.keys(deliveryMethodCounts).length === 0 && (
+              <li className="text-sm text-gray-400">Nav datu.</li>
+            )}
+          </ul>
+        </section>
+
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Top pakomāti · 30d</h2>
+          {topLockers.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-400">Nav pakomātu pasūtījumu.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {topLockers.map((l) => (
+                <li key={l.name} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">{l.name}</span>
+                  <span className="font-semibold text-gray-900">{l.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Top adreses (kurjers) · 30d</h2>
+          {topAddresses.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-400">Nav kurjera pasūtījumu.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {topAddresses.map((a, i) => (
+                <li key={i} className="text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-700 truncate">{a.address}{a.city ? `, ${a.city}` : ""}</span>
+                    <span className="font-semibold text-gray-900 shrink-0 ml-2">{a.count}×</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>LV-{a.postalCode}</span>
+                    <span>{formatPrice(a.gmvCents / 100)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </div>
