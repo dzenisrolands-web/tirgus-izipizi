@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
+import { SellerCostCalculator } from "@/components/seller-cost-calculator";
 
 const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Nodošana", "Juridiskā info"];
 const SELF_BILLING_VERSION = "1.0";
@@ -403,10 +404,6 @@ export function OnboardingForm() {
             {/* Courier pickup address */}
             {form.delivery_mode === "courier" && (
               <div>
-                <div className="mb-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
-                  <p className="font-semibold text-amber-800">Kurjera izmaksas: <span className="text-amber-900">€3,50 par katru piegādi</span></p>
-                  <p className="text-xs text-amber-700 mt-0.5">Summa tiek ieturēta no Tavas izmaksas par katru pasūtījumu. pārtikas pakomāta režīmā — bez maksas.</p>
-                </div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Adrese, kur kurjers paņems produktus *
                 </label>
@@ -421,6 +418,9 @@ export function OnboardingForm() {
                 />
               </div>
             )}
+
+            {/* Cost calculator — shows immediately based on delivery mode */}
+            <SellerCostCalculator isCourier={form.delivery_mode === "courier"} />
           </div>
         )}
 
