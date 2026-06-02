@@ -17,6 +17,7 @@ import { PWAInstallTracker } from "@/components/pwa-install-tracker";
 import { PWAInstallButton } from "@/components/pwa-install-button";
 import { Analytics } from "@vercel/analytics/next";
 import { PageviewTracker } from "@/components/pageview-tracker";
+import { EmailSubscribeBanner } from "@/components/email-subscribe-banner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({
@@ -187,6 +188,7 @@ export default function RootLayout({
         </CartProvider>
         <CookieConsent />
         <FeedbackWidget />
+        <EmailSubscribeBanner />
         <footer className="mt-20 border-t border-gray-100 bg-gray-50">
           <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
