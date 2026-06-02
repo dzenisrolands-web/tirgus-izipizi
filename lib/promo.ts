@@ -121,13 +121,14 @@ export async function redeemPromoCode(
   });
 
   // Increment used_count
-  await supabase.rpc("increment_promo_used_count", { promo_id: promo.id }).catch(() => {
-    // Fallback if RPC doesn't exist
-    supabase
+  const { error: rpcErr } = await supabase.rpc("increment_promo_used_count", { promo_id: promo.id });
+  if (rpcErr) {
+    // Fallback: direct update if RPC doesn't exist
+    await supabase
       .from("promo_codes")
       .update({ used_count: (promo as Record<string, unknown>).used_count as number + 1 })
       .eq("id", promo.id);
-  });
+  }
 
   // Decrement user's free_delivery_credits if applicable
   if (userId) {
