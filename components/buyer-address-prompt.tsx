@@ -101,7 +101,7 @@ export function BuyerAddressPrompt() {
             className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900"
           >
             <MapPin size={12} className="text-gray-400" />
-            <span>Ievadi savu adresi, lai redzētu piegādes cenas</span>
+            <span>Kur tev ērtāk saņemt? Ievadi adresi</span>
             <ChevronDown size={11} />
           </button>
         </div>
@@ -131,10 +131,10 @@ export function BuyerAddressPrompt() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-900">
-              Ievadi savu adresi, lai redzētu īstās cenas
+              Kur tev ērtāk saņemt?
             </p>
             <p className="text-xs text-gray-600">
-              Katram produktam rādīsim, cik maksās piegāde tieši pie tevis.
+              Ievadi adresi — parādīsim tuvākos pakomātus un piegādes iespējas.
             </p>
           </div>
         </div>
