@@ -337,8 +337,136 @@ export default function AdminPage() {
         ))}
       </div>
 
+      <EmailSubscribersPanel />
       <EmailTestPanel />
     </div>
+  );
+}
+
+function EmailSubscribersPanel() {
+  const [subs, setSubs] = useState<{ id: string; email: string; name: string | null; source: string; mailerlite_synced: boolean; subscribed_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncAllLoading, setSyncAllLoading] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("email_subscribers")
+        .select("id, email, name, source, mailerlite_synced, subscribed_at")
+        .is("unsubscribed_at", null)
+        .order("subscribed_at", { ascending: false });
+      setSubs(data ?? []);
+      setLoading(false);
+    })();
+  }, []);
+
+  async function syncOne(id: string, email: string, name: string | null) {
+    setSyncing(id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/subscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify({ email, name: name ?? undefined, source: "admin_sync" }),
+    });
+    const result = await res.json();
+    if (result.mailerliteSynced) {
+      setSubs(prev => prev.map(s => s.id === id ? { ...s, mailerlite_synced: true } : s));
+    }
+    setSyncing(null);
+  }
+
+  async function syncAll() {
+    setSyncAllLoading(true);
+    setSyncMsg("");
+    const unsynced = subs.filter(s => !s.mailerlite_synced);
+    let ok = 0;
+    for (const s of unsynced) {
+      await syncOne(s.id, s.email, s.name);
+      ok++;
+    }
+    setSyncMsg(`Sinhronizēti ${ok} no ${unsynced.length}`);
+    setSyncAllLoading(false);
+  }
+
+  const total = subs.length;
+  const synced = subs.filter(s => s.mailerlite_synced).length;
+  const unsynced = total - synced;
+
+  return (
+    <section className="mt-8">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Mail size={18} className="text-purple-600" />
+          <h2 className="text-lg font-bold text-gray-900">
+            E-pasta abonenti
+            <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-bold text-purple-700">{total}</span>
+          </h2>
+        </div>
+        {unsynced > 0 && (
+          <button
+            onClick={syncAll}
+            disabled={syncAllLoading}
+            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50 transition"
+          >
+            {syncAllLoading ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            Sync visu uz MailerLite ({unsynced})
+          </button>
+        )}
+      </div>
+
+      {syncMsg && (
+        <div className="mb-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
+          {syncMsg}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={16} className="animate-spin text-gray-400" />
+          </div>
+        ) : subs.length === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-400">Nav neviena abonenta</div>
+        ) : (
+          <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+            {subs.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{s.email}</p>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+                    {s.name && <span>{s.name}</span>}
+                    <span className="rounded bg-gray-100 px-1 py-0.5">{s.source}</span>
+                    <span>{new Date(s.subscribed_at).toLocaleDateString("lv-LV")}</span>
+                  </div>
+                </div>
+                {s.mailerlite_synced ? (
+                  <span className="flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                    <CheckCircle size={10} /> ML
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => syncOne(s.id, s.email, s.name)}
+                    disabled={syncing === s.id}
+                    className="flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50 transition"
+                  >
+                    {syncing === s.id ? <Loader2 size={9} className="animate-spin" /> : <Send size={9} />}
+                    Sync
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-[10px] text-gray-400">
+        Kopā: {total} · MailerLite: {synced} · Nav sync: {unsynced}
+      </p>
+    </section>
   );
 }
 
