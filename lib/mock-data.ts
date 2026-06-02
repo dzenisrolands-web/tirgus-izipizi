@@ -86,9 +86,7 @@ export const lockers: Locker[] = [
     "name": "Ilūkstes iela 40A",
     "address": "Ilūkstes iela 40A",
     "city": "Rīga",
-    "hours": "24/7",
-    "coming_soon": true,
-    "opening_label": "Nākamnedēļ!"
+    "hours": "24/7"
   },
   // --- Drīzumā (nākamie pakomāti) ---
   {

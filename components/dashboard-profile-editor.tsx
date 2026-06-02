@@ -30,6 +30,7 @@ const LOCKERS = [
   { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
   { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
   { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
+  { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
 ];
 
 type Profile = LegalData & {
