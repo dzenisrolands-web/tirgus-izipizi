@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Star, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
+import { MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
 import { formatPrice, daysUntil, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
@@ -89,9 +89,6 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <div className="flex items-center gap-1">
           {listing.seller.verified && <CheckCircle size={12} className="shrink-0 text-brand-600" />}
           <span className="truncate text-xs text-gray-500">{listing.seller.farmName}</span>
-          <span className="ml-auto flex shrink-0 items-center gap-0.5 text-xs text-amber-500">
-            <Star size={11} fill="currentColor" />{listing.seller.rating}
-          </span>
         </div>
 
         {listing.seller.location && (
@@ -117,16 +114,21 @@ export function ListingCard({ listing }: { listing: Listing }) {
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-1 pt-0.5">
+        <div className="flex items-center justify-between gap-1.5 pt-1">
           <div className="flex items-baseline gap-1 min-w-0">
             {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
             <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
             {!hasVariants && <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>}
           </div>
-          <button onClick={handleAddToCart} title={added ? "Pievienots!" : "Ielikt grozā"}
-            className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all",
-              added ? "bg-green-500 text-white" : "bg-[#192635] text-white hover:bg-[#243647]")}>
-            {added ? <Check size={14} /> : <ShoppingCart size={14} />}
+          <button onClick={handleAddToCart}
+            className={cn(
+              "flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+              added
+                ? "bg-green-500 text-white"
+                : "text-[#192635] hover:opacity-80"
+            )}
+            style={!added ? { background: "linear-gradient(90deg, #53F3A4, #AD47FF)" } : undefined}>
+            {added ? <><Check size={12} /> Piev.</> : "Grozā"}
           </button>
         </div>
       </div>
