@@ -63,9 +63,14 @@ function CallbackHandler() {
         let effectiveRole = existingProfile?.role;
         if (!effectiveRole) {
           const newRole = requestedRole === "seller" ? "seller" : "buyer";
+          // Grant 1 free delivery credit to new buyers
           await supabase
             .from("profiles")
-            .upsert({ id: user.id, role: newRole }, { onConflict: "id" });
+            .upsert({
+              id: user.id,
+              role: newRole,
+              ...(newRole === "buyer" ? { free_delivery_credits: 1 } : {}),
+            }, { onConflict: "id" });
           effectiveRole = newRole;
         }
 

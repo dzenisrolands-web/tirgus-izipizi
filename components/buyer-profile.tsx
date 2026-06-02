@@ -13,13 +13,14 @@ type Stats = {
   orderCount: number;
   pendingCount: number;
   followingCount: number;
+  freeDeliveryCredits: number;
 };
 
 export function BuyerProfile() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0 });
+  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0, freeDeliveryCredits: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,16 +51,19 @@ export function BuyerProfile() {
         { count: orderCount },
         { count: pendingCount },
         { count: followingCount },
+        { data: profileData },
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("buyer_email", userEmail),
         supabase.from("orders").select("*", { count: "exact", head: true })
           .eq("buyer_email", userEmail).in("status", ["pending", "paid", "processing", "shipped"]),
         supabase.from("seller_followers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("profiles").select("free_delivery_credits").eq("id", user.id).single(),
       ]);
       setStats({
         orderCount: orderCount ?? 0,
         pendingCount: pendingCount ?? 0,
         followingCount: followingCount ?? 0,
+        freeDeliveryCredits: profileData?.free_delivery_credits ?? 0,
       });
       setLoading(false);
     }
@@ -139,11 +143,13 @@ export function BuyerProfile() {
             badge={stats.followingCount > 0 ? stats.followingCount : undefined}
           />
           <NavCard
-            href="#"
+            href="/cart"
             icon={<Gift size={18} className="text-purple-600" />}
-            title="Mani bonusi"
-            desc="Drīz: bezmaksas sūtījumi, atlaides un dāvanas"
-            disabled
+            title={stats.freeDeliveryCredits > 0 ? `Bezmaksas piegāde (${stats.freeDeliveryCredits}×)` : "Mani bonusi"}
+            desc={stats.freeDeliveryCredits > 0
+              ? "Izmanto kodu PIRMAIS checkout laikā — piegāde par brīvu!"
+              : "Nav neizmantotu bonusu"}
+            badge={stats.freeDeliveryCredits > 0 ? stats.freeDeliveryCredits : undefined}
           />
           <NavCard
             href="/cart"
