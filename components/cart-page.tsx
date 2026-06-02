@@ -134,13 +134,13 @@ export function CartPage() {
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ code: promoCode, deliveryFeeCents: Math.round(deliveryFee * 100) }),
+        body: JSON.stringify({ code: promoCode, deliveryFeeCents: Math.round(deliveryFee * 100), deliveryType: deliveryMethod }),
       });
       const result = await res.json();
       if (result.valid) {
         setPromoValid(true);
         setPromoDiscount(result.discountCents);
-        setPromoMsg(`✓ Bezmaksas piegāde! Ietaupījums: ${(result.discountCents / 100).toFixed(2)} €`);
+        setPromoMsg(`✓ Bezmaksas pakomāts! Ietaupījums: ${(result.discountCents / 100).toFixed(2)} €`);
       } else {
         setPromoValid(false);
         setPromoDiscount(0);

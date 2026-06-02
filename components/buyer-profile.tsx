@@ -145,9 +145,9 @@ export function BuyerProfile() {
           <NavCard
             href="/cart"
             icon={<Gift size={18} className="text-purple-600" />}
-            title={stats.freeDeliveryCredits > 0 ? `Bezmaksas piegāde (${stats.freeDeliveryCredits}×)` : "Mani bonusi"}
+            title={stats.freeDeliveryCredits > 0 ? `Bezmaksas pakomāts (${stats.freeDeliveryCredits}×)` : "Mani bonusi"}
             desc={stats.freeDeliveryCredits > 0
-              ? "Izmanto kodu PIRMAIS checkout laikā — piegāde par brīvu!"
+              ? "Izmanto kodu PIRMAIS checkout laikā — pirmais pakomāts par brīvu!"
               : "Nav neizmantotu bonusu"}
             badge={stats.freeDeliveryCredits > 0 ? stats.freeDeliveryCredits : undefined}
           />

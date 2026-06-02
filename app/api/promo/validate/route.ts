@@ -8,9 +8,10 @@ import { validatePromoCode } from "@/lib/promo";
  */
 export async function POST(req: Request) {
   try {
-    const { code, deliveryFeeCents } = (await req.json()) as {
+    const { code, deliveryFeeCents, deliveryType } = (await req.json()) as {
       code: string;
       deliveryFeeCents: number;
+      deliveryType?: string;
     };
 
     // Get user from auth header
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       if (user) userId = user.id;
     }
 
-    const result = await validatePromoCode(code, userId, deliveryFeeCents ?? 0);
+    const result = await validatePromoCode(code, userId, deliveryFeeCents ?? 0, deliveryType ?? "locker");
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ valid: false, reason: "Kļūda" }, { status: 500 });

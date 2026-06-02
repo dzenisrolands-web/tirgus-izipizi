@@ -114,6 +114,7 @@ export async function POST(req: Request) {
       body.promoCode,
       buyerId,
       body.deliveryFeeCents ?? 0,
+      deliveryType,
     );
     if (promoResult.valid && promoResult.discountCents) {
       promoDiscountCents = promoResult.discountCents;

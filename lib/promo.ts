@@ -30,6 +30,7 @@ export async function validatePromoCode(
   code: string,
   userId: string | null,
   deliveryFeeCents: number,
+  deliveryType: string = "locker",
 ): Promise<PromoResult> {
   const supabase = svc();
   const normalized = code.trim().toUpperCase();
@@ -69,7 +70,12 @@ export async function validatePromoCode(
     }
   }
 
-  // 5. Calculate discount
+  // 5. PIRMAIS works only with locker delivery
+  if (normalized === "PIRMAIS" && deliveryType !== "locker") {
+    return { valid: false, reason: "Kods PIRMAIS darbojas tikai ar pakomātu piegādi" };
+  }
+
+  // 6. Calculate discount
   let discountCents = 0;
   if (promo.type === "free_delivery") {
     discountCents = deliveryFeeCents; // full delivery fee waived
