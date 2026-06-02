@@ -111,7 +111,7 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Pārtikas pakomāts</h3>
               <p className="mt-0.5 text-xs text-gray-500">Saņem kad ērti — 24/7</p>
-              <p className="mt-3 text-xl font-extrabold text-brand-700">3€ par skapīti</p>
+              <p className="mt-3 text-xl font-extrabold text-brand-700">no 3 €</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Pieejams 24/7</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Temp. kontrole +2°C – −18°C</li>
@@ -260,7 +260,7 @@ export default function PiegadePage() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                3 € par skapīti — neatkarīgi no pārtikas pakomāta atrašanās vai attāluma. Ja pasūtījumā ir gan dzesēti, gan saldēti produkti — 2 skapīši × 3 €.
+                No 3 € — neatkarīgi no pārtikas pakomāta atrašanās vai attāluma. Ja pasūtījumā ir gan dzesēti, gan saldēti produkti — 2 temperaturas zonas × 3 €.
               </p>
             </div>
 

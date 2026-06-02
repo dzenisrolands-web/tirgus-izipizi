@@ -470,7 +470,7 @@ export function CartPage() {
                   label="pārtikas pakomāts"
                   price={sellerGroups.length > 0
                     ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : `${LOCKER_FEE.toFixed(2)} €/skapītis`}
+                    : `no ${LOCKER_FEE.toFixed(2)} €`}
                   hint="24/7 piekļuve · Lētākais"
                   highlight
                 />

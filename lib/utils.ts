@@ -32,9 +32,9 @@ export const storageConfig = {
   chilled: { label: "+2°C – +6°C",  icon: "", cls: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
 };
 
-// Pakomāts piegādes maksa — 3.00 € par skapīti (vienā temperatūras zonā).
+// Pakomāts piegādes maksa — no 3.00 € (vienā temperatūras zonā).
 // Ja pasūtījums ietver 2 temperatūras zonas (dzesēts + saldēts), tiek
-// rezervēti 2 skapīši → 6 €. Logika: cart-page.tsx.
+// rezervēti 2 zonas → 6 €. Loģika: cart-page.tsx.
 // Kurjers un eksprespiegāde: maksa pēc zonām (tarifs), maksā PIRCĒJS.
 export const LOCKER_FEE = 3.00;
 

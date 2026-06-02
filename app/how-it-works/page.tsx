@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 const FAQ_HOW = [
-  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
+  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — no 3 €, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
   { q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?", a: "Produkti pārtikas pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam." },
   { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "pārtikas pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pārtikas pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
   { q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?", a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas." },
@@ -45,7 +45,7 @@ const buyerSteps = [
   {
     icon: <Truck size={22} />,
     title: "Izvēlies piegādes veidu",
-    desc: "pārtikas pakomāts (3 €/skapītis), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
+    desc: "pārtikas pakomāts (no 3 €), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
   },
   {
     icon: <CreditCard size={22} />,
@@ -188,7 +188,7 @@ export default function HowItWorksPage() {
           {[
             {
               q: "Kādi piegādes veidi ir pieejami?",
-              a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — 3 € par skapīti, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
+              a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — no 3 €, izņem 24/7 jebkurā no 6+ pārtikas pakomātiem Latvijā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
             },
             {
               q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?",
