@@ -115,6 +115,43 @@ export function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
 
+  // Promo code
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0); // cents
+  const [promoMsg, setPromoMsg] = useState("");
+  const [promoValid, setPromoValid] = useState(false);
+  const [promoChecking, setPromoChecking] = useState(false);
+
+  async function checkPromo() {
+    if (!promoCode.trim()) return;
+    setPromoChecking(true);
+    setPromoMsg("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ code: promoCode, deliveryFeeCents: Math.round(deliveryFee * 100) }),
+      });
+      const result = await res.json();
+      if (result.valid) {
+        setPromoValid(true);
+        setPromoDiscount(result.discountCents);
+        setPromoMsg(`✓ Bezmaksas piegāde! Ietaupījums: ${(result.discountCents / 100).toFixed(2)} €`);
+      } else {
+        setPromoValid(false);
+        setPromoDiscount(0);
+        setPromoMsg(result.reason ?? "Kods nav derīgs");
+      }
+    } catch {
+      setPromoMsg("Kļūda pārbaudot kodu");
+    }
+    setPromoChecking(false);
+  }
+
   // Fetch seller info (drop-off lockers, courier pickup address) for items in cart
   const [sellersById, setSellersById] = useState<Map<string, SellerInfo>>(new Map());
   useEffect(() => {
@@ -208,7 +245,7 @@ export function CartPage() {
   // Now that zonePricing is defined, compute available time slots
   const availableTimeSlots = getTimeSlots(zonePricing?.zone ?? null, deliveryMethod);
 
-  const grandTotal = total + deliveryFee;
+  const grandTotal = total + deliveryFee - (promoValid ? promoDiscount / 100 : 0);
 
   const cartItemIds = new Set(items.map((i) => i.id));
   const sellerIds = new Set(items.map((i) => {
@@ -320,6 +357,7 @@ export function CartPage() {
           contact: { name: form.name, email: form.email, phone: form.phone },
           sellerIds: uniqueSellerIds,
           totalCents: Math.round(grandTotal * 100),
+          promoCode: promoValid ? promoCode.trim().toUpperCase() : undefined,
           // Delivery fee breakdown — one fee per seller, commission per product
           deliveryFeeCents: Math.round(deliveryFee * 100),
           deliveryFeesBySeller: sellerGroups.map((g) => ({
@@ -997,6 +1035,16 @@ export function CartPage() {
                 </>
               )}
 
+              {/* Promo discount */}
+              {promoValid && promoDiscount > 0 && step !== "cart" && (
+                <div className="flex justify-between text-green-700 text-xs">
+                  <span className="flex items-center gap-1">
+                    <Tag size={11} /> Promo: {promoCode.toUpperCase()}
+                  </span>
+                  <span>−{formatPrice(promoDiscount / 100)}</span>
+                </div>
+              )}
+
               <div className="border-t border-gray-100 pt-2 flex justify-between font-extrabold text-gray-900 text-base">
                 <span>Kopā</span>
                 <span>{formatPrice(step === "cart" ? total : grandTotal)}</span>
@@ -1011,6 +1059,38 @@ export function CartPage() {
               >
                 Uz piegādi <ChevronRight size={16} />
               </button>
+            )}
+
+            {/* Promo code input — visible on delivery + confirm steps */}
+            {step !== "cart" && (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-500">Promo kods</p>
+                <div className="flex gap-2">
+                  <input
+                    value={promoCode}
+                    onChange={(e) => { setPromoCode(e.target.value); setPromoValid(false); setPromoMsg(""); setPromoDiscount(0); }}
+                    placeholder="PIRMAIS"
+                    className="input flex-1 text-sm font-mono uppercase"
+                    disabled={promoValid}
+                  />
+                  {promoValid ? (
+                    <button onClick={() => { setPromoCode(""); setPromoValid(false); setPromoDiscount(0); setPromoMsg(""); }}
+                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100">
+                      Noņemt
+                    </button>
+                  ) : (
+                    <button onClick={checkPromo} disabled={promoChecking || !promoCode.trim()}
+                      className="rounded-lg bg-[#192635] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243647] disabled:opacity-40">
+                      {promoChecking ? <Loader2 size={12} className="animate-spin" /> : "Pielietot"}
+                    </button>
+                  )}
+                </div>
+                {promoMsg && (
+                  <p className={`text-xs ${promoValid ? "text-green-700" : "text-red-600"}`}>
+                    {promoMsg}
+                  </p>
+                )}
+              </div>
             )}
 
             {step === "delivery" && (

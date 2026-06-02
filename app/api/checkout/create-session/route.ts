@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { COMMISSION_RATE } from "@/lib/commission";
+import { validatePromoCode, redeemPromoCode } from "@/lib/promo";
 
 type CheckoutItem = {
   id: string;
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     totalCents: number;
     deliveryFeeCents?: number;
     deliveryFeesBySeller?: { sellerId: string | null; sellerName: string; feeCents: number; method: string }[];
+    promoCode?: string;
   };
 
   try {
@@ -104,6 +106,26 @@ export async function POST(req: Request) {
     finalDeliveryInfo.delivery_fees_by_seller = body.deliveryFeesBySeller;
   }
 
+  // Validate and apply promo code
+  let promoDiscountCents = 0;
+  let promoCodeApplied: string | null = null;
+  if (body.promoCode) {
+    const promoResult = await validatePromoCode(
+      body.promoCode,
+      buyerId,
+      body.deliveryFeeCents ?? 0,
+    );
+    if (promoResult.valid && promoResult.discountCents) {
+      promoDiscountCents = promoResult.discountCents;
+      promoCodeApplied = promoResult.code ?? null;
+      finalDeliveryInfo.promo_code = promoCodeApplied;
+      finalDeliveryInfo.promo_discount_cents = promoDiscountCents;
+    }
+  }
+
+  // Adjust total with promo discount
+  const finalTotalCents = Math.max(0, body.totalCents - promoDiscountCents);
+
   // Insert order
   const { data: order, error: insertErr } = await supabase
     .from("orders")
@@ -120,8 +142,10 @@ export async function POST(req: Request) {
       delivery_type: deliveryType,
       delivery_info: finalDeliveryInfo,
       items: enrichedItems,
-      total_cents: body.totalCents,
-      total_amount: body.totalCents / 100, // legacy decimal column
+      total_cents: finalTotalCents,
+      total_amount: finalTotalCents / 100, // legacy decimal column
+      promo_code: promoCodeApplied,
+      promo_discount_cents: promoDiscountCents,
       seller_ids: body.sellerIds,
     })
     .select("id, order_number")
@@ -141,7 +165,7 @@ export async function POST(req: Request) {
   try {
     paymentUrl = buildPayseraRedirectUrl({
       orderNumber: order.order_number,
-      amountCents: body.totalCents,
+      amountCents: finalTotalCents,
       buyerEmail: body.contact.email,
       buyerName: body.contact.name,
       buyerPhone: body.contact.phone,
@@ -152,6 +176,17 @@ export async function POST(req: Request) {
       { error: e instanceof Error ? e.message : "Paysera konfigurācijas kļūda" },
       { status: 500 },
     );
+  }
+
+  // Record promo redemption
+  if (promoCodeApplied && promoDiscountCents > 0) {
+    redeemPromoCode(
+      promoCodeApplied,
+      buyerId,
+      order.id,
+      order.order_number,
+      promoDiscountCents,
+    ).catch((e) => console.error("[promo] redemption failed:", e));
   }
 
   return NextResponse.json({ paymentUrl, orderId: order.order_number });
