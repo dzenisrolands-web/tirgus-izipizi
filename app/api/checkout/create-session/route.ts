@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { COMMISSION_RATE } from "@/lib/commission";
-import { validatePromoCode, redeemPromoCode } from "@/lib/promo";
+import { validatePromoCode } from "@/lib/promo";
 
 type CheckoutItem = {
   id: string;
@@ -178,16 +178,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // Record promo redemption
-  if (promoCodeApplied && promoDiscountCents > 0) {
-    redeemPromoCode(
-      promoCodeApplied,
-      buyerId,
-      order.id,
-      order.order_number,
-      promoDiscountCents,
-    ).catch((e) => console.error("[promo] redemption failed:", e));
-  }
+  // Promo redemption is recorded in the Paysera webhook after successful payment,
+  // not here — so if the user abandons payment, the code remains available.
 
   return NextResponse.json({ paymentUrl, orderId: order.order_number });
 }

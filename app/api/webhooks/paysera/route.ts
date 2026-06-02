@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyPayseraCallback, getMode } from "@/lib/paysera";
 import { notifySellersNewOrder } from "@/lib/order-notifications";
+import { redeemPromoCode } from "@/lib/promo";
 import { sendAllOrderEmails } from "@/lib/email";
 
 /**
@@ -77,7 +78,7 @@ async function handle(req: Request) {
   // Find order; ignore if already paid (idempotency)
   const { data: order } = await supabase
     .from("orders")
-    .select("id, payment_status, total_cents, seller_ids, items, buyer_name, order_number")
+    .select("id, payment_status, total_cents, seller_ids, items, buyer_name, buyer_id, order_number, promo_code, promo_discount_cents")
     .eq("order_number", result.orderNumber)
     .single<{
       id: string;
@@ -86,7 +87,10 @@ async function handle(req: Request) {
       seller_ids: string[] | null;
       items: Array<{ drop_id?: string; quantity?: number; reservation_id?: string }> | null;
       buyer_name: string | null;
+      buyer_id: string | null;
       order_number: string;
+      promo_code: string | null;
+      promo_discount_cents: number | null;
     }>();
 
   if (!order) {
@@ -142,6 +146,17 @@ async function handle(req: Request) {
           .eq("id", item.drop_id);
       }
     }
+  }
+
+  // Record promo code redemption (only after confirmed payment)
+  if (order.promo_code && order.promo_discount_cents && order.promo_discount_cents > 0) {
+    redeemPromoCode(
+      order.promo_code,
+      order.buyer_id,
+      order.id,
+      order.order_number,
+      order.promo_discount_cents,
+    ).catch((e) => console.error("[paysera] promo redemption failed:", e));
   }
 
   // Notify sellers about new paid order via push (best-effort)
