@@ -55,7 +55,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <Link href={listingUrl(listing)} className="group block">
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100">
+      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
             onError={() => setImageError(true)}
@@ -84,7 +84,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       </div>
 
       <div className="mt-2 space-y-1 px-0.5">
-        <p className="truncate text-sm font-semibold text-gray-900 group-hover:text-brand-600">{listing.title}</p>
+        <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
 
         <div className="flex items-center gap-1">
           {listing.seller.verified && <CheckCircle size={12} className="shrink-0 text-brand-600" />}
@@ -120,19 +120,14 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <div className="flex items-baseline gap-1 min-w-0">
             {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
-            <span className="text-base font-bold text-gray-900">{formatPrice(listing.price)}</span>
+            <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
             {!hasVariants && <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none", storage.cls)}>
-              {storage.label}
-            </span>
-            <button onClick={handleAddToCart} title={added ? "Pievienots!" : "Ielikt grozā"}
-              className={cn("flex h-8 w-8 items-center justify-center rounded-full transition-all",
-                added ? "bg-green-500 text-white" : "bg-[#192635] text-white hover:bg-[#243647]")}>
-              {added ? <Check size={13} /> : <ShoppingCart size={13} />}
-            </button>
-          </div>
+          <button onClick={handleAddToCart} title={added ? "Pievienots!" : "Ielikt grozā"}
+            className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all",
+              added ? "bg-green-500 text-white" : "bg-[#192635] text-white hover:bg-[#243647]")}>
+            {added ? <Check size={14} /> : <ShoppingCart size={14} />}
+          </button>
         </div>
       </div>
     </Link>
