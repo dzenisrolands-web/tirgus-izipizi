@@ -67,6 +67,8 @@ function matchesQuery(l: Listing, q: string): boolean {
   return words.every(word => haystack.includes(word));
 }
 
+export const revalidate = 60; // revalidate every 60s for new products
+
 export default async function CatalogPage({
   searchParams,
 }: {

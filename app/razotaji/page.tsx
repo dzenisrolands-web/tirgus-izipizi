@@ -26,6 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const revalidate = 60; // revalidate every 60s so new sellers appear quickly
+
 export default async function RazotajiPage() {
   const dbSellers = await fetchApprovedSellers();
 

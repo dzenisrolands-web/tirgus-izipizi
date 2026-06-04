@@ -62,6 +62,8 @@ const CATEGORIES = [
 //   { img: "...", name: "Pankūkas ar spinātiem", seller: "Bujums", price: "€4.86" },
 // ];
 
+export const revalidate = 60; // revalidate every 60s for fresh seller/product counts
+
 export default async function HomePage() {
   const [dbListings, dbBestSellers, dbNewest, dbWeekly, dbApproved] = await Promise.all([
     fetchActiveListings(),
