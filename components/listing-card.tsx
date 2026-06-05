@@ -54,7 +54,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
 
   return (
-    <Link href={listingUrl(listing)} className="group flex flex-col">
+    <Link href={listingUrl(listing)} className="group flex h-full flex-col">
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
