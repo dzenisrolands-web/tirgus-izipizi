@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     );
 
     // Save to DB (idempotent — upsert on email)
-    await supabase.from("email_subscribers").upsert(
+    const { error: dbErr } = await supabase.from("email_subscribers").upsert(
       {
         email: email.toLowerCase().trim(),
         name: name ?? null,
@@ -34,6 +34,10 @@ export async function POST(req: Request) {
       },
       { onConflict: "email" },
     );
+    if (dbErr) {
+      console.error("[subscribe] DB error:", dbErr.message);
+      return NextResponse.json({ ok: false, error: dbErr.message }, { status: 500 });
+    }
 
     // Sync to MailerLite (best-effort — don't fail the request)
     let mailerliteSynced = false;
