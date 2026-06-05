@@ -179,7 +179,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             <span>{listing.quantity} {listing.unit}</span>
           </div>
 
-          <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} expressAvailable={expressAvailable} />
+          <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} expressAvailable={expressAvailable} courierAvailable={listing.courier_delivery ?? true} />
 
           {listing.variants && listing.variants.length > 0 ? (
           <VariantSelector

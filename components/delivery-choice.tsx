@@ -16,9 +16,10 @@ type Props = {
   price: number;
   isHomeLocker: boolean;
   expressAvailable?: boolean;
+  courierAvailable?: boolean;
 };
 
-export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false }: Props) {
+export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false, courierAvailable = true }: Props) {
   const [selected, setSelected] = useState<"locker" | "courier" | "express">("locker");
   const [address, setAddress] = useState("");
   const { address: buyerAddress, setAddress: setBuyerAddress } = useBuyerAddress();
@@ -68,91 +69,82 @@ export function DeliveryChoice({ locker, isHomeLocker, expressAvailable = false 
         Piegādes veids
       </p>
 
-      <div className={cn("grid gap-2", expressAvailable ? "grid-cols-3" : "grid-cols-2")}>
-        {/* Locker option */}
+      <div className="grid grid-cols-3 gap-2">
+        {/* Pakomāts — always available */}
         <button
           onClick={() => setSelected("locker")}
           className={cn(
-            "flex flex-col items-start rounded-xl border-2 p-3 text-left transition",
+            "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition",
             selected === "locker"
-              ? "border-brand-400 bg-brand-400/5"
+              ? "border-brand-400 bg-brand-50"
               : "border-gray-200 hover:border-gray-300"
           )}
         >
-          <div className="flex items-center gap-1.5">
-            <Package size={16} className={selected === "locker" ? "text-brand-700" : "text-gray-400"} />
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold text-[#192635]"
-              style={{ background: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}
+          <Package size={20} className={selected === "locker" ? "text-brand-700" : "text-gray-400"} />
+          <p className={cn("text-xs font-bold", selected === "locker" ? "text-brand-700" : "text-gray-700")}>
+            Pakomāts
+          </p>
+          <p className="text-[10px] text-gray-500">24/7 piekļuve</p>
+          <CheckCircle size={12} className="text-green-500" />
+        </button>
+
+        {/* Kurjers */}
+        {(() => {
+          const courierEnabled = courierAvailable;
+          return (
+            <button
+              onClick={() => courierEnabled && setSelected("courier")}
+              disabled={!courierEnabled}
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition",
+                !courierEnabled && "opacity-40 cursor-not-allowed",
+                selected === "courier" && courierEnabled
+                  ? "border-gray-800 bg-gray-50"
+                  : "border-gray-200 hover:border-gray-300"
+              )}
             >
-              Lētākā
-            </span>
-          </div>
-          <p className={cn("mt-1.5 text-xs font-bold", selected === "locker" ? "text-brand-700" : "text-gray-700")}>
-            Pārtikas pakomāts
-          </p>
-          <p className="text-xs text-gray-500">24/7 piekļuve</p>
-          <div className="mt-2">
-            <span className="text-xs font-bold text-gray-900">no {lockerFee.toFixed(2)} €</span>
-          </div>
-        </button>
+              <Truck size={20} className={selected === "courier" && courierEnabled ? "text-gray-800" : "text-gray-400"} />
+              <p className={cn("text-xs font-bold", selected === "courier" && courierEnabled ? "text-gray-800" : "text-gray-700")}>
+                Kurjers
+              </p>
+              {courierEnabled ? (
+                <p className="text-[10px] text-gray-500">Uz mājām</p>
+              ) : (
+                <p className="text-[9px] text-gray-400">Ražotājs nenodrošina</p>
+              )}
+              {courierEnabled ? <CheckCircle size={12} className="text-green-500" /> : <X size={12} className="text-gray-300" />}
+            </button>
+          );
+        })()}
 
-        {/* Courier option */}
-        <button
-          onClick={() => setSelected("courier")}
-          className={cn(
-            "flex flex-col items-start rounded-xl border-2 p-3 text-left transition",
-            selected === "courier"
-              ? "border-gray-800 bg-gray-50"
-              : "border-gray-200 hover:border-gray-300"
-          )}
-        >
-          <Truck size={16} className={selected === "courier" ? "text-gray-800" : "text-gray-400"} />
-          <p className={cn("mt-1.5 text-xs font-bold", selected === "courier" ? "text-gray-800" : "text-gray-700")}>
-            Kurjers
-          </p>
-          <p className="text-xs text-gray-500">Uz mājas adresi</p>
-          <p className="mt-2 text-xs font-bold text-gray-900">
-            {courierFeeDisplay !== null
-              ? `${courierFeeDisplay.toFixed(2)} €`
-              : `no ${COURIER_BASE_FEE.toFixed(2)} €`}
-          </p>
-          {effectiveZone !== null && (
-            <p className="mt-0.5 text-[9px] text-gray-400">
-              Z{effectiveZone}{sellerZone !== undefined && buyerAddress?.zone !== null && buyerAddress?.zone !== undefined && sellerZone !== buyerAddress.zone
-                ? ` · MAX(Z${sellerZone}, Z${buyerAddress.zone})`
-                : ""}
-            </p>
-          )}
-        </button>
-
-        {/* Express option */}
-        {expressAvailable && (
-          <button
-            onClick={() => setSelected("express")}
-            disabled={effectiveZone !== null && !isExpressAvailableNow}
-            className={cn(
-              "flex flex-col items-start rounded-xl border-2 p-3 text-left transition",
-              selected === "express"
-                ? "border-yellow-400 bg-yellow-50"
-                : "border-gray-200 hover:border-yellow-200",
-              effectiveZone !== null && !isExpressAvailableNow && "opacity-40 cursor-not-allowed"
-            )}
-          >
-            <Zap size={16} className={selected === "express" ? "text-yellow-600" : "text-gray-400"} />
-            <p className={cn("mt-1.5 text-xs font-bold", selected === "express" ? "text-yellow-700" : "text-gray-700")}>
-              Ekspres
-            </p>
-            <p className="text-xs text-gray-500">2–5h Rīgā</p>
-            <p className="mt-2 text-xs font-bold text-gray-900">
-              {expressFeeDisplay !== null
-                ? `${expressFeeDisplay.toFixed(2)} €`
-                : effectiveZone !== null && !isExpressAvailableNow
-                  ? "Nav pieejams"
-                  : `no ${EXPRESS_FEE.toFixed(2)} €`}
-            </p>
-          </button>
-        )}
+        {/* Ekspres */}
+        {(() => {
+          const expressEnabled = expressAvailable;
+          return (
+            <button
+              onClick={() => expressEnabled && setSelected("express")}
+              disabled={!expressEnabled}
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition",
+                !expressEnabled && "opacity-40 cursor-not-allowed",
+                selected === "express" && expressEnabled
+                  ? "border-yellow-400 bg-yellow-50"
+                  : "border-gray-200 hover:border-gray-300"
+              )}
+            >
+              <Zap size={20} className={selected === "express" && expressEnabled ? "text-yellow-600" : "text-gray-400"} />
+              <p className={cn("text-xs font-bold", selected === "express" && expressEnabled ? "text-yellow-700" : "text-gray-700")}>
+                Ekspres
+              </p>
+              {expressEnabled ? (
+                <p className="text-[10px] text-gray-500">2–5h Rīgā</p>
+              ) : (
+                <p className="text-[9px] text-gray-400">Ražotājs nenodrošina</p>
+              )}
+              {expressEnabled ? <CheckCircle size={12} className="text-green-500" /> : <X size={12} className="text-gray-300" />}
+            </button>
+          );
+        })()}
       </div>
 
       {/* Buyer address hint */}
