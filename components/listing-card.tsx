@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, CheckCircle, ShoppingCart, Check, Zap, Eye } from "lucide-react";
+import { Minus, Plus, MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
 import { formatPrice, daysUntil, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
@@ -17,47 +17,45 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const storageTypes = useStorageTypes();
   const rawStorageType = storageTypes[listing.id] ?? getStorageType(listing);
-  // Defensive: if DB still has legacy "ambient" or unexpected value, fall back to chilled
   const storageType: "frozen" | "chilled" = rawStorageType === "frozen" ? "frozen" : "chilled";
-  const storage = storageConfig[storageType];
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [qty, setQty] = useState(1);
 
   const hasVariants = (listing.variants?.length ?? 0) > 0;
+  const variants = listing.variants ?? [];
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+  const activeVariant = hasVariants ? variants[selectedVariantIdx] : null;
+  const activePrice = activeVariant?.price ?? listing.price;
+  const activeTitle = activeVariant ? `${listing.title} — ${activeVariant.title}` : listing.title;
+  const activeUnit = hasVariants ? (activeVariant?.title ?? listing.unit) : listing.unit;
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    // With variants the user must pick a size before adding — let the card
-    // navigate to the listing page instead of adding the wrong/cheapest one.
-    if (hasVariants) {
-      window.location.href = listingUrl(listing);
-      return;
-    }
     addItem({
-      id: listing.id,
-      title: listing.title,
-      price: listing.price,
-      unit: listing.unit,
+      id: activeVariant?.id ?? listing.id,
+      title: activeTitle,
+      price: activePrice,
+      unit: activeUnit,
       image: listing.image,
       sellerName: listing.seller.farmName,
       sellerId: listing.sellerId,
-      storageType: storageType,
+      storageType,
       express_delivery: listing.express_delivery ?? false,
     });
+    // If qty > 1, add remaining via updateQty after first add
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
 
-  const DAYS = [{k:"mon",l:"P"},{k:"tue",l:"O"},{k:"wed",l:"T"},{k:"thu",l:"C"},{k:"fri",l:"Pk"},{k:"sat",l:"S"},{k:"sun",l:"Sv"}];
-  const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
-
   const url = listingUrl(listing);
 
   return (
-    <div className="group flex h-full flex-col">
-      <Link href={url} className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100 block">
+    <div className="group flex h-full flex-col rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition">
+      {/* Image */}
+      <Link href={url} className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100 block">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
             onError={() => setImageError(true)}
@@ -85,61 +83,75 @@ export function ListingCard({ listing }: { listing: Listing }) {
         )}
       </Link>
 
-      {/* Info section — grows to fill space, clicking opens product */}
-      <Link href={url} className="mt-2 flex flex-1 flex-col space-y-1 px-0.5">
-        <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
+      {/* Content */}
+      <div className="flex flex-1 flex-col p-3">
+        {/* Title + seller */}
+        <Link href={url} className="flex-1">
+          <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
+          <div className="mt-1 flex items-center gap-1">
+            {listing.seller.verified && <CheckCircle size={11} className="shrink-0 text-brand-600" />}
+            <span className="truncate text-xs text-gray-500">{listing.seller.farmName}</span>
+          </div>
+          {listing.seller.location && (
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
+              <MapPin size={10} className="shrink-0" />
+              <span className="truncate">no {listing.seller.location}</span>
+            </div>
+          )}
+        </Link>
 
-        <div className="flex items-center gap-1">
-          {listing.seller.verified && <CheckCircle size={12} className="shrink-0 text-brand-600" />}
-          <span className="truncate text-xs text-gray-500">{listing.seller.farmName}</span>
-        </div>
-
-        {listing.seller.location && (
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <MapPin size={11} className="shrink-0" />
-            <span className="truncate">no {listing.seller.location}</span>
+        {/* Variant selector */}
+        {hasVariants && variants.length > 1 && (
+          <div className="mt-2">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Izmērs</p>
+            <div className="flex flex-wrap gap-1">
+              {variants.map((v, i) => (
+                <button
+                  key={v.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariantIdx(i); }}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-semibold transition border",
+                    i === selectedVariantIdx
+                      ? "border-brand-500 bg-brand-50 text-brand-800"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                  )}>
+                  {v.title}
+                </button>
+              ))}
+            </div>
           </div>
         )}
+      </div>
 
-        {hasDays && (
-          <div className="flex items-center gap-0.5 flex-wrap">
-            {DAYS.map(({k, l}) => {
-              const active = listing.dispatch_days!.includes(k);
-              const isWeekend = k === "sat" || k === "sun";
-              return (
-                <span key={k} className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold ${
-                  active
-                    ? isWeekend ? "bg-amber-100 text-amber-700" : "bg-brand-100 text-brand-700"
-                    : "bg-gray-100 text-gray-300"
-                }`}>{l}</span>
-              );
-            })}
-          </div>
-        )}
-      </Link>
-
-      {/* Price + buttons — always pinned to bottom */}
-      <div className="mt-auto border-t border-gray-100 px-0.5 pb-1 pt-2">
-        <div className="flex items-center justify-between gap-1.5">
-          <div className="flex items-baseline gap-1 min-w-0">
-            {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
-            <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
-            {!hasVariants && <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <Link href={url}
-              className="flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1.5 text-[10px] font-semibold text-gray-500 hover:bg-gray-50 transition">
-              <Eye size={10} />
-            </Link>
-            <button onClick={handleAddToCart}
+      {/* Bottom: price + qty + Grozā */}
+      <div className="mt-auto border-t border-gray-100 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-lg font-extrabold text-gray-900">{formatPrice(activePrice)}</span>
+          <div className="flex items-center gap-1.5">
+            {/* Qty control */}
+            <div className="flex items-center rounded-full border border-gray-200">
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
+                className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-l-full transition">
+                <Minus size={12} />
+              </button>
+              <span className="w-6 text-center text-xs font-bold text-gray-900">{qty}</span>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(qty + 1); }}
+                className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-r-full transition">
+                <Plus size={12} />
+              </button>
+            </div>
+            {/* Add to cart */}
+            <button
+              onClick={handleAddToCart}
               className={cn(
-                "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
                 added
                   ? "bg-green-500 text-white"
-                  : "text-[#192635] hover:opacity-80"
-              )}
-              style={!added ? { background: "linear-gradient(90deg, #53F3A4, #AD47FF)" } : undefined}>
-              {added ? <><Check size={12} /> Piev.</> : "Grozā"}
+                  : "bg-brand-500 text-white hover:bg-brand-600"
+              )}>
+              {added ? <><Check size={13} /> Piev.</> : <><ShoppingCart size={13} /> Grozā</>}
             </button>
           </div>
         </div>
