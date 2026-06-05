@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
+import { MapPin, CheckCircle, ShoppingCart, Check, Zap, Eye } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
 import { formatPrice, daysUntil, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
@@ -53,9 +53,11 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const DAYS = [{k:"mon",l:"P"},{k:"tue",l:"O"},{k:"wed",l:"T"},{k:"thu",l:"C"},{k:"fri",l:"Pk"},{k:"sat",l:"S"},{k:"sun",l:"Sv"}];
   const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
 
+  const url = listingUrl(listing);
+
   return (
-    <Link href={listingUrl(listing)} className="group flex h-full flex-col">
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100">
+    <div className="group flex h-full flex-col">
+      <Link href={url} className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100 block">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
             onError={() => setImageError(true)}
@@ -81,10 +83,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <Zap size={9} /> Ekspres
           </span>
         )}
-      </div>
+      </Link>
 
-      {/* Info section — grows to fill space */}
-      <div className="mt-2 flex flex-1 flex-col space-y-1 px-0.5">
+      {/* Info section — grows to fill space, clicking opens product */}
+      <Link href={url} className="mt-2 flex flex-1 flex-col space-y-1 px-0.5">
         <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
 
         <div className="flex items-center gap-1">
@@ -114,9 +116,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
             })}
           </div>
         )}
-      </div>
+      </Link>
 
-      {/* Price + Grozā — always pinned to bottom, same height across all cards */}
+      {/* Price + buttons — always pinned to bottom */}
       <div className="mt-auto border-t border-gray-100 px-0.5 pb-1 pt-2">
         <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-baseline gap-1 min-w-0">
@@ -124,18 +126,24 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
             {!hasVariants && <span className="text-xs text-gray-400 truncate">/ {listing.unit}</span>}
           </div>
-          <button onClick={handleAddToCart}
-            className={cn(
-              "flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-              added
-                ? "bg-green-500 text-white"
-                : "text-[#192635] hover:opacity-80"
-            )}
-            style={!added ? { background: "linear-gradient(90deg, #53F3A4, #AD47FF)" } : undefined}>
-            {added ? <><Check size={12} /> Piev.</> : "Grozā"}
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link href={url}
+              className="flex items-center gap-1 rounded-full border border-gray-200 px-2 py-1.5 text-[10px] font-semibold text-gray-500 hover:bg-gray-50 transition">
+              <Eye size={10} />
+            </Link>
+            <button onClick={handleAddToCart}
+              className={cn(
+                "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
+                added
+                  ? "bg-green-500 text-white"
+                  : "text-[#192635] hover:opacity-80"
+              )}
+              style={!added ? { background: "linear-gradient(90deg, #53F3A4, #AD47FF)" } : undefined}>
+              {added ? <><Check size={12} /> Piev.</> : "Grozā"}
+            </button>
+          </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
