@@ -55,7 +55,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   return (
     <div className="group flex h-full flex-col rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition">
       {/* Image */}
-      <Link href={url} className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100 block">
+      <Link href={url} className="relative aspect-square w-full overflow-hidden bg-gray-100 block">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
             onError={() => setImageError(true)}
@@ -123,37 +123,39 @@ export function ListingCard({ listing }: { listing: Listing }) {
         )}
       </div>
 
-      {/* Bottom: price + qty + Grozā */}
-      <div className="mt-auto border-t border-gray-100 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-lg font-extrabold text-gray-900">{formatPrice(activePrice)}</span>
-          <div className="flex items-center gap-1.5">
-            {/* Qty control */}
-            <div className="flex items-center rounded-full border border-gray-200">
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
-                className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-l-full transition">
-                <Minus size={12} />
-              </button>
-              <span className="w-6 text-center text-xs font-bold text-gray-900">{qty}</span>
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(qty + 1); }}
-                className="flex h-7 w-7 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-r-full transition">
-                <Plus size={12} />
-              </button>
-            </div>
-            {/* Add to cart */}
+      {/* Bottom: price row + action row */}
+      <div className="mt-auto border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
+        {/* Price */}
+        <div className="flex items-baseline gap-1">
+          {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
+          <span className="text-xl font-extrabold text-gray-900">{formatPrice(activePrice)}</span>
+          {!hasVariants && <span className="text-xs text-gray-400">/ {listing.unit}</span>}
+        </div>
+        {/* Qty + Cart */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-full border border-gray-200">
             <button
-              onClick={handleAddToCart}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all",
-                added
-                  ? "bg-green-500 text-white"
-                  : "bg-brand-500 text-white hover:bg-brand-600"
-              )}>
-              {added ? <><Check size={13} /> Piev.</> : <><ShoppingCart size={13} /> Grozā</>}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
+              className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-l-full transition">
+              <Minus size={14} />
+            </button>
+            <span className="w-7 text-center text-sm font-bold text-gray-900">{qty}</span>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(qty + 1); }}
+              className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-r-full transition">
+              <Plus size={14} />
             </button>
           </div>
+          <button
+            onClick={handleAddToCart}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-bold transition-all",
+              added
+                ? "bg-green-500 text-white"
+                : "bg-brand-500 text-white hover:bg-brand-600"
+            )}>
+            {added ? <><Check size={14} /> Pievienots!</> : <><ShoppingCart size={14} /> Grozā</>}
+          </button>
         </div>
       </div>
     </div>
