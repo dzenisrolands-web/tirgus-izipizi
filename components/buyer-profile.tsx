@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ShoppingBag, Heart, Gift, Settings, LogOut, ChevronRight,
-  Loader2, Package, MapPin, Bell,
+  Loader2, Package, MapPin, Bell, Mail,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -14,13 +14,15 @@ type Stats = {
   pendingCount: number;
   followingCount: number;
   freeDeliveryCredits: number;
+  newsletterSubscribed: boolean;
 };
 
 export function BuyerProfile() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState<string | null>(null);
-  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0, freeDeliveryCredits: 0 });
+  const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0, freeDeliveryCredits: 0, newsletterSubscribed: false });
+  const [subscribing, setSubscribing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,18 +54,21 @@ export function BuyerProfile() {
         { count: pendingCount },
         { count: followingCount },
         { data: profileData },
+        { data: subData },
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("buyer_email", userEmail),
         supabase.from("orders").select("*", { count: "exact", head: true })
           .eq("buyer_email", userEmail).in("status", ["pending", "paid", "processing", "shipped"]),
         supabase.from("seller_followers").select("*", { count: "exact", head: true }).eq("user_id", user.id),
         supabase.from("profiles").select("free_delivery_credits").eq("id", user.id).single(),
+        supabase.from("email_subscribers").select("email").eq("email", userEmail.toLowerCase()).maybeSingle(),
       ]);
       setStats({
         orderCount: orderCount ?? 0,
         pendingCount: pendingCount ?? 0,
         followingCount: followingCount ?? 0,
         freeDeliveryCredits: profileData?.free_delivery_credits ?? 0,
+        newsletterSubscribed: !!subData,
       });
       setLoading(false);
     }
@@ -73,6 +78,27 @@ export function BuyerProfile() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/");
+  }
+
+  async function toggleNewsletter() {
+    if (subscribing || !email) return;
+    setSubscribing(true);
+    try {
+      if (stats.newsletterSubscribed) {
+        // Unsubscribe — delete from email_subscribers
+        await supabase.from("email_subscribers").delete().eq("email", email.toLowerCase());
+        setStats((s) => ({ ...s, newsletterSubscribed: false }));
+      } else {
+        const res = await fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, name: firstName ?? undefined, source: "profile" }),
+        });
+        const data = await res.json();
+        if (data.ok) setStats((s) => ({ ...s, newsletterSubscribed: true }));
+      }
+    } catch {}
+    setSubscribing(false);
   }
 
   if (loading) {
@@ -157,6 +183,34 @@ export function BuyerProfile() {
             title="Mans grozs"
             desc="Pabeidz pirkumu vai pārbaudi saturu"
           />
+
+          {/* Newsletter toggle card */}
+          <button
+            type="button"
+            onClick={toggleNewsletter}
+            disabled={subscribing}
+            className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-gray-100 transition hover:ring-brand-300 hover:shadow-sm text-left w-full disabled:opacity-60"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50">
+              <Mail size={18} className="text-brand-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-gray-900">E-pasta jaunumi</p>
+                {stats.newsletterSubscribed && (
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                    Aktīvs
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {stats.newsletterSubscribed
+                  ? "Tu saņem jaunumus. Spied, lai atrakstītos."
+                  : "Pierakstīties, lai saņemtu jaunumus par produktiem un piedāvājumiem"}
+              </p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-gray-300" />
+          </button>
         </div>
 
         {/* Quick actions */}

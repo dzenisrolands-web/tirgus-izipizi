@@ -55,6 +55,9 @@ export default async function StatistikaPage() {
     pwaStandaloneRes,
     lookupsRes,
     pageViewsRes,
+    promoCodesRes,
+    promoRedemptionsRes,
+    emailSubsRes,
   ] = await Promise.all([
     // Paid orders in the last ~50 days (covers month timeline + revenue stats)
     supabase
@@ -91,6 +94,12 @@ export default async function StatistikaPage() {
       .from("page_views")
       .select("path, created_at")
       .gte("created_at", monthStart),
+    // Promo codes
+    supabase.from("promo_codes").select("id, code, type, max_uses, used_count, active, created_at"),
+    // Promo redemptions (all time)
+    supabase.from("promo_redemptions").select("id, code, discount_cents, created_at").order("created_at", { ascending: false }),
+    // Email subscribers
+    supabase.from("email_subscribers").select("id, email, source, mailerlite_synced, subscribed_at").order("subscribed_at", { ascending: false }),
   ]);
 
   const paidOrders = (paidOrdersRes.data ?? []) as OrderRow[];
@@ -266,6 +275,42 @@ export default async function StatistikaPage() {
     const key = d.toISOString().slice(0, 10);
     pvDays.push({ date: key, views: pvByDay.get(key) ?? 0 });
   }
+
+  // D11 — Promo code stats
+  type PromoCodeRow = { id: string; code: string; type: string; max_uses: number; used_count: number; active: boolean; created_at: string };
+  type RedemptionRow = { id: string; code: string; discount_cents: number; created_at: string };
+  const promoCodes = (promoCodesRes.data ?? []) as PromoCodeRow[];
+  const redemptions = (promoRedemptionsRes.data ?? []) as RedemptionRow[];
+  const totalRedemptions = redemptions.length;
+  const totalSavingsCents = redemptions.reduce((s, r) => s + (r.discount_cents ?? 0), 0);
+  const redemptionsMonth = redemptions.filter((r) => inRange(r.created_at, monthStart));
+  const savingsMonthCents = redemptionsMonth.reduce((s, r) => s + (r.discount_cents ?? 0), 0);
+  // Per-code breakdown
+  const redemptionsByCode = new Map<string, { code: string; count: number; savingsCents: number }>();
+  for (const r of redemptions) {
+    const cur = redemptionsByCode.get(r.code) ?? { code: r.code, count: 0, savingsCents: 0 };
+    cur.count++;
+    cur.savingsCents += r.discount_cents ?? 0;
+    redemptionsByCode.set(r.code, cur);
+  }
+  const promoBreakdown = [...redemptionsByCode.values()].sort((a, b) => b.count - a.count);
+
+  // D12 — Email subscriber stats
+  type SubRow = { id: string; email: string; source: string | null; mailerlite_synced: boolean; subscribed_at: string };
+  const emailSubs = (emailSubsRes.data ?? []) as SubRow[];
+  const subsTotal = emailSubs.length;
+  const subsSynced = emailSubs.filter((s) => s.mailerlite_synced).length;
+  const subsMonth = emailSubs.filter((s) => inRange(s.subscribed_at, monthStart)).length;
+  const subsWeek = emailSubs.filter((s) => inRange(s.subscribed_at, weekStart)).length;
+  // By source
+  const subsBySource = new Map<string, number>();
+  for (const s of emailSubs) {
+    const src = s.source ?? "banner";
+    subsBySource.set(src, (subsBySource.get(src) ?? 0) + 1);
+  }
+  const sourceLabels: Record<string, string> = {
+    banner: "Banneris", profile: "Profils", checkout: "Checkout", register: "Reģistrācija",
+  };
 
   // Build per-day buckets for the timeline (last 30 days)
   const days: { date: string; count: number; gmvCents: number }[] = [];
@@ -551,6 +596,98 @@ export default async function StatistikaPage() {
               <span>{pvDays[0]?.date.slice(5)}</span>
               <span>{pvDays[pvDays.length - 1]?.date.slice(5)}</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* D11 — Promo code stats */}
+      <section className="mt-8 rounded-xl border border-green-200 bg-green-50 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold text-green-900">Promo kodi</h2>
+          <p className="text-xs text-green-700 mt-0.5">
+            Kodi: <strong>{promoCodes.length}</strong> (aktīvi: {promoCodes.filter(c => c.active).length})
+            {" · "}Izmantoti: <strong>{totalRedemptions}</strong>
+            {" · "}Ietaupījums kopā: <strong>{formatPrice(totalSavingsCents / 100)}</strong>
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-green-400 mb-2">30d statistika</p>
+            <ul className="space-y-2">
+              <li className="flex items-center justify-between text-sm">
+                <span className="text-green-900">Izmantošanas (30d)</span>
+                <span className="font-bold text-green-900">{redemptionsMonth.length}</span>
+              </li>
+              <li className="flex items-center justify-between text-sm">
+                <span className="text-green-900">Ietaupījums (30d)</span>
+                <span className="font-bold text-green-900">{formatPrice(savingsMonthCents / 100)}</span>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-green-400 mb-2">Pa kodiem</p>
+            {promoBreakdown.length === 0 ? (
+              <p className="text-sm text-green-300 italic">Vēl nav izmantotu kodu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {promoBreakdown.map((p) => (
+                  <li key={p.code} className="flex items-center justify-between text-sm">
+                    <span className="text-green-900 font-mono font-semibold">{p.code}</span>
+                    <span className="text-green-700">
+                      {p.count}× · {formatPrice(p.savingsCents / 100)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* D12 — Email subscriber stats */}
+      <section className="mt-8 rounded-xl border border-teal-200 bg-teal-50 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold text-teal-900">E-pasta abonenti</h2>
+          <p className="text-xs text-teal-700 mt-0.5">
+            Kopā: <strong>{subsTotal}</strong>
+            {" · "}Nedēļā: <strong>{subsWeek}</strong>
+            {" · "}30d: <strong>{subsMonth}</strong>
+            {" · "}MailerLite sinhronizēti: <strong>{subsSynced}</strong>/{subsTotal}
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-400 mb-2">Pa avotiem</p>
+            {subsBySource.size === 0 ? (
+              <p className="text-sm text-teal-300 italic">Vēl nav abonentu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {[...subsBySource.entries()].sort((a, b) => b[1] - a[1]).map(([src, n]) => (
+                  <li key={src} className="flex items-center justify-between text-sm">
+                    <span className="text-teal-900">{sourceLabels[src] ?? src}</span>
+                    <span className="font-bold text-teal-900">{n}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-400 mb-2">Pēdējie abonenti</p>
+            {emailSubs.length === 0 ? (
+              <p className="text-sm text-teal-300 italic">Vēl nav abonentu.</p>
+            ) : (
+              <ul className="space-y-1">
+                {emailSubs.slice(0, 10).map((s) => (
+                  <li key={s.id} className="flex items-center justify-between text-sm gap-2">
+                    <span className="text-teal-900 truncate">{s.email}</span>
+                    <span className="shrink-0 text-xs text-teal-600">
+                      {sourceLabels[s.source ?? "banner"] ?? s.source}
+                      {s.mailerlite_synced && <span className="ml-1 text-green-600">✓ ML</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </section>

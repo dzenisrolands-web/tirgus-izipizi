@@ -51,6 +51,7 @@ export function CartPage() {
   const [saveLabel, setSaveLabel] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
+  const [newsletterConsent, setNewsletterConsent] = useState(true);
   const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
 
   // Sync address fields from context when it loads from localStorage (delayed hydration)
@@ -378,6 +379,15 @@ export function CartPage() {
       // Navigate via /pay intermediary page on our domain.
       // This guarantees Referer = tirgus.izipizi.lv when reaching Paysera,
       // fixing the 0x13 error in Edge PWA standalone mode.
+      // Subscribe to newsletter if consent given (fire-and-forget)
+      if (newsletterConsent && form.email.trim()) {
+        fetch("/api/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim(), name: form.name.trim() || undefined, source: "checkout" }),
+        }).catch(() => {});
+      }
+
       window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
     } catch (err) {
       console.error(err);
@@ -850,6 +860,18 @@ export function CartPage() {
                     placeholder="tavs@epasts.lv"
                   />
                 </div>
+                <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={newsletterConsent}
+                    onChange={(e) => setNewsletterConsent(e.target.checked)}
+                    className="mt-0.5 accent-brand-600 h-4 w-4"
+                  />
+                  <span className="text-xs text-gray-500 leading-snug">
+                    Vēlos saņemt jaunumus par jauniem produktiem, ražotājiem un piedāvājumiem e-pastā.
+                    Vari atrakstīties jebkurā brīdī.
+                  </span>
+                </label>
               </form>
             </>
           )}
