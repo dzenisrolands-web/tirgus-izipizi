@@ -54,7 +54,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const hasDays = (listing.dispatch_days?.length ?? 0) > 0;
 
   return (
-    <Link href={listingUrl(listing)} className="group block">
+    <Link href={listingUrl(listing)} className="group flex flex-col">
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100">
         {listing.image && !imageError ? (
           <Image src={listing.image} alt={listing.title} fill
@@ -83,7 +83,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
         )}
       </div>
 
-      <div className="mt-2 space-y-1 px-0.5">
+      <div className="mt-2 flex flex-1 flex-col space-y-1 px-0.5">
         <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
 
         <div className="flex items-center gap-1">
@@ -114,7 +114,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-1.5 pt-1">
+        <div className="mt-auto flex items-center justify-between gap-1.5 pt-1">
           <div className="flex items-baseline gap-1 min-w-0">
             {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
             <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
