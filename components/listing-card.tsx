@@ -83,6 +83,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
         )}
       </div>
 
+      {/* Info section — grows to fill space */}
       <div className="mt-2 flex flex-1 flex-col space-y-1 px-0.5">
         <p className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-600">{listing.title}</p>
 
@@ -113,8 +114,11 @@ export function ListingCard({ listing }: { listing: Listing }) {
             })}
           </div>
         )}
+      </div>
 
-        <div className="mt-auto flex items-center justify-between gap-1.5 pt-1">
+      {/* Price + Grozā — always pinned to bottom, same height across all cards */}
+      <div className="mt-auto border-t border-gray-100 px-0.5 pb-1 pt-2">
+        <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-baseline gap-1 min-w-0">
             {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
             <span className="text-lg font-extrabold text-gray-900">{formatPrice(listing.price)}</span>
