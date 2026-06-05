@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, ShoppingBag, ArrowLeft, Gift, MapPin, Heart } from "lucide-react";
+import { Loader2, ShoppingBag, ArrowLeft, Gift, MapPin, Heart, Truck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export function BuyerSignupForm() {
@@ -66,6 +66,13 @@ export function BuyerSignupForm() {
             Nosūtījām apstiprinājuma saiti uz <strong>{email}</strong>.<br />
             Pēc apstiprināšanas vari sākt iepirkties no Latvijas ražotājiem.
           </p>
+          <div className="mt-4 rounded-xl bg-brand-50 px-4 py-3 text-left">
+            <p className="text-sm font-bold text-brand-700">🎁 Tavs bonuss gaida!</p>
+            <p className="mt-1 text-xs text-brand-600">
+              Pēc pieslēgšanās saņemsi <strong>1× bezmaksas piegādi pakomātā</strong>.
+              Izmanto kodu <strong>PIRMAIS</strong> checkout laikā.
+            </p>
+          </div>
           <Link href="/login" className="btn-primary mt-6 inline-block">
             Pieslēgties
           </Link>
@@ -169,11 +176,11 @@ export function BuyerSignupForm() {
 
         {/* Why register cards */}
         <div className="mt-6 grid gap-2.5">
-          <div className="flex items-start gap-3 rounded-xl bg-white px-4 py-3 ring-1 ring-gray-100">
-            <Gift size={16} className="mt-0.5 shrink-0 text-brand-600" />
+          <div className="flex items-start gap-3 rounded-xl px-4 py-3 ring-2 ring-brand-200 bg-brand-50">
+            <Truck size={16} className="mt-0.5 shrink-0 text-brand-700" />
             <div>
-              <p className="text-sm font-semibold text-gray-900">Saņem bonusus</p>
-              <p className="text-xs text-gray-500">Reģistrēti pircēji saņem īpašus piedāvājumus un kreditpunktus</p>
+              <p className="text-sm font-semibold text-gray-900">Bezmaksas piegāde pakomātā</p>
+              <p className="text-xs text-gray-600">Reģistrējies un saņem <strong>1× bezmaksas piegādi</strong> pakomātā ar kodu PIRMAIS</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-xl bg-white px-4 py-3 ring-1 ring-gray-100">
