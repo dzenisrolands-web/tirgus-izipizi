@@ -14,6 +14,7 @@ import { VariantSelector } from "@/components/variant-selector";
 import { ShareButton } from "@/components/share-button";
 
 export const dynamicParams = true;
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   return listings.map((l) => ({ id: l.id }));
