@@ -14,6 +14,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/cart", req.url));
   }
 
+  // Parse data & sign from the Paysera URL for form submission
+  const parsed = new URL(url);
+  const data = parsed.searchParams.get("data") ?? "";
+  const sign = parsed.searchParams.get("sign") ?? "";
+  const action = `${parsed.origin}${parsed.pathname}`;
   const escaped = url.replace(/"/g, "&quot;");
 
   return new NextResponse(
@@ -29,7 +34,7 @@ export async function GET(req: NextRequest) {
   @keyframes spin { to { transform:rotate(360deg); } }
   h1 { font-size:18px; margin:0 0 8px; }
   p { font-size:14px; color:rgba(255,255,255,.6); margin:0 0 24px; }
-  a { display:inline-block; padding:14px 32px; border-radius:999px; font-size:15px; font-weight:700; text-decoration:none; color:#192635; background:linear-gradient(90deg,#53F3A4,#AD47FF); }
+  .btn { display:inline-block; padding:14px 32px; border-radius:999px; font-size:15px; font-weight:700; text-decoration:none; color:#192635; background:linear-gradient(90deg,#53F3A4,#AD47FF); border:none; cursor:pointer; }
   .lock { font-size:12px; color:rgba(255,255,255,.4); margin-top:20px; }
 </style>
 </head>
@@ -37,19 +42,15 @@ export async function GET(req: NextRequest) {
 <div class="spinner"></div>
 <h1>Notiek novirzīšana uz Paysera...</h1>
 <p>Lūdzu, neaizver pārlūku</p>
-<a id="btn" href="${escaped}" style="display:none">Turpināt uz maksājumu →</a>
+<!-- Form submission reliably sets Referer in all contexts: PWA, WebView, CCT -->
+<form id="pf" method="GET" action="${action}">
+  <input type="hidden" name="data" value="${data}">
+  <input type="hidden" name="sign" value="${sign}">
+  <button type="submit" id="btn" class="btn" style="display:none">Turpināt uz maksājumu →</button>
+</form>
 <p class="lock">🔒 Drošs maksājums caur Paysera</p>
 <script>
-// Auto-click a hidden anchor — this sets the correct Referer header
-// in all browsers including PWA standalone mode and in-app WebViews.
-// Unlike window.location.replace() or meta-refresh, a programmatic
-// anchor click behaves like a user navigation and preserves Referer.
-var a = document.createElement('a');
-a.href = "${escaped}";
-a.referrerPolicy = 'unsafe-url';
-document.body.appendChild(a);
-try { a.click(); } catch(e) {}
-// Fallback: show manual button after 2s if auto-click didn't navigate
+try { document.getElementById('pf').submit(); } catch(e) {}
 setTimeout(function(){ document.getElementById('btn').style.display='inline-block'; }, 2000);
 </script>
 </body>
