@@ -376,9 +376,6 @@ export function CartPage() {
       }
 
       const { paymentUrl } = await res.json();
-      // Navigate via /pay intermediary page on our domain.
-      // This guarantees Referer = tirgus.izipizi.lv when reaching Paysera,
-      // fixing the 0x13 error in Edge PWA standalone mode.
       // Subscribe to newsletter if consent given (fire-and-forget)
       if (newsletterConsent && form.email.trim()) {
         fetch("/api/subscribe", {
@@ -388,7 +385,32 @@ export function CartPage() {
         }).catch(() => {});
       }
 
-      window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
+      // PWA standalone mode: Chrome Custom Tab strips Referer on cross-origin
+      // redirects, causing Paysera 0x13. Fix: submit a form directly from THIS
+      // page (tirgus.izipizi.lv/cart) so the browser sends Referer correctly.
+      // Non-PWA: use /pay intermediary (meta-refresh) which works in normal browsers.
+      const isPWA = typeof window !== "undefined" &&
+        (window.matchMedia("(display-mode: standalone)").matches ||
+         (window.navigator as unknown as Record<string,unknown>).standalone === true);
+
+      if (isPWA) {
+        // Parse data+sign from Paysera URL and submit as form
+        const pUrl = new URL(paymentUrl);
+        const f = document.createElement("form");
+        f.method = "GET";
+        f.action = `${pUrl.origin}${pUrl.pathname}`;
+        for (const [k, v] of pUrl.searchParams.entries()) {
+          const inp = document.createElement("input");
+          inp.type = "hidden";
+          inp.name = k;
+          inp.value = v;
+          f.appendChild(inp);
+        }
+        document.body.appendChild(f);
+        f.submit();
+      } else {
+        window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
+      }
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
