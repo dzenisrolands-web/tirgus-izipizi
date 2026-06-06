@@ -558,10 +558,35 @@ export function CartPage() {
               )}
 
               {/* Method-specific details */}
-              {deliveryMethod === "locker" && (
+              {deliveryMethod === "locker" && (() => {
+                // Dynamic locker filtering:
+                // 1. Collect all home_locker_ids from sellers in the cart
+                const cartSellerLockerIds = new Set<string>();
+                for (const g of sellerGroups) {
+                  const info = g.sellerInfo;
+                  if (info?.home_locker_ids) {
+                    for (const lid of info.home_locker_ids) cartSellerLockerIds.add(lid);
+                  }
+                }
+                // 2. Filter: only show lockers where at least one cart seller drops off
+                //    (or all non-coming_soon if no seller data available)
+                const hasSellerData = cartSellerLockerIds.size > 0;
+                const availableLockers = lockers
+                  .filter(l => !l.coming_soon)
+                  .filter(l => !hasSellerData || cartSellerLockerIds.has(l.id));
+                // 3. Sort: Rīga first, then by city name
+                const sorted = [...availableLockers].sort((a, b) => {
+                  const aRiga = a.city === "Rīga" ? 0 : 1;
+                  const bRiga = b.city === "Rīga" ? 0 : 1;
+                  if (aRiga !== bRiga) return aRiga - bRiga;
+                  return a.city.localeCompare(b.city, "lv");
+                });
+                return (
                 <div className="space-y-3">
                 <h3 className="text-sm font-bold text-gray-900">Izvēlies pārtikas pakomātu</h3>
-                  {lockers.filter(l => !l.coming_soon).map((l) => (
+                  {sorted.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">Nav pieejamu pakomātu šim grozam.</p>
+                  ) : sorted.map((l) => (
                     <label key={l.id}
                       className={cn(
                         "flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition",
@@ -599,7 +624,8 @@ export function CartPage() {
                     </label>
                   ))}
                 </div>
-              )}
+                );
+              })()}
 
               {(deliveryMethod === "courier" || deliveryMethod === "express") && (
                 <div className="space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -1075,7 +1101,7 @@ export function CartPage() {
 
             {step === "cart" && (
               <button
-                onClick={() => setStep("delivery")}
+                onClick={() => { setStep("delivery"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                 disabled={!canProceedToDelivery()}
                 className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40"
               >
@@ -1128,13 +1154,13 @@ export function CartPage() {
                   </div>
                 )}
                 <button
-                  onClick={() => setStep("confirm")}
+                  onClick={() => { setStep("confirm"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   disabled={!canConfirm()}
                   className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   Apstiprināt <ChevronRight size={16} />
                 </button>
-                <button onClick={() => setStep("cart")}
+                <button onClick={() => { setStep("cart"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   className="w-full rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
                   ← Atpakaļ uz grozu
                 </button>
@@ -1157,7 +1183,7 @@ export function CartPage() {
                     : <>Maksāt {formatPrice(grandTotal)} →</>
                   }
                 </button>
-                <button onClick={() => setStep("delivery")}
+                <button onClick={() => { setStep("delivery"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   className="w-full rounded-xl border border-gray-200 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
                   ← Mainīt piegādi
                 </button>
