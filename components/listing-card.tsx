@@ -133,7 +133,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
         </div>
         {/* Qty + Cart */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-full border border-gray-200">
+          <div className="hidden sm:flex items-center rounded-full border border-gray-200">
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
               className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-l-full transition">
