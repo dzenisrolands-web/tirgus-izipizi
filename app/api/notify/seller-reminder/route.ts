@@ -20,13 +20,8 @@ export async function POST(req: Request) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Verify caller is admin
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (profile?.role !== "super_admin") {
+  // Verify caller is admin via app_metadata
+  if (user.app_metadata?.is_super_admin !== true) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -113,7 +108,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: result.error, sent: false }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, sent: true, missing, emailId: result.id });
+  return NextResponse.json({ ok: true, sent: true, missing, emailId: result.id, sentTo: sellerEmail });
 }
 
 function escape(s: string): string {

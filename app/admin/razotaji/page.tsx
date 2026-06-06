@@ -223,7 +223,7 @@ export default function AdminRazotajiPage() {
       });
       const data = await res.json();
       if (data.ok && data.sent) {
-        setReminderResult({ id: sellerId, ok: true, msg: `E-pasts nosūtīts (${data.missing.length} trūkstošie lauki)` });
+        setReminderResult({ id: sellerId, ok: true, msg: `E-pasts nosūtīts uz ${data.sentTo ?? "?"} (${data.missing.length} trūkstošie lauki)` });
       } else if (data.ok && !data.sent) {
         setReminderResult({ id: sellerId, ok: true, msg: "Nekas nav trūkst — pārdevējam viss aizpildīts" });
       } else {
@@ -765,15 +765,24 @@ export default function AdminRazotajiPage() {
                         </span>
                       ))}
                     </div>
-                    <button
-                      onClick={() => sendReminder(seller.id)}
-                      disabled={reminderSending === seller.id}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-200 transition disabled:opacity-50"
-                      title="Sūtīt e-pasta atgādinājumu pārdevējam"
-                    >
-                      {reminderSending === seller.id ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
-                      {reminderSending === seller.id ? "Sūta..." : "Sūtīt atgādinājumu"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {seller.email ? (
+                        <span className="text-[10px] text-gray-500">→ <span className="font-mono">{seller.email}</span></span>
+                      ) : seller.user_id ? (
+                        <span className="text-[10px] text-gray-400">→ konts e-pasts</span>
+                      ) : (
+                        <span className="text-[10px] text-red-500">Nav e-pasta!</span>
+                      )}
+                      <button
+                        onClick={() => sendReminder(seller.id)}
+                        disabled={reminderSending === seller.id || !seller.user_id}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-200 transition disabled:opacity-50"
+                        title={seller.user_id ? "Sūtīt e-pasta atgādinājumu pārdevējam" : "Nevar sūtīt — nav sasaistīts konts"}
+                      >
+                        {reminderSending === seller.id ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                        {reminderSending === seller.id ? "Sūta..." : "Sūtīt atgādinājumu"}
+                      </button>
+                    </div>
                   </div>
                 )}
 
