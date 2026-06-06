@@ -40,11 +40,16 @@ export async function GET(req: NextRequest) {
 <a id="btn" href="${escaped}" style="display:none">Turpināt uz maksājumu →</a>
 <p class="lock">🔒 Drošs maksājums caur Paysera</p>
 <script>
-// JS redirect sets correct Referer (works in Facebook/Instagram WebView)
-try {
-  window.location.replace("${escaped}");
-} catch(e) {}
-// Fallback: show manual button after 2s if redirect didn't fire
+// Auto-click a hidden anchor — this sets the correct Referer header
+// in all browsers including PWA standalone mode and in-app WebViews.
+// Unlike window.location.replace() or meta-refresh, a programmatic
+// anchor click behaves like a user navigation and preserves Referer.
+var a = document.createElement('a');
+a.href = "${escaped}";
+a.referrerPolicy = 'unsafe-url';
+document.body.appendChild(a);
+try { a.click(); } catch(e) {}
+// Fallback: show manual button after 2s if auto-click didn't navigate
 setTimeout(function(){ document.getElementById('btn').style.display='inline-block'; }, 2000);
 </script>
 </body>
