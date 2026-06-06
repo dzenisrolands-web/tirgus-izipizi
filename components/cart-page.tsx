@@ -385,32 +385,10 @@ export function CartPage() {
         }).catch(() => {});
       }
 
-      // PWA standalone mode: Chrome Custom Tab strips Referer on cross-origin
-      // redirects, causing Paysera 0x13. Fix: submit a form directly from THIS
-      // page (tirgus.izipizi.lv/cart) so the browser sends Referer correctly.
-      // Non-PWA: use /pay intermediary (meta-refresh) which works in normal browsers.
-      const isPWA = typeof window !== "undefined" &&
-        (window.matchMedia("(display-mode: standalone)").matches ||
-         (window.navigator as unknown as Record<string,unknown>).standalone === true);
-
-      if (isPWA) {
-        // Parse data+sign from Paysera URL and submit as form
-        const pUrl = new URL(paymentUrl);
-        const f = document.createElement("form");
-        f.method = "GET";
-        f.action = `${pUrl.origin}${pUrl.pathname}`;
-        for (const [k, v] of pUrl.searchParams.entries()) {
-          const inp = document.createElement("input");
-          inp.type = "hidden";
-          inp.name = k;
-          inp.value = v;
-          f.appendChild(inp);
-        }
-        document.body.appendChild(f);
-        f.submit();
-      } else {
-        window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
-      }
+      // Navigate via /pay which does a server-side 302 redirect to Paysera.
+      // The 302 preserves Referer in the HTTP redirect chain, fixing Paysera
+      // 0x13 error in PWA standalone mode.
+      window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");

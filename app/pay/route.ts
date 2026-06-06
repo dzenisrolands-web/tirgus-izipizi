@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * Paysera redirect intermediary.
- * Browser visits /pay?url=... (on our domain tirgus.izipizi.lv),
- * then meta-refresh sends browser to Paysera with correct Referer header.
- * This fixes Paysera 0x13 error in Edge PWA standalone mode.
+ * Uses a server-side 302 redirect so the browser follows the HTTP redirect
+ * chain and sends Referer: tirgus.izipizi.lv to Paysera.
+ *
+ * This fixes Paysera 0x13 error in PWA standalone mode where client-side
+ * redirects (meta-refresh, JS, anchor click, form submit) all fail because
+ * Chrome Custom Tab strips the Referer on cross-origin navigations.
+ *
+ * A 302 HTTP redirect is different — the browser treats the entire chain
+ * as a single navigation and propagates the Referer from the originating page.
  */
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
@@ -14,53 +20,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/cart", req.url));
   }
 
-  // Parse data & sign from the Paysera URL for form submission
-  const parsed = new URL(url);
-  const data = parsed.searchParams.get("data") ?? "";
-  const sign = parsed.searchParams.get("sign") ?? "";
-  const action = `${parsed.origin}${parsed.pathname}`;
-  const escaped = url.replace(/"/g, "&quot;");
-
-  return new NextResponse(
-    `<!DOCTYPE html>
-<html lang="lv">
-<head>
-<meta charset="utf-8">
-<meta name="referrer" content="unsafe-url">
-<title>Notiek novirzīšana uz Paysera...</title>
-<style>
-  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#192635; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; }
-  .spinner { width:40px; height:40px; border:3px solid rgba(255,255,255,.15); border-top-color:#53F3A4; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:24px; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-  h1 { font-size:18px; margin:0 0 8px; }
-  p { font-size:14px; color:rgba(255,255,255,.6); margin:0 0 24px; }
-  .btn { display:inline-block; padding:14px 32px; border-radius:999px; font-size:15px; font-weight:700; text-decoration:none; color:#192635; background:linear-gradient(90deg,#53F3A4,#AD47FF); border:none; cursor:pointer; }
-  .lock { font-size:12px; color:rgba(255,255,255,.4); margin-top:20px; }
-</style>
-</head>
-<body>
-<div class="spinner"></div>
-<h1>Notiek novirzīšana uz Paysera...</h1>
-<p>Lūdzu, neaizver pārlūku</p>
-<!-- Form submission reliably sets Referer in all contexts: PWA, WebView, CCT -->
-<form id="pf" method="GET" action="${action}">
-  <input type="hidden" name="data" value="${data}">
-  <input type="hidden" name="sign" value="${sign}">
-  <button type="submit" id="btn" class="btn" style="display:none">Turpināt uz maksājumu →</button>
-</form>
-<p class="lock">🔒 Drošs maksājums caur Paysera</p>
-<script>
-try { document.getElementById('pf').submit(); } catch(e) {}
-setTimeout(function(){ document.getElementById('btn').style.display='inline-block'; }, 2000);
-</script>
-</body>
-</html>`,
-    {
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Referrer-Policy": "unsafe-url",
-        "Cache-Control": "no-store",
-      },
-    }
-  );
+  return new NextResponse(null, {
+    status: 302,
+    headers: {
+      Location: url,
+      "Referrer-Policy": "unsafe-url",
+      "Cache-Control": "no-store",
+    },
+  });
 }
