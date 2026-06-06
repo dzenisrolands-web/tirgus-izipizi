@@ -11,6 +11,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { loadAndRender } from "@/lib/email-templates";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -105,6 +106,26 @@ export async function sendOrderConfirmationEmail(o: OrderEmailData): Promise<Sen
       <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-variant-numeric:tabular-nums;">${lineTotal}€</td>
     </tr>`;
   }).join("");
+
+  const itemsTable = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">${itemsRows}<tr><td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td><td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td></tr></table>`;
+
+  // Try DB template first
+  const dbResult = await loadAndRender("order-buyer", {
+    buyerName: escapeHtml(o.buyerName),
+    orderNumber: escapeHtml(o.orderNumber),
+    itemsTable,
+    total,
+    deliveryLabel: escapeHtml(deliveryLabel),
+    deliveryDetails: deliveryDetails || "",
+    siteUrl: siteUrl(),
+  });
+  if (dbResult) {
+    return sendEmail({
+      to: o.buyerEmail,
+      subject: dbResult.subject,
+      html: brandedEmailLayout(dbResult.html),
+    });
+  }
 
   const body = `
     <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">Paldies par pasūtījumu, ${escapeHtml(o.buyerName)}!</h1>
@@ -202,6 +223,27 @@ export async function sendSellerNewOrderEmail(p: {
     </tr>`;
   }).join("");
 
+  const itemsTable = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;font-size:14px;">${itemsRows}<tr><td colspan="2" style="padding:12px 0 0 0;font-weight:700;">Kopā</td><td style="padding:12px 0 0 0;text-align:right;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;">${total}€</td></tr></table>`;
+
+  // Try DB template first
+  const dbResult = await loadAndRender("order-seller", {
+    sellerName: escapeHtml(p.sellerName),
+    buyerName: escapeHtml(p.buyerName),
+    orderNumber: escapeHtml(p.orderNumber),
+    itemsTable,
+    total,
+    deliveryLabel: escapeHtml(deliveryLabel),
+    deliveryDetails: deliveryDetails || "",
+    siteUrl: siteUrl(),
+  });
+  if (dbResult) {
+    return sendEmail({
+      to: p.sellerEmail,
+      subject: dbResult.subject,
+      html: brandedEmailLayout(dbResult.html),
+    });
+  }
+
   const body = `
     <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">🛒 Jauns apmaksāts pasūtījums!</h1>
     <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
@@ -247,6 +289,24 @@ export async function sendAdminOrderCopy(o: OrderEmailData): Promise<SendEmailRe
   const itemsList = o.items.map((it) =>
     `${escapeHtml(it.title)} × ${it.quantity} = ${(it.price * it.quantity).toFixed(2)}€`
   ).join("<br>");
+
+  // Try DB template first
+  const dbResult = await loadAndRender("order-admin", {
+    buyerName: escapeHtml(o.buyerName),
+    buyerEmail: escapeHtml(o.buyerEmail),
+    orderNumber: escapeHtml(o.orderNumber),
+    itemsList,
+    total,
+    deliveryLabel: escapeHtml(deliveryLabel),
+    deliveryDetails: deliveryDetails || "",
+  });
+  if (dbResult) {
+    return sendEmail({
+      to: "tirgus@izipizi.lv",
+      subject: dbResult.subject,
+      html: brandedEmailLayout(dbResult.html, { admin: true }),
+    });
+  }
 
   const body = `
     <h1 style="margin:0 0 8px 0;font-size:18px;font-weight:800;">Jauns pasūtījums ${escapeHtml(o.orderNumber)}</h1>
