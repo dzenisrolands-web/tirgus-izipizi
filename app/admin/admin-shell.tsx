@@ -100,19 +100,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data, error }) => {
       if (error || !data.user) { router.push("/login"); return; }
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
-      if (profileError) {
-        // Network/DB issue — don't kick out, just log
-        console.warn("[admin] profile fetch error:", profileError.message);
-        setEmail(data.user.email ?? "");
-        setAuthChecked(true);
+      // Super admin status lives in app_metadata (JWT claim, server-set only)
+      if (data.user.app_metadata?.is_super_admin !== true) {
+        router.push("/");
         return;
       }
-      if (profile?.role !== "super_admin") { router.push("/"); return; }
       setEmail(data.user.email ?? "");
       setAuthChecked(true);
     });

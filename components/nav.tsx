@@ -11,7 +11,7 @@ export function Nav() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authed, setAuthed] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const [hasSeller, setHasSeller] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { count } = useCart();
@@ -34,28 +34,27 @@ export function Nav() {
       const first = full.trim().split(/\s+/)[0];
       return first || (user.email ? user.email.split("@")[0] : null);
     }
-    async function loadRole(userId: string) {
-      const { data } = await supabase.from("profiles").select("role").eq("id", userId).single();
-      setRole(data?.role ?? "buyer");
+    async function loadSellerStatus(userId: string) {
+      const { data } = await supabase.from("sellers").select("id").eq("user_id", userId).maybeSingle();
+      setHasSeller(!!data);
     }
     supabase.auth.getSession().then(({ data }) => {
       setAuthed(!!data.session);
       if (data.session?.user) {
-        loadRole(data.session.user.id);
+        loadSellerStatus(data.session.user.id);
         setUserName(extractName(data.session.user));
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
       setAuthed(!!s);
-      if (s?.user) { loadRole(s.user.id); setUserName(extractName(s.user)); }
-      else { setRole(null); setUserName(null); }
+      if (s?.user) { loadSellerStatus(s.user.id); setUserName(extractName(s.user)); }
+      else { setHasSeller(false); setUserName(null); }
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const accountHref = role === "super_admin" ? "/admin"
-    : role === "seller" ? "/dashboard"
-    : "/profils";
+  // "Konts" always goes to buyer profile; seller dashboard is via switcher
+  const accountHref = "/profils";
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-sm">

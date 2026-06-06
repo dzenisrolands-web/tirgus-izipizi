@@ -1,28 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { supabase as anonClient } from "@/lib/supabase";
 import { generateInvoicesForPeriod } from "@/lib/invoice/generate";
 import { previousPeriod, periodForDate } from "@/lib/invoice/period";
-
-function svc() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-}
-
-async function isAdmin(req: Request): Promise<boolean> {
-  const token = (req.headers.get("authorization") ?? "").replace("Bearer ", "");
-  if (!token) return false;
-  const { data: { user } } = await anonClient.auth.getUser(token);
-  if (!user) return false;
-  const { data: profile } = await svc()
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  return profile?.role === "super_admin";
-}
+import { isSuperAdmin } from "@/lib/admin-auth";
 
 /**
  * POST /api/admin/generate-invoices
@@ -34,7 +13,7 @@ async function isAdmin(req: Request): Promise<boolean> {
  * Does NOT require CRON_SECRET — intended for manual admin use.
  */
 export async function POST(req: Request) {
-  if (!await isAdmin(req)) {
+  if (!await isSuperAdmin(req)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 

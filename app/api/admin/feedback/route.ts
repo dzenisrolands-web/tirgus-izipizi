@@ -1,35 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-function svc() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-}
-
-async function isAdmin(req: Request): Promise<boolean> {
-  // Verify the caller has a valid super_admin session.
-  // Use the service-role client for getUser() — avoids module-level browser
-  // singleton issues in server API routes and works reliably server-side.
-  const authHeader = req.headers.get("authorization") ?? "";
-  const token = authHeader.replace("Bearer ", "");
-  if (!token) return false;
-  const client = svc();
-  const { data: { user } } = await client.auth.getUser(token);
-  if (!user) return false;
-  const { data: profile } = await client
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  return profile?.role === "super_admin";
-}
+import { adminClient, isSuperAdmin } from "@/lib/admin-auth";
 
 export async function GET(req: Request) {
-  if (!await isAdmin(req)) {
+  if (!await isSuperAdmin(req)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  const { data, error } = await svc()
+  const { data, error } = await adminClient()
     .from("feedback")
     .select("*")
     .order("created_at", { ascending: false });
@@ -38,11 +14,11 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!await isAdmin(req)) {
+  if (!await isSuperAdmin(req)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const { id, status } = await req.json();
-  const { error } = await svc()
+  const { error } = await adminClient()
     .from("feedback")
     .update({ status })
     .eq("id", id);

@@ -74,13 +74,10 @@ function CallbackHandler() {
           effectiveRole = newRole;
         }
 
-        // Redirect based on role
+        // Redirect — admin is via direct URL only, never auto-redirect
         const next = searchParams.get("next");
         if (next) { router.replace(next); return; }
-
-        if (effectiveRole === "super_admin") router.replace("/admin");
-        else if (effectiveRole === "seller") router.replace("/dashboard");
-        else router.replace("/");
+        router.replace("/");
 
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

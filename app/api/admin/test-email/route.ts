@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email";
+import { isSuperAdmin } from "@/lib/admin-auth";
 
 /**
  * Admin-only: send a test email to the supplied address using the live Resend
@@ -12,20 +12,7 @@ import { sendEmail } from "@/lib/email";
  * Response: { ok, env: { resendKey, emailFrom, emailReplyTo, siteUrl }, sent?, error? }
  */
 export async function POST(req: Request) {
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles").select("role").eq("id", user.id).single();
-  if (profile?.role !== "super_admin") {
+  if (!await isSuperAdmin(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

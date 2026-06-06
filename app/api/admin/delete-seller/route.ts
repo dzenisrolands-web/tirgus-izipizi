@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 
 /**
  * Admin-only: permanently delete a seller profile and all their listings.
@@ -13,24 +13,9 @@ import { createClient } from "@supabase/supabase-js";
  * 3. Reset the linked user profile role to "buyer" (if user_id exists)
  */
 export async function POST(req: Request) {
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-
-  // Verify caller is super_admin
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from("profiles").select("role").eq("id", user.id).single();
-  if (profile?.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const ctx = await assertSuperAdmin(req);
+  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+  const { supabase } = ctx;
 
   const { sellerId } = (await req.json().catch(() => ({}))) as { sellerId?: string };
   if (!sellerId) return NextResponse.json({ error: "Missing sellerId" }, { status: 400 });

@@ -36,11 +36,8 @@ export function LoginForm() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (next) { router.push(next); router.refresh(); return; }
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
-      const role = profile?.role ?? "buyer";
-      if (role === "super_admin") router.push("/admin");
-      else if (role === "seller") router.push("/dashboard");
-      else router.push("/");
+      // Always land on homepage after login — admin is via direct URL only
+      router.push("/");
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

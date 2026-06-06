@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ShoppingBag, Heart, Gift, Settings, LogOut, ChevronRight,
-  Loader2, Package, MapPin, Bell, Mail,
+  Loader2, Package, MapPin, Bell, Mail, Store,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -23,6 +23,7 @@ export function BuyerProfile() {
   const [firstName, setFirstName] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({ orderCount: 0, pendingCount: 0, followingCount: 0, freeDeliveryCredits: 0, newsletterSubscribed: false });
   const [subscribing, setSubscribing] = useState(false);
+  const [sellerStatus, setSellerStatus] = useState<string | null>(null); // null = no seller, else seller.status
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +64,11 @@ export function BuyerProfile() {
         supabase.from("profiles").select("free_delivery_credits").eq("id", user.id).single(),
         supabase.from("email_subscribers").select("email").eq("email", userEmail.toLowerCase()).maybeSingle(),
       ]);
+
+      // Check if user has a seller account
+      const { data: sellerData } = await supabase
+        .from("sellers").select("status").eq("user_id", user.id).maybeSingle();
+      setSellerStatus(sellerData?.status ?? null);
       setStats({
         orderCount: orderCount ?? 0,
         pendingCount: pendingCount ?? 0,
@@ -151,6 +157,30 @@ export function BuyerProfile() {
             />
           </div>
         </div>
+
+        {/* Seller switcher — shown if user has a seller account */}
+        {sellerStatus && (
+          <Link
+            href="/dashboard"
+            className="mt-6 flex items-center gap-4 rounded-2xl p-5 ring-2 ring-brand-200 bg-gradient-to-r from-brand-50 to-purple-50 transition hover:shadow-md hover:ring-brand-400"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl text-white"
+              style={{ background: "linear-gradient(135deg, #53F3A4, #AD47FF)" }}>
+              <Store size={22} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-gray-900">Pārdodu</p>
+              <p className="text-xs text-gray-500">
+                {sellerStatus === "approved"
+                  ? "Aiziet uz pārdevēja paneli — produkti, pasūtījumi, profils"
+                  : sellerStatus === "pending"
+                  ? "Tavs pārdevēja profils gaida apstiprinājumu"
+                  : "Turpināt pārdevēja profila aizpildīšanu"}
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-brand-400" />
+          </Link>
+        )}
 
         {/* Action cards */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
