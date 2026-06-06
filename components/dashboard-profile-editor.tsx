@@ -23,15 +23,22 @@ type Event = { title: string; desc: string };
 
 const SELF_BILLING_VERSION = "1.0";
 
-const LOCKERS = [
+const LOCKERS_REGULAR = [
   { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
   { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
   { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
   { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
   { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
-  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
   { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
 ];
+
+// Pickup-only lockers — seller must personally deliver to these locations.
+// Products here are NOT redistributed by logistics.
+const LOCKERS_PICKUP_ONLY = [
+  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
+];
+
+const LOCKERS = [...LOCKERS_REGULAR, ...LOCKERS_PICKUP_ONLY];
 
 type Profile = LegalData & {
   id?: string;
@@ -403,8 +410,9 @@ export function DashboardProfileEditor() {
                   <p className="text-xs text-gray-500 mb-3">
                     Atzīmē pārtikas pakomātus, kuros pats vari ielikt produktus. Pircēji redzēs šos pārtikas pakomātus kā nosūtīšanas vietas.
                   </p>
+                  {/* Regular lockers — logistics distributes */}
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {LOCKERS.map((l) => {
+                    {LOCKERS_REGULAR.map((l) => {
                       const active = profile.home_locker_ids.includes(l.id);
                       return (
                         <button
@@ -441,6 +449,57 @@ export function DashboardProfileEditor() {
                       );
                     })}
                   </div>
+
+                  {/* Pickup-only lockers — seller personally delivers */}
+                  {LOCKERS_PICKUP_ONLY.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vietējās saņemšanas vietas (pickup only)
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Šie pakomāti nav pieejami caur loģistiku — tev pats jāpiegādā produkti uz šo vietu.
+                        Pircēji redzēs šo pakomātu <strong>tikai</strong> ja tu to atzīmē.
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {LOCKERS_PICKUP_ONLY.map((l) => {
+                          const active = profile.home_locker_ids.includes(l.id);
+                          return (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => {
+                                const next = active
+                                  ? profile.home_locker_ids.filter((id) => id !== l.id)
+                                  : [...profile.home_locker_ids, l.id];
+                                set("home_locker_ids", next);
+                              }}
+                              className={cn(
+                                "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition",
+                                active
+                                  ? "border-amber-400 bg-amber-50"
+                                  : "border-gray-200 bg-white hover:border-gray-300"
+                              )}
+                            >
+                              <div className={cn(
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                                active ? "bg-amber-100" : "bg-gray-100"
+                              )}>
+                                <MapPin size={16} className={active ? "text-amber-700" : "text-gray-500"} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className={cn("font-semibold text-sm", active ? "text-amber-900" : "text-gray-900")}>
+                                  {l.name}
+                                </p>
+                                <p className="text-[11px] text-gray-500 truncate">{l.address}</p>
+                                <p className="text-[10px] text-amber-600">{l.city} · Pats piegādā</p>
+                              </div>
+                              {active && <CheckCircle size={16} className="mt-1 shrink-0 text-amber-600" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-gray-100 pt-4">
