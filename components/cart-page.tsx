@@ -560,7 +560,8 @@ export function CartPage() {
               {/* Method-specific details */}
               {deliveryMethod === "locker" && (() => {
                 // Dynamic locker filtering:
-                // 1. Collect all home_locker_ids from sellers in the cart
+                // All non-coming_soon lockers are shown by default (logistics distributes to all).
+                // Only pickup_only lockers (e.g. Dundaga) are hidden when no cart seller drops off there.
                 const cartSellerLockerIds = new Set<string>();
                 for (const g of sellerGroups) {
                   const info = g.sellerInfo;
@@ -568,13 +569,10 @@ export function CartPage() {
                     for (const lid of info.home_locker_ids) cartSellerLockerIds.add(lid);
                   }
                 }
-                // 2. Filter: only show lockers where at least one cart seller drops off
-                //    (or all non-coming_soon if no seller data available)
-                const hasSellerData = cartSellerLockerIds.size > 0;
                 const availableLockers = lockers
                   .filter(l => !l.coming_soon)
-                  .filter(l => !hasSellerData || cartSellerLockerIds.has(l.id));
-                // 3. Sort: Rīga first, then by city name
+                  .filter(l => !l.pickup_only || cartSellerLockerIds.has(l.id));
+                // Sort: Rīga first, then by city name
                 const sorted = [...availableLockers].sort((a, b) => {
                   const aRiga = a.city === "Rīga" ? 0 : 1;
                   const bRiga = b.city === "Rīga" ? 0 : 1;
