@@ -13,7 +13,7 @@ import { listings, lockers } from "@/lib/mock-data";
 import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { lookupPostalCode, effectiveCourierZone, pricingForZone } from "@/lib/postal-zones";
+import { lookupPostalCode, effectiveCourierZone, pricingForZone, nearestLockersForCode } from "@/lib/postal-zones";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 import { useSavedAddresses, QUICK_LABELS, type SavedAddress } from "@/lib/saved-addresses";
 
@@ -572,8 +572,22 @@ export function CartPage() {
                 const availableLockers = lockers
                   .filter(l => !l.coming_soon)
                   .filter(l => !l.pickup_only || cartSellerLockerIds.has(l.id));
-                // Sort: Rīga first, then by city name
+                // Compute distances from buyer to each locker (if postal code is set)
+                const distanceMap = new Map<string, number>();
+                const pc = postalCode.replace(/\D/g, "");
+                if (pc.length === 4) {
+                  const code = parseInt(pc, 10);
+                  const zone = zoneResult.found ? zoneResult.zone : 0;
+                  const nearest = nearestLockersForCode(code, zone, 20);
+                  for (const nl of nearest) distanceMap.set(nl.id, nl.distanceKm);
+                }
+                // Sort: by distance if available, otherwise Rīga first
                 const sorted = [...availableLockers].sort((a, b) => {
+                  const dA = distanceMap.get(a.id);
+                  const dB = distanceMap.get(b.id);
+                  if (dA !== undefined && dB !== undefined) return dA - dB;
+                  if (dA !== undefined) return -1;
+                  if (dB !== undefined) return 1;
                   const aRiga = a.city === "Rīga" ? 0 : 1;
                   const bRiga = b.city === "Rīga" ? 0 : 1;
                   if (aRiga !== bRiga) return aRiga - bRiga;
@@ -609,6 +623,11 @@ export function CartPage() {
                         <div className="mt-1 flex flex-wrap gap-3 text-xs text-gray-500">
                           <span className="flex items-center gap-1"><MapPin size={11} />{l.address}</span>
                           <span className="flex items-center gap-1"><Clock size={11} />{l.hours}</span>
+                          {distanceMap.has(l.id) && (
+                            <span className="flex items-center gap-1 font-semibold text-brand-700">
+                              ~{distanceMap.get(l.id)!.toFixed(1)} km
+                            </span>
+                          )}
                         </div>
                         {l.pickup_only && (
                           <p className="mt-1 text-[11px] text-amber-700">
