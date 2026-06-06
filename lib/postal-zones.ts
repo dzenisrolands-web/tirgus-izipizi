@@ -283,6 +283,11 @@ export function placeForCode(code: number, zone: DeliveryZone): string {
   return POSTAL_DATA[code]?.place ?? ZONE_PRICING[zone].area;
 }
 
+// Road correction factor: haversine gives straight-line distance, but
+// real driving distance is typically 1.3–1.5× longer due to roads, rivers,
+// bridges, and detours. 1.4 is a well-known urban/suburban average.
+const ROAD_FACTOR = 1.4;
+
 export function nearestLockersForCode(code: number, zone: DeliveryZone, limit = 3): NearestLocker[] {
   const origin = POSTAL_DATA[code] ?? ZONE_FALLBACK_COORDS[zone];
   return Object.entries(LOCKER_COORDS)
@@ -292,7 +297,7 @@ export function nearestLockersForCode(code: number, zone: DeliveryZone, limit = 
       city: l.city,
       address: l.address,
       hours: l.hours,
-      distanceKm: Math.round(haversineKm(origin.lat, origin.lng, l.lat, l.lng) * 10) / 10,
+      distanceKm: Math.round(haversineKm(origin.lat, origin.lng, l.lat, l.lng) * ROAD_FACTOR * 10) / 10,
     }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit);
