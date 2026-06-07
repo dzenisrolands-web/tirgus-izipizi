@@ -37,18 +37,21 @@ function stripDiacritics(s: string): string {
 /** Score how relevant a listing is to a query. Higher = more relevant.
  *  Title match = 10 pts per word, category = 5, description/seller = 1 */
 function relevanceScore(l: Listing, q: string): number {
-  const words = stripDiacritics(q).split(/\s+/).filter(Boolean);
+  const normalizedQ = stripDiacritics(q);
+  const words = normalizedQ.split(/\s+/).filter(Boolean);
   const title = stripDiacritics(l.title.toLowerCase());
   const category = stripDiacritics(l.category.toLowerCase());
+  const seller = stripDiacritics((l.seller.farmName || l.seller.name).toLowerCase());
   const desc = stripDiacritics(l.description.toLowerCase());
   let score = 0;
   for (const w of words) {
     if (title.includes(w)) score += 10;
+    if (seller.includes(w)) score += 8;
     if (category.includes(w)) score += 5;
     if (desc.includes(w)) score += 1;
   }
   // Bonus if title starts with the query
-  if (title.startsWith(stripDiacritics(q))) score += 20;
+  if (title.startsWith(normalizedQ)) score += 20;
   return score;
 }
 
@@ -86,11 +89,21 @@ export default async function CatalogPage({
   // alongside real products.
   const realListings = dbListings.filter(isPublicReady);
   const baseListings = realListings.length > 0 ? realListings : mockListings.filter(isPublicReady);
-  const allListings = q
-    ? baseListings
-        .filter((l) => matchesQuery(l, q))
-        .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q))
-    : baseListings;
+  let allListings: Listing[];
+  if (q) {
+    const scored = baseListings
+      .map((l) => ({ l, score: relevanceScore(l, q) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    // If there are title/category matches (score >= 5), hide description-only
+    // matches (score < 5) to avoid irrelevant results like "pelmeņi" when
+    // searching for "burkāns" (appears only in ingredient descriptions).
+    const hasStrongMatch = scored.some(({ score }) => score >= 5);
+    allListings = (hasStrongMatch ? scored.filter(({ score }) => score >= 5) : scored)
+      .map(({ l }) => l);
+  } else {
+    allListings = baseListings;
+  }
   const weeklyFeatured = dbWeekly.filter(isPublicReady);
 
   return (
