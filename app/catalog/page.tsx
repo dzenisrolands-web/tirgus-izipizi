@@ -91,15 +91,13 @@ export default async function CatalogPage({
   const baseListings = realListings.length > 0 ? realListings : mockListings.filter(isPublicReady);
   let allListings: Listing[];
   if (q) {
-    const scored = baseListings
+    // Score all listings, sort strong matches (title/seller/category) first,
+    // then description-only matches after — so user sees exact products first,
+    // followed by products that mention the query in ingredients/description.
+    allListings = baseListings
       .map((l) => ({ l, score: relevanceScore(l, q) }))
       .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score);
-    // If there are title/category matches (score >= 5), hide description-only
-    // matches (score < 5) to avoid irrelevant results like "pelmeņi" when
-    // searching for "burkāns" (appears only in ingredient descriptions).
-    const hasStrongMatch = scored.some(({ score }) => score >= 5);
-    allListings = (hasStrongMatch ? scored.filter(({ score }) => score >= 5) : scored)
+      .sort((a, b) => b.score - a.score)
       .map(({ l }) => l);
   } else {
     allListings = baseListings;
