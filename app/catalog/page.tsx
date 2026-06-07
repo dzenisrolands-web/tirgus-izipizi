@@ -34,8 +34,24 @@ function stripDiacritics(s: string): string {
     .replace(/[žŽ]/g, "z");
 }
 
+/**
+ * Latvian stem match: "burkans" matches "burkani", "burkanu", "burkaniem" etc.
+ * For words >= 4 chars, extract a stem (first 4+ chars) and check if any
+ * word in the haystack starts with that stem, or vice versa.
+ */
+function stemMatch(haystack: string, needle: string): boolean {
+  if (haystack.includes(needle)) return true;
+  // For short words, require exact substring match
+  if (needle.length < 4) return false;
+  // Stem = first N chars (min 4, or full word if short)
+  const stem = needle.slice(0, Math.max(4, needle.length - 2));
+  // Check if any word in haystack starts with the stem
+  const words = haystack.split(/\s+/);
+  return words.some(w => w.startsWith(stem) || stem.startsWith(w.slice(0, Math.max(4, w.length - 2))));
+}
+
 /** Score how relevant a listing is to a query. Higher = more relevant.
- *  Title match = 10 pts per word, category = 5, description/seller = 1 */
+ *  Title match = 10 pts per word, seller = 8, category = 5, description = 1 */
 function relevanceScore(l: Listing, q: string): number {
   const normalizedQ = stripDiacritics(q);
   const words = normalizedQ.split(/\s+/).filter(Boolean);
@@ -45,13 +61,15 @@ function relevanceScore(l: Listing, q: string): number {
   const desc = stripDiacritics(l.description.toLowerCase());
   let score = 0;
   for (const w of words) {
-    if (title.includes(w)) score += 10;
-    if (seller.includes(w)) score += 8;
-    if (category.includes(w)) score += 5;
-    if (desc.includes(w)) score += 1;
+    if (stemMatch(title, w)) score += 10;
+    if (stemMatch(seller, w)) score += 8;
+    if (stemMatch(category, w)) score += 5;
+    if (stemMatch(desc, w)) score += 1;
   }
   // Bonus if title starts with the query
   if (title.startsWith(normalizedQ)) score += 20;
+  // Bonus for exact substring in title (not just stem)
+  if (title.includes(normalizedQ)) score += 5;
   return score;
 }
 
@@ -64,10 +82,9 @@ function matchesQuery(l: Listing, q: string): boolean {
     l.seller.farmName,
     l.seller.name,
   ];
-  // Match each search word independently — "burk sula" matches if both words appear
   const words = normalizedQ.split(/\s+/).filter(Boolean);
   const haystack = fields.map(f => stripDiacritics(f.toLowerCase())).join(" ");
-  return words.every(word => haystack.includes(word));
+  return words.every(word => stemMatch(haystack, word));
 }
 
 export const revalidate = 60; // revalidate every 60s for new products
