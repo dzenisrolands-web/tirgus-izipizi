@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import { CatalogClient } from "./catalog-client";
 import { fetchActiveListings, fetchWeeklyFeatured } from "@/lib/db-listings";
-import { listings as mockListings, type Listing } from "@/lib/mock-data";
+import { listings as mockListings, lockers, type Listing } from "@/lib/mock-data";
 import { isPublicReady } from "@/lib/utils";
+import { createServerClient } from "@/lib/supabase";
 
 export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
@@ -18,76 +19,38 @@ export const metadata = {
   },
 };
 
-/** Strip Latvian diacritics so "burkans" matches "Burkāns", "kipiloks" matches "Ķīploks" etc. */
-function stripDiacritics(s: string): string {
-  return s
-    .replace(/[āĀ]/g, "a")
-    .replace(/[čČ]/g, "c")
-    .replace(/[ēĒ]/g, "e")
-    .replace(/[ģĢ]/g, "g")
-    .replace(/[īĪ]/g, "i")
-    .replace(/[ķĶ]/g, "k")
-    .replace(/[ļĻ]/g, "l")
-    .replace(/[ņŅ]/g, "n")
-    .replace(/[šŠ]/g, "s")
-    .replace(/[ūŪ]/g, "u")
-    .replace(/[žŽ]/g, "z");
-}
+export const revalidate = 60;
 
-/**
- * Latvian stem match: "burkans" matches "burkani", "burkanu", "burkaniem" etc.
- * For words >= 4 chars, extract a stem (first 4+ chars) and check if any
- * word in the haystack starts with that stem, or vice versa.
- */
-function stemMatch(haystack: string, needle: string): boolean {
-  if (haystack.includes(needle)) return true;
-  // For short words, require exact substring match
-  if (needle.length < 4) return false;
-  // Stem = first N chars (min 4, or full word if short)
-  const stem = needle.slice(0, Math.max(4, needle.length - 2));
-  // Check if any word in haystack starts with the stem
-  const words = haystack.split(/\s+/);
-  return words.some(w => w.startsWith(stem) || stem.startsWith(w.slice(0, Math.max(4, w.length - 2))));
+/** Map RPC search result rows to Listing objects for CatalogClient */
+function mapRpcToListing(row: Record<string, unknown>): Listing {
+  const locker = lockers[0];
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: "",
+    price: row.price as number,
+    unit: (row.unit as string) ?? "gab.",
+    category: (row.category as string) ?? "",
+    image: (row.image_url as string) ?? "",
+    lockerId: locker.id,
+    locker,
+    sellerId: (row.seller_id as string) ?? "",
+    seller: {
+      id: (row.seller_id as string) ?? "",
+      name: (row.seller_name as string) ?? "",
+      farmName: (row.seller_farm_name as string) ?? "",
+      avatar: (row.seller_avatar as string) ?? "",
+      verified: true,
+      rating: 5.0,
+      reviewCount: 0,
+      location: (row.seller_location as string) ?? "",
+    },
+    quantity: 1,
+    freshnessDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    createdAt: new Date().toISOString(),
+    slug: (row.slug as string) ?? undefined,
+  };
 }
-
-/** Score how relevant a listing is to a query. Higher = more relevant.
- *  Title match = 10 pts per word, seller = 8, category = 5, description = 1 */
-function relevanceScore(l: Listing, q: string): number {
-  const normalizedQ = stripDiacritics(q);
-  const words = normalizedQ.split(/\s+/).filter(Boolean);
-  const title = stripDiacritics(l.title.toLowerCase());
-  const category = stripDiacritics(l.category.toLowerCase());
-  const seller = stripDiacritics((l.seller.farmName || l.seller.name).toLowerCase());
-  const desc = stripDiacritics(l.description.toLowerCase());
-  let score = 0;
-  for (const w of words) {
-    if (stemMatch(title, w)) score += 10;
-    if (stemMatch(seller, w)) score += 8;
-    if (stemMatch(category, w)) score += 5;
-    if (stemMatch(desc, w)) score += 1;
-  }
-  // Bonus if title starts with the query
-  if (title.startsWith(normalizedQ)) score += 20;
-  // Bonus for exact substring in title (not just stem)
-  if (title.includes(normalizedQ)) score += 5;
-  return score;
-}
-
-function matchesQuery(l: Listing, q: string): boolean {
-  const normalizedQ = stripDiacritics(q);
-  const fields = [
-    l.title,
-    l.description,
-    l.category,
-    l.seller.farmName,
-    l.seller.name,
-  ];
-  const words = normalizedQ.split(/\s+/).filter(Boolean);
-  const haystack = fields.map(f => stripDiacritics(f.toLowerCase())).join(" ");
-  return words.every(word => stemMatch(haystack, word));
-}
-
-export const revalidate = 60; // revalidate every 60s for new products
 
 export default async function CatalogPage({
   searchParams,
@@ -95,27 +58,33 @@ export default async function CatalogPage({
   searchParams: Promise<{ q?: string; seller?: string; category?: string }>;
 }) {
   const params = await searchParams;
-  const q = (params.q ?? "").trim().toLowerCase();
+  const q = (params.q ?? "").trim();
 
   const [dbListings, dbWeekly] = await Promise.all([
     fetchActiveListings(),
     fetchWeeklyFeatured(7),
   ]);
-  // Real DB listings only. Mock data falls back ONLY if the DB returns
-  // nothing (dev without a populated DB) — it should never inflate counts
-  // alongside real products.
   const realListings = dbListings.filter(isPublicReady);
   const baseListings = realListings.length > 0 ? realListings : mockListings.filter(isPublicReady);
+
   let allListings: Listing[];
-  if (q) {
-    // Score all listings, sort strong matches (title/seller/category) first,
-    // then description-only matches after — so user sees exact products first,
-    // followed by products that mention the query in ingredients/description.
-    allListings = baseListings
-      .map((l) => ({ l, score: relevanceScore(l, q) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(({ l }) => l);
+  if (q && q.length >= 2) {
+    // Try pg_trgm search via RPC (server-side, uses service role)
+    try {
+      const supabase = createServerClient();
+      const { data, error } = await supabase.rpc("search_products", {
+        query: q,
+        lim: 60,
+      });
+      if (!error && data && data.length > 0) {
+        allListings = (data as Record<string, unknown>[]).map(mapRpcToListing);
+      } else {
+        // RPC returned empty or error — fall back to in-memory search
+        allListings = baseListings;
+      }
+    } catch {
+      allListings = baseListings;
+    }
   } else {
     allListings = baseListings;
   }

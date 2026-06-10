@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, X, ShoppingBag, ShoppingCart, Search } from "lucide-react";
+import { Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { supabase } from "@/lib/supabase";
+import { SearchDropdown } from "@/components/search-dropdown";
 
 export function Nav() {
   const router = useRouter();
@@ -13,19 +14,7 @@ export function Nav() {
   const [authed, setAuthed] = useState(false);
   const [hasSeller, setHasSeller] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const { count } = useCart();
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (q) {
-      router.push(`/catalog?q=${encodeURIComponent(q)}`);
-      setSearchQuery("");
-    } else {
-      router.push("/catalog");
-    }
-  }
 
   useEffect(() => {
     function extractName(user: { user_metadata?: Record<string, string>; email?: string } | null | undefined): string | null {
@@ -77,18 +66,7 @@ export function Nav() {
           </Link>
 
           {/* Product search */}
-          <form onSubmit={handleSearch} className="flex flex-1 items-center">
-            <div className="relative flex w-full max-w-xl items-center">
-              <Search size={16} className="absolute left-3 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Meklēt produktus..."
-                className="w-full rounded-full border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-brand-500 focus:shadow-sm"
-              />
-            </div>
-          </form>
+          <SearchDropdown />
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-2 md:flex">
