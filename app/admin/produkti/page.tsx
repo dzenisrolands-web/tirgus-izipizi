@@ -93,12 +93,18 @@ function AdminProduktisInner() {
   async function approve(item: Listing) {
     setActing(item.id);
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("listings").update({
+    const { error } = await supabase.from("listings").update({
       status: "active",
       commission_status: "approved",
       commission_approved_at: new Date().toISOString(),
       commission_approved_by: user?.id ?? null,
     }).eq("id", item.id);
+    if (error) {
+      alert(`Kļūda apstiprinot produktu: ${error.message}`);
+      console.error("[approve listing]", error);
+      setActing(null);
+      return;
+    }
     await supabase.from("notifications").insert({
       user_id: item.user_id,
       title: "Produkts apstiprināts! ✅",
@@ -129,7 +135,13 @@ function AdminProduktisInner() {
 
   async function reject(item: Listing) {
     setActing(item.id);
-    await supabase.from("listings").update({ status: "rejected" }).eq("id", item.id);
+    const { error } = await supabase.from("listings").update({ status: "rejected" }).eq("id", item.id);
+    if (error) {
+      alert(`Kļūda noraidīt produktu: ${error.message}`);
+      console.error("[reject listing]", error);
+      setActing(null);
+      return;
+    }
     await supabase.from("notifications").insert({
       user_id: item.user_id,
       title: "Produkts noraidīts",

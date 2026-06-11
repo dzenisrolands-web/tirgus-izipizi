@@ -167,13 +167,18 @@ export default function AdminRazotajiPage() {
   async function approveSeller(id: string) {
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("sellers").update({
+    const { error } = await supabase.from("sellers").update({
       status: "approved",
       approved_at: now,
       approved_by: user?.id ?? null,
       rejected_reason: null,
       rejected_at: null,
     }).eq("id", id);
+    if (error) {
+      alert(`Kļūda apstiprinot ražotāju: ${error.message}`);
+      console.error("[approve seller]", error);
+      return;
+    }
     const seller = sellers.find(s => s.id === id);
     if (seller?.user_id) {
       await supabase.from("profiles").update({ role: "seller" }).eq("id", seller.user_id);
@@ -189,12 +194,17 @@ export default function AdminRazotajiPage() {
     const id = rejectModal.id;
     const now = new Date().toISOString();
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("sellers").update({
+    const { error } = await supabase.from("sellers").update({
       status: "rejected",
       rejected_reason: rejectReason || null,
       rejected_at: now,
       rejected_by: user?.id ?? null,
     }).eq("id", id);
+    if (error) {
+      alert(`Kļūda noraidīt ražotāju: ${error.message}`);
+      console.error("[reject seller]", error);
+      return;
+    }
     const seller = sellers.find(s => s.id === id);
     if (seller?.user_id) {
       await supabase.from("profiles").update({ role: "buyer" }).eq("id", seller.user_id);
