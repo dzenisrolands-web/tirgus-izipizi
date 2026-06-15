@@ -34,6 +34,7 @@ type Order = {
   seller_ids: string[] | null;
   promo_code: string | null;
   promo_discount_cents: number | null;
+  seller_confirmations: Record<string, { confirmed_at?: string; viewed_at?: string }> | null;
   total_cents: number;
   paid_at: string | null;
   created_at: string;
@@ -353,7 +354,19 @@ export default function AdminPasutijumiPage() {
                         }
                         return [...groups.entries()].map(([sid, group]) => (
                           <div key={sid} className="mb-3 last:mb-0">
-                            <p className="text-xs font-bold text-brand-700 mb-1">🏪 {group.name}</p>
+                            <p className="text-xs font-bold text-brand-700 mb-1 flex items-center gap-2">
+                              🏪 {group.name}
+                              {(() => {
+                                const conf = order.seller_confirmations?.[sid];
+                                if (conf?.confirmed_at) {
+                                  return <span className="rounded-full bg-green-100 px-2 py-0.5 text-[9px] font-bold text-green-700">✓ Apstiprināts {new Date(conf.confirmed_at).toLocaleString("lv-LV", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>;
+                                }
+                                if (order.payment_status === "paid") {
+                                  return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700">Gaida apstiprinājumu</span>;
+                                }
+                                return null;
+                              })()}
+                            </p>
                             <div className="space-y-1 pl-4 border-l-2 border-brand-100">
                               {group.items.map((item, i) => (
                                 <div key={i} className="flex justify-between text-sm">
