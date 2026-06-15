@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 import { notifySellersNewOrder, notifyBuyerOrderStatus } from "@/lib/order-notifications";
 import { sendAllOrderEmails } from "@/lib/email";
 
@@ -9,21 +9,15 @@ const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"
  * Admin-only: update order status + sync payment_status/paid_at.
  * When changing to "paid", triggers the full flow (notifications + emails)
  * — same as the Paysera webhook would.
- * Uses service_role key to bypass RLS.
  */
 export async function POST(req: Request) {
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertSuperAdmin(req);
+  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+  const { supabase } = ctx;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { orderId, status } = await req.json().catch(() => ({}));
+  const { orderId, status, resendNotifications } = await req.json().catch(() => ({})) as {
+    orderId?: string; status?: string; resendNotifications?: boolean;
+  };
   if (!orderId || !status) {
     return NextResponse.json({ error: "Missing orderId or status" }, { status: 400 });
   }
@@ -67,8 +61,8 @@ export async function POST(req: Request) {
   // ── Side effects: trigger notifications + emails on status transitions ────
   const sideEffects: string[] = [];
 
-  // Newly marked as paid → full "paid" flow (same as Paysera webhook)
-  if (status === "paid" && !wasPaid) {
+  // Newly marked as paid OR resend requested → full "paid" flow
+  if (status === "paid" && (!wasPaid || resendNotifications)) {
     notifySellersNewOrder(orderId).catch((e) =>
       console.error("[admin] notifySellersNewOrder failed:", e)
     );

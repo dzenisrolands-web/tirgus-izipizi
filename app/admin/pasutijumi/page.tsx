@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard, AlertTriangle, Loader2 } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard, AlertTriangle, Loader2, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -65,6 +65,8 @@ export default function AdminPasutijumiPage() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -158,6 +160,35 @@ export default function AdminPasutijumiPage() {
     } finally {
       setMarkingPaid(null);
     }
+  }
+
+  /** Resend notifications for an already-paid order (e.g., if webhook missed) */
+  async function resendNotifications(order: Order) {
+    setResending(order.id);
+    setResendResult(null);
+    try {
+      const token = await getToken();
+      if (!token) { alert("Nav sesijas"); return; }
+      // Set status to "paid" again — the API detects it's already paid
+      // but we force wasPaid=false by temporarily setting to pending then back
+      // Actually simpler: just call update-order-status with "paid" — if already paid,
+      // we need a special flag. Let's add resendOnly.
+      const res = await fetch("/api/admin/update-order-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: order.id, status: "paid", resendNotifications: true }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setResendResult({ id: order.id, ok: true, msg: `Paziņojumi nosūtīti (${(json.sideEffects ?? []).join(", ")})` });
+      } else {
+        setResendResult({ id: order.id, ok: false, msg: json.error ?? "Kļūda" });
+      }
+    } catch (e) {
+      setResendResult({ id: order.id, ok: false, msg: e instanceof Error ? e.message : "Tīkla kļūda" });
+    }
+    setResending(null);
+    setTimeout(() => setResendResult(null), 5000);
   }
 
   const visible = orders.filter(o => {
@@ -354,6 +385,32 @@ export default function AdminPasutijumiPage() {
                             : <><CreditCard size={12} /> Atzīmēt kā apmaksātu</>
                           }
                         </button>
+                      </div>
+                    )}
+
+                    {/* Resend notifications for already-paid orders */}
+                    {order.payment_status === "paid" && (
+                      <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+                        <Send size={14} className="shrink-0 text-blue-600" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-blue-800">Paziņojumi ražotājiem</p>
+                          <p className="text-[10px] text-blue-600">Nosūtīt/atkārtoti nosūtīt e-pastus un push paziņojumus visiem ražotājiem</p>
+                        </div>
+                        <button
+                          onClick={() => resendNotifications(order)}
+                          disabled={resending === order.id}
+                          className="flex shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition disabled:opacity-60"
+                        >
+                          {resending === order.id
+                            ? <><Loader2 size={11} className="animate-spin" /> Sūta...</>
+                            : <><Send size={11} /> Nosūtīt paziņojumus</>
+                          }
+                        </button>
+                      </div>
+                    )}
+                    {resendResult?.id === order.id && (
+                      <div className={`rounded-xl px-4 py-2 text-xs ${resendResult.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>
+                        {resendResult.ok ? "✓ " : "✗ "}{resendResult.msg}
                       </div>
                     )}
 
