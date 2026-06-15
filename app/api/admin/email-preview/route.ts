@@ -161,6 +161,52 @@ function generatePreview(templateId: string): string {
           </a>
         </div>`);
 
+    case "order-processing":
+      return brandedEmailLayout(`
+        <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">👨‍🍳 Tavs pasūtījums tiek gatavots!</h1>
+        <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+          Sveiks, <strong>${escapeHtml(o.buyerName)}</strong>!<br>
+          Ražotājs ir apstiprinājis pasūtījumu <strong>${escapeHtml(o.orderNumber)}</strong> un sāk to sagatavot.
+        </p>
+        <div style="background:#f0f7ff;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #3b82f6;">
+          <p style="margin:0;font-size:14px;color:#1e40af;font-weight:600;">Statuss: Apstrādē</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#555;">Ražotājs gatavo tavu pasūtījumu nosūtīšanai.</p>
+        </div>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${site}/profils/pasutijumi" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:12px 32px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Skatīt pasūtījumu →</a>
+        </div>`);
+
+    case "order-shipped":
+      return brandedEmailLayout(`
+        <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">📦 Tavs pasūtījums gaida tevi!</h1>
+        <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+          Sveiks, <strong>${escapeHtml(o.buyerName)}</strong>!<br>
+          Pasūtījums <strong>${escapeHtml(o.orderNumber)}</strong> ir ievietots pakomātā un gatavs saņemšanai.
+        </p>
+        <div style="background:#f0fdf4;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #22c55e;">
+          <p style="margin:0;font-size:14px;color:#166534;font-weight:600;">${escapeHtml(o.deliveryLabel)}</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#555;">${escapeHtml(o.deliveryDetails)}</p>
+          <p style="margin:8px 0 0;font-size:20px;font-weight:800;color:#166534;letter-spacing:2px;">PIN: 4827</p>
+        </div>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${site}/profils/pasutijumi" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:12px 32px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Skatīt pasūtījumu →</a>
+        </div>`);
+
+    case "order-delivered":
+      return brandedEmailLayout(`
+        <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">✅ Pasūtījums saņemts!</h1>
+        <p style="margin:0 0 20px 0;color:#555;font-size:14px;line-height:1.6;">
+          Sveiks, <strong>${escapeHtml(o.buyerName)}</strong>!<br>
+          Pasūtījums <strong>${escapeHtml(o.orderNumber)}</strong> ir veiksmīgi saņemts. Paldies, ka ieprrcies no vietējiem ražotājiem!
+        </p>
+        <div style="background:#fefce8;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #eab308;">
+          <p style="margin:0;font-size:14px;color:#854d0e;font-weight:600;">⭐ Kā Tev patika?</p>
+          <p style="margin:4px 0 0;font-size:13px;color:#555;">Atstāj atsauksmi — palīdzi citiem pircējiem izvēlēties!</p>
+        </div>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${site}/profils/pasutijumi" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:12px 32px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Atstāt atsauksmi →</a>
+        </div>`);
+
     default:
       return "<p>Nezināms šablons</p>";
   }
@@ -200,6 +246,9 @@ export async function POST(req: Request) {
     "order-buyer": "[TEST] Pasūtījums apmaksāts",
     "order-seller": "[TEST] Jauns pasūtījums",
     "order-admin": "[TEST] Admin kopija",
+    "order-processing": "[TEST] Ražotājs apstiprināja",
+    "order-shipped": "[TEST] Pasūtījums gatavs saņemšanai",
+    "order-delivered": "[TEST] Pasūtījums saņemts",
     "seller-reminder": "[TEST] Aizpildi trūkstošo info",
     "invitation": "[TEST] Uzaicinājums pievienoties",
   };

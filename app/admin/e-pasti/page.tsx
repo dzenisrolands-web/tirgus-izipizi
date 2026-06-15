@@ -37,6 +37,27 @@ const TEMPLATE_META: Record<string, { name: string; icon: React.ReactNode; when:
     to: "tirgus@izipizi.lv",
     color: "bg-gray-50 border-gray-200 text-gray-700",
   },
+  "order-processing": {
+    name: "Ražotājs apstiprināja (pircējam)",
+    icon: <ShoppingBag size={16} />,
+    when: "Kad statuss mainās uz Apstrādē",
+    to: "Pircēja e-pasts",
+    color: "bg-blue-50 border-blue-200 text-blue-800",
+  },
+  "order-shipped": {
+    name: "Pasūtījums gatavs saņemšanai (pircējam)",
+    icon: <Bell size={16} />,
+    when: "Kad statuss mainās uz Nosūtīts",
+    to: "Pircēja e-pasts",
+    color: "bg-green-50 border-green-200 text-green-800",
+  },
+  "order-delivered": {
+    name: "Pasūtījums saņemts (pircējam)",
+    icon: <CheckCircle size={16} />,
+    when: "Kad statuss mainās uz Piegādāts",
+    to: "Pircēja e-pasts",
+    color: "bg-gray-50 border-gray-200 text-gray-700",
+  },
   "seller-reminder": {
     name: "Atgādinājums pārdevējam",
     icon: <Mail size={16} />,
