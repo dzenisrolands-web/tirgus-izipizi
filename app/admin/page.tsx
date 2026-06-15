@@ -339,6 +339,57 @@ export default function AdminPage() {
 
       <EmailSubscribersPanel />
       <EmailTestPanel />
+
+      {/* Instructions */}
+      <section className="mt-10 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">📋 Pamācība admin paneļim</h2>
+        <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+          <details className="group">
+            <summary className="cursor-pointer font-semibold text-gray-900 hover:text-brand-700">⭐ Nedēļas piedāvājums</summary>
+            <div className="mt-2 pl-4 border-l-2 border-brand-100 space-y-1">
+              <p>Atver <strong>Nedēļas piedāvājums</strong> no kreisās sānjoslas.</p>
+              <p>Augšā izvēlies nedēļu (šonedēļ, nākamā u.c.) ar ◀▶ pogām.</p>
+              <p>Katrai nedēļai ir <strong>7 sloti</strong> — klikšķini "+" uz tukša slota, izvēlies produktu no saraksta.</p>
+              <p>Produkts uzreiz parādīsies sākumlapā "Nedēļas piedāvājums" sadaļā.</p>
+              <p>Noņem produktu ar 🗑 pogu. Vari sagatavoties nākamajai nedēļai iepriekš.</p>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="cursor-pointer font-semibold text-gray-900 hover:text-brand-700">👥 Ražotāju pārvaldība</summary>
+            <div className="mt-2 pl-4 border-l-2 border-brand-100 space-y-1">
+              <p><strong>Apstiprīnāšana</strong>: Ražotāji → "Apstiprināt" poga. Vienmēr pārbaudi profila pilnīgumu (onboarding checklist).</p>
+              <p><strong>Atgādinājums</strong>: Ja trūkst info → "Sūtīt atgādinājumu" nosūta e-pastu ar trūkstošo lauku sarakstu.</p>
+              <p><strong>Saistīšana</strong>: Importētiem ražotājiem (nav konta) → ievadi e-pastu un nospied "Saistīt + sūtīt invite".</p>
+              <p><strong>Norāidīšana</strong>: "Noraidīt" → ievadi iemeslu. Ražotājs redzēs to savā profilā.</p>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="cursor-pointer font-semibold text-gray-900 hover:text-brand-700">📦 Produktu apstiprināšana</summary>
+            <div className="mt-2 pl-4 border-l-2 border-brand-100 space-y-1">
+              <p>Produkti → "Gaida apstiprinājumu" tab → "Apstiprināt" vai "Noraidīt".</p>
+              <p>Apstiprināts produkts kļūst <strong>aktīvs</strong> un parādās katalogā.</p>
+              <p>Vari mainīt komisijas likmi (5-20%) katram produktam atsevišķi.</p>
+              <p>"Pauzēt" — īslaicīgi noslēpt no kataloga.</p>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="cursor-pointer font-semibold text-gray-900 hover:text-brand-700">🛒 Pasūtījumu apstrāde</summary>
+            <div className="mt-2 pl-4 border-l-2 border-brand-100 space-y-1">
+              <p>Pasūtījumi → atver pasūtījumu → redzi preces <strong>grupētas pēc ražotāja</strong>.</p>
+              <p>Statusa plūsma: <strong>Gaida → Apmaksāts → Apstrādē → Nosūtīts → Piegādāts</strong>.</p>
+              <p>Ja Paysera webhook neatnāca — nospied "Atzīmēt kā apmaksātu" (nosūta e-pastu pircējam + push ražotājam).</p>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="cursor-pointer font-semibold text-gray-900 hover:text-brand-700">✉️ E-pasta šabloni</summary>
+            <div className="mt-2 pl-4 border-l-2 border-brand-100 space-y-1">
+              <p>E-pasta šabloni → rediģē tematu un ķermeni tiešsaistē, bez deploja.</p>
+              <p>Lieto <code className="bg-gray-100 px-1 rounded text-xs">{"{{mainīgais}}"}</code> sintaksi dinamiskajiem laukiem.</p>
+              <p>"Sūtīt testu" → nosūta reālu e-pastu ar piemēra datiem.</p>
+            </div>
+          </details>
+        </div>
+      </section>
     </div>
   );
 }

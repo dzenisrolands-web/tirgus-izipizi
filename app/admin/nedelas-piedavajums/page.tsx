@@ -178,7 +178,7 @@ export default function AdminNedelasPiedavajumsPage() {
             Nedēļas piedāvājums
           </h1>
           <p className="mt-0.5 text-sm text-gray-500">
-            7 sloti uz nedēļu · parādās sākumlapā
+            7 sloti uz nedēļu · parādās sākumlapā · <button onClick={() => document.getElementById('help-weekly')?.classList.toggle('hidden')} className="text-brand-600 hover:underline">pamācība ↓</button>
           </p>
         </div>
         {pendingApps.length > 0 && (
@@ -189,6 +189,20 @@ export default function AdminNedelasPiedavajumsPage() {
             </span>
           </div>
         )}
+      </div>
+
+      {/* Help section */}
+      <div id="help-weekly" className="hidden mb-6 rounded-2xl border border-amber-100 bg-amber-50/50 p-5 text-sm text-gray-700 space-y-2">
+        <p className="font-bold text-gray-900">📋 Kā lietot Nedēļas piedāvājumu</p>
+        <p><strong>1.</strong> Augšā izvēlies nedēļu ar ◀▶ pogām (šonedēļ vai nākamā).</p>
+        <p><strong>2.</strong> Nospied <strong>"+"</strong> uz tukša slota — atvērsies produktu izvēles logs.</p>
+        <p><strong>3.</strong> Meklē produktu pēc nosaukuma vai ražotāja → klikšķini lai pievienotu.</p>
+        <p><strong>4.</strong> Produkts uzreiz parādīsies sākumlapā sadaļā "Nedēļas piedāvājums".</p>
+        <p><strong>5.</strong> Noņem produktu ar 🗑 (sarkanā) pogu.</p>
+        <p><strong>6.</strong> Vari sagatavoties iepriekš — pārslēdzies uz nākamo nedēļu un aizpildi slotus.</p>
+        <p className="text-xs text-gray-500 pt-2 border-t border-amber-200">
+          💡 Katrai nedēļai ir 7 sloti. Ja ražotāji paši piesakās, viņu pieteikumi parādās ar "Gaida" statusu — apstiprini vai noraidi.
+        </p>
       </div>
 
       {/* Week navigation */}
