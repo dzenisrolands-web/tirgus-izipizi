@@ -14,6 +14,8 @@ type OrderItem = {
   sellerName?: string;
 };
 
+type DeliveryFeeBySeller = { sellerId?: string; sellerName?: string; feeCents: number; method: string };
+
 type Order = {
   id: string;
   order_number: string;
@@ -23,9 +25,15 @@ type Order = {
   buyer_email: string;
   buyer_phone: string;
   delivery_type: string | null;
-  delivery_info: { locker_name?: string; locker_city?: string; address?: string; city?: string };
+  delivery_info: {
+    locker_name?: string; locker_city?: string; address?: string; city?: string; postal_code?: string;
+    delivery_fee_cents?: number; delivery_fees_by_seller?: DeliveryFeeBySeller[];
+    promo_code?: string; promo_discount_cents?: number;
+  };
   items: OrderItem[];
   seller_ids: string[] | null;
+  promo_code: string | null;
+  promo_discount_cents: number | null;
   total_cents: number;
   paid_at: string | null;
   created_at: string;
@@ -273,8 +281,31 @@ export default function AdminPasutijumiPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Piegāde</p>
-                        <p className="font-medium text-gray-900">{order.delivery_info?.locker_name}</p>
-                        <p className="text-gray-500">{order.delivery_info?.locker_city}</p>
+                        <p className="font-medium text-gray-900">
+                          {order.delivery_type === "locker" ? "Pakomāts" : order.delivery_type === "courier" ? "Kurjers" : order.delivery_type === "express" ? "Ekspres" : order.delivery_type}
+                        </p>
+                        <p className="text-gray-500">{order.delivery_info?.locker_name ?? order.delivery_info?.address}</p>
+                        <p className="text-gray-500">{order.delivery_info?.locker_city ?? order.delivery_info?.city}{order.delivery_info?.postal_code ? `, LV-${order.delivery_info.postal_code}` : ""}</p>
+                        {/* Delivery fee */}
+                        {(order.delivery_info?.delivery_fee_cents ?? 0) > 0 && (
+                          <p className="mt-1 text-xs font-semibold text-gray-700">
+                            Piegādes maksa: {formatPrice((order.delivery_info?.delivery_fee_cents ?? 0) / 100)}
+                            {(order.delivery_info?.delivery_fees_by_seller?.length ?? 0) > 1 && (
+                              <span className="text-gray-400 font-normal"> ({order.delivery_info!.delivery_fees_by_seller!.length} ražotāji)</span>
+                            )}
+                          </p>
+                        )}
+                        {/* Promo code */}
+                        {(order.promo_code || order.delivery_info?.promo_code) && (
+                          <p className="mt-1 text-xs">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 font-bold text-green-700">
+                              🎟 {order.promo_code ?? order.delivery_info?.promo_code}
+                              {(order.promo_discount_cents ?? order.delivery_info?.promo_discount_cents ?? 0) > 0 && (
+                                <span> −{formatPrice((order.promo_discount_cents ?? order.delivery_info?.promo_discount_cents ?? 0) / 100)}</span>
+                              )}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
