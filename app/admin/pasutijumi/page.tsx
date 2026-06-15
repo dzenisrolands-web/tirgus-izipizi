@@ -5,6 +5,15 @@ import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
+type OrderItem = {
+  title: string;
+  quantity: number;
+  price: number;
+  seller_id?: string;
+  sellerId?: string;
+  sellerName?: string;
+};
+
 type Order = {
   id: string;
   order_number: string;
@@ -15,7 +24,8 @@ type Order = {
   buyer_phone: string;
   delivery_type: string | null;
   delivery_info: { locker_name?: string; locker_city?: string; address?: string; city?: string };
-  items: { title: string; quantity: number; price: number }[];
+  items: OrderItem[];
+  seller_ids: string[] | null;
   total_cents: number;
   paid_at: string | null;
   created_at: string;
@@ -242,7 +252,11 @@ export default function AdminPasutijumiPage() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${st.cls}`}>{st.label}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {order.buyer_name} · {order.buyer_email} · {new Date(order.created_at).toLocaleDateString("lv-LV")}
+                      {order.buyer_name} · {new Date(order.created_at).toLocaleDateString("lv-LV")}
+                      {(() => {
+                        const names = [...new Set((order.items ?? []).map(it => it.sellerName).filter(Boolean))];
+                        return names.length > 0 ? ` · 🏪 ${names.join(", ")}` : "";
+                      })()}
                     </p>
                   </div>
                   <p className="shrink-0 font-bold text-gray-900">{formatPrice(order.total_cents / 100)}</p>
@@ -266,14 +280,29 @@ export default function AdminPasutijumiPage() {
 
                     <div>
                       <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">Preces</p>
-                      <div className="space-y-1">
-                        {order.items.map((item, i) => (
-                          <div key={i} className="flex justify-between text-sm">
-                            <span className="text-gray-700">{item.title} × {item.quantity}</span>
-                            <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+                      {(() => {
+                        // Group items by seller
+                        const groups = new Map<string, { name: string; items: OrderItem[] }>();
+                        for (const item of order.items) {
+                          const sid = item.seller_id ?? item.sellerId ?? "unknown";
+                          const sname = item.sellerName ?? "Nezināms ražotājs";
+                          if (!groups.has(sid)) groups.set(sid, { name: sname, items: [] });
+                          groups.get(sid)!.items.push(item);
+                        }
+                        return [...groups.entries()].map(([sid, group]) => (
+                          <div key={sid} className="mb-3 last:mb-0">
+                            <p className="text-xs font-bold text-brand-700 mb-1">🏪 {group.name}</p>
+                            <div className="space-y-1 pl-4 border-l-2 border-brand-100">
+                              {group.items.map((item, i) => (
+                                <div key={i} className="flex justify-between text-sm">
+                                  <span className="text-gray-700">{item.title} × {item.quantity}</span>
+                                  <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        ));
+                      })()}
                     </div>
 
                     {/* Payment status + Mark as Paid */}
