@@ -496,14 +496,22 @@ export default function AdminRazotajiPage() {
                           Nosūtīts {new Date(inv.sent_at).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
-                      <div className="shrink-0 text-right">
-                        {inv.opened_at ? (
+                      <div className="shrink-0 flex flex-col items-end gap-0.5">
+                        {inv.registered_at ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700">
+                            \u2713 Re\u0123istr\u0113j\u0101s
+                          </span>
+                        ) : inv.clicked_at ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                            \u2192 Noklik\u0161\u0137in\u0101ja
+                          </span>
+                        ) : inv.opened_at ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                            <Eye size={9} /> Atvēra {inv.opened_count > 1 ? `(${inv.opened_count}×)` : ""}
+                            <Eye size={9} /> Atv\u0113ra {inv.opened_count > 1 ? `(${inv.opened_count}\u00d7)` : ""}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                            Nav atvērts
+                            Nav atv\u0113rts
                           </span>
                         )}
                       </div>

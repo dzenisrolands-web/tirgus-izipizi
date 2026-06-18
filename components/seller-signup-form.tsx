@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Loader2, Store, ArrowLeft, Truck, Percent, Shield, Star, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export function SellerSignupForm() {
+export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,6 +13,13 @@ export function SellerSignupForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+
+  // Track invitation click (fire-and-forget)
+  useState(() => {
+    if (invitationId) {
+      fetch(`/api/track/click/${encodeURIComponent(invitationId)}`).catch(() => {});
+    }
+  });
 
   async function handleGoogle() {
     setGoogleLoading(true);
@@ -46,6 +53,14 @@ export function SellerSignupForm() {
         },
       });
       if (error) throw error;
+      // Track registration in invitation record
+      if (invitationId) {
+        fetch(`/api/admin/invite/track-register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, invitationId }),
+        }).catch(() => {});
+      }
       // Sign out immediately so the new seller session doesn't replace
       // the current user's session (e.g. an admin testing the form).
       // When email confirmation is disabled Supabase auto-logs in the new user;

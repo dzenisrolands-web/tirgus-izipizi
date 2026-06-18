@@ -88,7 +88,7 @@ export async function GET(req: Request) {
 
   const { data: invitations } = await supabase
     .from("invitations")
-    .select("id, email, name, sent_at, opened_at, opened_count, status")
+    .select("id, email, name, sent_at, opened_at, opened_count, clicked_at, registered_at, status")
     .order("sent_at", { ascending: false })
     .limit(100);
 
