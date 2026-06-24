@@ -221,15 +221,24 @@ export default async function HomePage() {
     <div>
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#192635]">
+      <section className="relative overflow-hidden" style={{
+        background: `
+          radial-gradient(ellipse 900px 500px at 15% 85%, rgba(139,69,19,.35), transparent 60%),
+          radial-gradient(ellipse 700px 400px at 85% 15%, rgba(34,139,34,.25), transparent 55%),
+          radial-gradient(ellipse 600px 350px at 50% 0%, rgba(178,34,34,.20), transparent 50%),
+          radial-gradient(ellipse 1200px 800px at 50% 50%, rgba(25,38,53,.95), transparent),
+          linear-gradient(135deg, #1a1a1a 0%, #2d1f15 25%, #1a2a1a 50%, #1a1a2a 75%, #1a1a1a 100%)
+        `
+      }}>
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full opacity-10"
+          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full opacity-[0.07]"
             style={{ background: "radial-gradient(circle, #53F3A4, transparent 70%)" }} />
-          <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full opacity-10"
+          <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full opacity-[0.07]"
             style={{ background: "radial-gradient(circle, #AD47FF, transparent 70%)" }} />
-          {/* Warm food halo — adds appetite cue alongside the cool brand colors */}
-          <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full opacity-[0.09]"
+          <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full opacity-[0.12]"
             style={{ background: "radial-gradient(circle, #fbbf24, transparent 70%)" }} />
+          <div className="absolute right-10 top-10 h-48 w-48 rounded-full opacity-[0.06]"
+            style={{ background: "radial-gradient(circle, #ef4444, transparent 70%)" }} />
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -253,32 +262,24 @@ export default async function HomePage() {
                 </p>
               */}
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-sm font-semibold text-amber-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
-                Latvijas pārtikas tirgotāju marketplace
+              <div className="inline-flex items-center gap-2 rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1.5 text-sm font-semibold text-green-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                Latvijas pārtikas ražotāju marketplace
               </div>
 
-              <h1 className="mt-5 text-4xl font-extrabold uppercase leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
+                Latvijā ražoti produkti —{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  Ražotājs
-                </span>,{" "}
-                <span className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  pārtikas pakomāts
-                </span>{" "}
-                <span className="text-white">vai piegāde</span>,
-                <br />
-                <span className="text-white">Tavs galds.</span>
+                  tieši no ražotāja
+                </span>
               </h1>
 
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg">
-                Austeru bārs <strong className="text-white">BURŽUJS</strong>,{" "}
-                <strong className="text-white">K/S “Ekoloģisks.lv”</strong>,{" "}
-                <strong className="text-white">Cake Break</strong> un citi —{" "}
-                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
-                Saņem <strong className="text-white">pārtikas pakomātā</strong> vai ar{" "}
-                <strong className="text-white">piegādi</strong> uz mājām.
+              <p className="mt-4 max-w-lg text-lg leading-relaxed text-gray-300 sm:text-xl">
+                Ērti saņemt{" "}
+                <strong className="text-white">IziPizi pārtikas pakomātos</strong>{" "}
+                vai ar <strong className="text-white">piegādi</strong> uz mājām.{" "}
+                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.
               </p>
 
               {/* CTAs */}
