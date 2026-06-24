@@ -268,18 +268,17 @@ export default async function HomePage() {
               </div>
 
               <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
-                Latvijā ražoti produkti —{" "}
+                Tieši no savējiem —{" "}
                 <span className="bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(90deg, #53F3A4, #AD47FF)" }}>
-                  tieši no ražotāja
+                  pārtikas pakomātā vai ar kurjerpiegādi
                 </span>
               </h1>
 
               <p className="mt-4 max-w-lg text-lg leading-relaxed text-gray-300 sm:text-xl">
-                Ērti saņemt{" "}
-                <strong className="text-white">IziPizi pārtikas pakomātos</strong>{" "}
-                vai ar <strong className="text-white">piegādi</strong> uz mājām.{" "}
-                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.
+                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
+                Saņem <strong className="text-white">pārtikas pakomātā</strong> vai ar{" "}
+                <strong className="text-white">kurjerpiegādi</strong> uz mājām.
               </p>
 
               {/* CTAs */}
