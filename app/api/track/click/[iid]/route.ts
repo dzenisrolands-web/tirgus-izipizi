@@ -9,9 +9,9 @@ import { createClient } from "@supabase/supabase-js";
  */
 export async function GET(
   _req: Request,
-  { params }: { params: { iid: string } }
+  { params }: { params: Promise<{ iid: string }> }
 ) {
-  const iid = params.iid;
+  const { iid } = await params;
   if (!iid) return NextResponse.json({ ok: false }, { status: 400 });
 
   try {

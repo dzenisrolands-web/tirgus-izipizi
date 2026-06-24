@@ -92,7 +92,8 @@ export default function AdminRazotajiPage() {
   const [inviteMsg, setInviteMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [invitations, setInvitations] = useState<Array<{
     id: string; email: string; name: string | null;
-    sent_at: string; opened_at: string | null; opened_count: number; status: string;
+    sent_at: string; opened_at: string | null; opened_count: number;
+    clicked_at: string | null; registered_at: string | null; status: string;
   }>>([]);
   const [invitationsLoaded, setInvitationsLoaded] = useState(false);
 
