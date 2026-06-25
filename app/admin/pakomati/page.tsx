@@ -76,6 +76,8 @@ export default function AdminPakomatiPage() {
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newPak, setNewPak] = useState({ code: "", name: "", address: "", postal_code: "", lat: "", lng: "", status: "aktivs", has_warehouse: false, is_hub: false, note: "", franchise_partner_id: "" });
+  const [newComp, setNewComp] = useState({ code: "", size: "M", temp_mode: "atdzesets" });
+  const [addingComp, setAddingComp] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const sb = izpClient();
@@ -127,6 +129,23 @@ export default function AdminPakomatiPage() {
       await load();
     }
     setSaving(false);
+  }
+
+  async function addCompartment(pakId: string) {
+    setSaving(true);
+    const sb = izpClient();
+    const { error } = await sb.from("compartments").insert({ pakomats_id: pakId, ...newComp });
+    if (error) alert("K\u013c\u016bda: " + error.message);
+    else { setNewComp({ code: "", size: "M", temp_mode: "atdzesets" }); setAddingComp(null); await load(); }
+    setSaving(false);
+  }
+
+  async function deleteCompartment(compId: string) {
+    if (!confirm("Dz\u0113st nodal\u012bjumu?")) return;
+    const sb = izpClient();
+    const { error } = await sb.from("compartments").delete().eq("id", compId);
+    if (error) alert("K\u013c\u016bda: " + error.message);
+    else await load();
   }
 
   const visible = items.filter(p => {
@@ -308,10 +327,25 @@ export default function AdminPakomatiPage() {
                   </div>
                   {p.note && <p className="text-gray-500 italic">{p.note}</p>}
 
-                  {/* Compartments table */}
-                  {comps.length > 0 && (
-                    <div>
-                      <p className="font-bold text-gray-700 mt-2 mb-1">Nodalījumi ({comps.length})</p>
+                  {/* Compartments table + add */}
+                  <div>
+                    <div className="flex items-center justify-between mt-2 mb-1">
+                      <p className="font-bold text-gray-700">Nodalījumi ({comps.length})</p>
+                      <button onClick={() => setAddingComp(addingComp === p.id ? null : p.id)} className="text-[10px] text-brand-600 font-semibold flex items-center gap-1"><Plus size={10} /> Pievienot</button>
+                    </div>
+                    {addingComp === p.id && (
+                      <div className="flex gap-2 mb-2 items-end">
+                        <input value={newComp.code} onChange={e => setNewComp(c => ({ ...c, code: e.target.value }))} placeholder="Kods (A1)" className="input text-[11px] w-16" />
+                        <select value={newComp.size} onChange={e => setNewComp(c => ({ ...c, size: e.target.value }))} className="input text-[11px] w-16">
+                          <option value="M">M</option><option value="L">L</option><option value="XL">XL</option>
+                        </select>
+                        <select value={newComp.temp_mode} onChange={e => setNewComp(c => ({ ...c, temp_mode: e.target.value }))} className="input text-[11px] w-24">
+                          <option value="atdzesets">+2…+6°C</option><option value="saldets">−18°C</option><option value="istabas">Istabas</option>
+                        </select>
+                        <button onClick={() => addCompartment(p.id)} disabled={!newComp.code || saving} className="btn-primary text-[10px] px-2 py-1">{saving ? "..." : "+"}</button>
+                      </div>
+                    )}
+                    {comps.length > 0 && (
                       <div className="rounded border border-gray-100 overflow-hidden">
                         <table className="w-full text-[11px]">
                           <thead className="bg-gray-50">
@@ -320,6 +354,7 @@ export default function AdminPakomatiPage() {
                               <th className="px-2 py-1 text-left font-semibold text-gray-600">Izmērs</th>
                               <th className="px-2 py-1 text-left font-semibold text-gray-600">Režīms</th>
                               <th className="px-2 py-1 text-left font-semibold text-gray-600">Statuss</th>
+                              <th className="px-2 py-1 w-8"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
@@ -331,14 +366,15 @@ export default function AdminPakomatiPage() {
                                   <td className="px-2 py-1 font-bold">{c.size}</td>
                                   <td className="px-2 py-1">{temp ? <span className={`flex items-center gap-1 ${temp.cls}`}><temp.icon size={10} /> {temp.label}</span> : c.temp_mode}</td>
                                   <td className="px-2 py-1"><span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${COMP_STATUS_COLORS[c.status] ?? ""}`}>{c.status}</span></td>
+                                  <td className="px-2 py-1"><button onClick={() => deleteCompartment(c.id)} className="text-red-400 hover:text-red-600" title="Dzēst"><X size={10} /></button></td>
                                 </tr>
                               );
                             })}
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
