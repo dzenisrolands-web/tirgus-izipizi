@@ -6,24 +6,48 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
   Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3, UserCog,
-  FileText, MessageSquarePlus, Loader2, Mail, Truck,
+  FileText, MessageSquarePlus, Loader2, Mail, Truck, Building2, Map, Handshake, Wallet,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/admin",                      label: "Kopsavilkums",        icon: LayoutDashboard, exact: true },
-  { href: "/admin/statistika",           label: "Statistika",          icon: BarChart3 },
-  { href: "/admin/razotaji",             label: "Ražotāji",            icon: Users },
-  { href: "/admin/produkti",             label: "Produkti",            icon: Package },
-  { href: "/admin/nedelas-piedavajums",  label: "Nedēļas piedāvājums", icon: Star },
-  { href: "/admin/pasutijumi",           label: "Pasūtījumi",          icon: ShoppingBag },
-  { href: "/admin/sutijumi",             label: "Sūtījumi",            icon: Truck },
-  { href: "/admin/pirceji",              label: "Pircēji",             icon: UserCheck },
-  { href: "/admin/rekini",               label: "Rēķini",              icon: FileText },
-  { href: "/admin/e-pasti",               label: "E-pasta šabloni",     icon: Mail },
-  { href: "/admin/feedback",             label: "Kļūdu ziņojumi",      icon: MessageSquarePlus },
-  { href: "/admin/komanda",              label: "Komanda",             icon: UserCog },
+type NavItem = { href: string; label: string; icon: typeof Package; exact?: boolean };
+type NavGroup = { group: string; color: string; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    group: "Tirgus",
+    color: "text-brand-400",
+    items: [
+      { href: "/admin",                      label: "Kopsavilkums",        icon: LayoutDashboard, exact: true },
+      { href: "/admin/statistika",           label: "Statistika",          icon: BarChart3 },
+      { href: "/admin/razotaji",             label: "Ra\u017eot\u0101ji",            icon: Users },
+      { href: "/admin/produkti",             label: "Produkti",            icon: Package },
+      { href: "/admin/nedelas-piedavajums",  label: "Ned\u0113\u013cas pied\u0101v\u0101jums", icon: Star },
+      { href: "/admin/pasutijumi",           label: "Pas\u016bt\u012bjumi",          icon: ShoppingBag },
+      { href: "/admin/pirceji",              label: "Pirc\u0113ji",             icon: UserCheck },
+      { href: "/admin/rekini",               label: "R\u0113\u0137ini",              icon: FileText },
+    ],
+  },
+  {
+    group: "Lo\u0123istika / Pieg\u0101de",
+    color: "text-violet-400",
+    items: [
+      { href: "/admin/sutijumi",             label: "S\u016bt\u012bjumi",            icon: Truck },
+      { href: "/admin/pakomati",             label: "Pakom\u0101ti",             icon: Building2 },
+      { href: "/admin/fransize",             label: "Fran\u0161\u012bze",             icon: Handshake },
+      { href: "/admin/izmaksas",             label: "Izmaksas",             icon: Wallet },
+    ],
+  },
+  {
+    group: "Sist\u0113ma",
+    color: "text-gray-500",
+    items: [
+      { href: "/admin/e-pasti",               label: "E-pasta \u0161abloni",     icon: Mail },
+      { href: "/admin/feedback",             label: "K\u013c\u016bdu zi\u0146ojumi",      icon: MessageSquarePlus },
+      { href: "/admin/komanda",              label: "Komanda",             icon: UserCog },
+    ],
+  },
 ];
 
 function SidebarContent({
@@ -44,35 +68,38 @@ function SidebarContent({
         </button>
       </div>
 
-      <div className="px-3 pt-3 pb-1">
-        <p className="px-2 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Pārvaldība</p>
-      </div>
-
-      <nav className="flex-1 space-y-0.5 px-3">
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          const showBadge = (href === "/admin/razotaji" && pendingCount > 0) ||
-                            (href === "/admin/produkti" && pendingProducts > 0);
-          return (
-            <Link key={href} href={href} onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
-                active
-                  ? "bg-brand-400/20 text-brand-300"
-                  : "text-gray-400 hover:bg-white/5 hover:text-white"
-              )}
-            >
-              <Icon size={16} />
-              {label}
-              {showBadge && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
-                  {href === "/admin/produkti" ? pendingProducts : pendingCount}
-                </span>
-              )}
-              {active && !showBadge && <ChevronRight size={14} className="ml-auto opacity-60" />}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 pt-2">
+        {NAV_GROUPS.map(({ group, color, items }) => (
+          <div key={group} className="mb-3">
+            <p className={`px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest ${color}`}>{group}</p>
+            <div className="space-y-0.5">
+              {items.map(({ href, label, icon: Icon, exact }) => {
+                const active = exact ? pathname === href : pathname.startsWith(href);
+                const showBadge = (href === "/admin/razotaji" && pendingCount > 0) ||
+                                  (href === "/admin/produkti" && pendingProducts > 0);
+                return (
+                  <Link key={href} href={href} onClick={onClose}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium transition-all",
+                      active
+                        ? "bg-brand-400/20 text-brand-300"
+                        : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    )}
+                  >
+                    <Icon size={15} />
+                    {label}
+                    {showBadge && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                        {href === "/admin/produkti" ? pendingProducts : pendingCount}
+                      </span>
+                    )}
+                    {active && !showBadge && <ChevronRight size={13} className="ml-auto opacity-60" />}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-white/10 p-3 space-y-1">
