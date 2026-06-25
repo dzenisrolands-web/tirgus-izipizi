@@ -61,10 +61,26 @@ function CartSuccessContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Confetti burst the first time we see payment_status = paid
+  // GA4 purchase event + confetti when payment confirmed
   useEffect(() => {
     if (!order || order.payment_status !== "paid" || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
+
+    // GA4 purchase event
+    if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
+      const items = (order.items ?? []).map((it, i) => ({
+        item_id: it.id ?? `item-${i}`,
+        item_name: it.title ?? "Produkts",
+        price: (it.price ?? 0),
+        quantity: it.quantity ?? 1,
+      }));
+      (window as any).gtag("event", "purchase", {
+        transaction_id: order.order_number,
+        value: order.total_cents / 100,
+        currency: "EUR",
+        items,
+      });
+    }
     const fire = (originX: number, angle: number) =>
       confetti({
         particleCount: 60,
