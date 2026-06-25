@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Package, ShoppingBag, UserCheck,
   Menu, X, LogOut, ChevronRight, ShieldCheck, Star, BarChart3, UserCog,
-  FileText, MessageSquarePlus, Loader2, Mail,
+  FileText, MessageSquarePlus, Loader2, Mail, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/admin/produkti",             label: "Produkti",            icon: Package },
   { href: "/admin/nedelas-piedavajums",  label: "Nedēļas piedāvājums", icon: Star },
   { href: "/admin/pasutijumi",           label: "Pasūtījumi",          icon: ShoppingBag },
+  { href: "/admin/sutijumi",             label: "Sūtījumi",            icon: Truck },
   { href: "/admin/pirceji",              label: "Pircēji",             icon: UserCheck },
   { href: "/admin/rekini",               label: "Rēķini",              icon: FileText },
   { href: "/admin/e-pasti",               label: "E-pasta šabloni",     icon: Mail },
