@@ -84,7 +84,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
     ],
   };
 
-  const galleryImages = sellerListings.filter((l) => l.image).slice(0, 6).map((l) => ({ src: l.image, title: l.title }));
+  // Gallery removed — product images are shown in product cards below
 
   return (
     <>
@@ -206,18 +206,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
               )}
-              {galleryImages.length > 0 && (
-                <div>
-                  <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">Foto galerija</h2>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {galleryImages.map((img, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={i} src={img.src} alt={img.title}
-                        className={`w-full rounded-xl object-cover transition hover:opacity-90 ${i === 0 ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`} />
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Galerija izņemta — produktu bildes redzamas kartītēs zemāk */}
               <SellerProducts listings={sellerListings} categories={categories} />
             </div>
           </div>
