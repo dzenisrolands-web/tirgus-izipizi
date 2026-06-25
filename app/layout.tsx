@@ -143,7 +143,10 @@ export default function RootLayout({
   return (
     <html lang="lv" className={inter.variable}>
       <head>
-        {/* Disable Android Chrome's "Auto Dark Theme" — site is light-mode by design */}
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-VD3DEWCQ5Q" />
+        <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-VD3DEWCQ5Q');` }} />
+        {/* Disable Android Chrome's "Auto Dark Theme" \u2014 site is light-mode by design */}
         <meta name="color-scheme" content="light" />
         <meta name="verify-paysera" content="ab6f81bdd50b7d173b62492dffc33e86" />
         <script
