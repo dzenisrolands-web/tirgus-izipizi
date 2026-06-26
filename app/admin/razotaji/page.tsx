@@ -94,8 +94,11 @@ export default function AdminRazotajiPage() {
     id: string; email: string; name: string | null;
     sent_at: string; opened_at: string | null; opened_count: number;
     clicked_at: string | null; registered_at: string | null; status: string;
+    created_at: string;
   }>>([]);
   const [invitationsLoaded, setInvitationsLoaded] = useState(false);
+  const [inviteFilter, setInviteFilter] = useState<string>("all");
+  const [inviteStats, setInviteStats] = useState<{total:number;rinda:number;sent:number;opened:number;registered:number}>({total:0,rinda:0,sent:0,opened:0,registered:0});
 
   async function load() {
     const [sellersRes, listingsRes, ordersRes] = await Promise.all([
@@ -309,14 +312,17 @@ export default function AdminRazotajiPage() {
     setImpersonating(null);
   }
 
-  async function loadInvitations() {
+  async function loadInvitations(statusParam?: string) {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    const res = await fetch("/api/admin/invite", {
+    const f = statusParam ?? inviteFilter;
+    const qs = f !== "all" ? `?status=${f}` : "";
+    const res = await fetch(`/api/admin/invite${qs}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     const data = await res.json();
     setInvitations(data.invitations ?? []);
+    if (data.stats) setInviteStats(data.stats);
     setInvitationsLoaded(true);
   }
 
@@ -485,9 +491,22 @@ export default function AdminRazotajiPage() {
             {/* Invitation list */}
             {invitations.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Uzaicin\u0101jumi ({invitations.length}) \u00b7 Rind\u0101: {invitations.filter(i => i.status === "rinda").length} \u00b7 Nos\u016bt\u012bti: {invitations.filter(i => i.status === "sent").length}
-                </p>
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Uzaicinājumi ({inviteStats.total})
+                  </p>
+                  <div className="flex gap-1">
+                    {(["all","rinda","sent","opened","registered"] as const).map(f => {
+                      const labels: Record<string,string> = {all:"Visi",rinda:`Rindā (${inviteStats.rinda})`,sent:`Nosūtīti (${inviteStats.sent})`,opened:`Atvērti (${inviteStats.opened})`,registered:`Reģ. (${inviteStats.registered})`};
+                      return (
+                        <button key={f} onClick={() => { setInviteFilter(f); loadInvitations(f); }}
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold transition ${inviteFilter === f ? "bg-[#192635] text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
+                          {labels[f]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="rounded-xl border border-purple-100 bg-white overflow-hidden divide-y divide-purple-50">
                   {invitations.map(inv => (
                     <div key={inv.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">
@@ -505,7 +524,8 @@ export default function AdminRazotajiPage() {
                           {inv.name && <span className="text-gray-400 font-normal ml-1.5">({inv.name})</span>}
                         </p>
                         <p className="text-[10px] text-gray-400">
-                          Nosūtīts {new Date(inv.sent_at).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {inv.status === "rinda" ? "Pievienots" : "Nosūtīts"}{" "}
+                          {new Date(inv.status === "rinda" ? inv.created_at : inv.sent_at).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-0.5">

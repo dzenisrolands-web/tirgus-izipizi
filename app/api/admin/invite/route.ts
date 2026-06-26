@@ -86,11 +86,30 @@ export async function GET(req: Request) {
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   const { supabase } = ctx;
 
-  const { data: invitations } = await supabase
-    .from("invitations")
-    .select("id, email, name, sent_at, opened_at, opened_count, clicked_at, registered_at, status")
-    .order("sent_at", { ascending: false })
-    .limit(100);
+  const url = new URL(req.url);
+  const statusFilter = url.searchParams.get("status"); // rinda | sent | opened | registered | all
 
-  return NextResponse.json({ invitations: invitations ?? [] });
+  let query = supabase
+    .from("invitations")
+    .select("id, email, name, sent_at, opened_at, opened_count, clicked_at, registered_at, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (statusFilter && statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data: invitations } = await query;
+
+  // Stats
+  const all = invitations ?? [];
+  const stats = {
+    total: all.length,
+    rinda: all.filter(i => i.status === "rinda").length,
+    sent: all.filter(i => i.status === "sent").length,
+    opened: all.filter(i => i.status === "opened").length,
+    registered: all.filter(i => i.status === "registered").length,
+  };
+
+  return NextResponse.json({ invitations: all, stats });
 }
