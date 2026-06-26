@@ -199,6 +199,7 @@ export async function sendOrderConfirmationByOrderId(orderId: string): Promise<S
 export async function sendSellerNewOrderEmail(p: {
   sellerEmail: string;
   sellerName: string;
+  sellerSlug?: string | null;
   orderNumber: string;
   buyerName: string;
   items: OrderItem[];
@@ -265,7 +266,12 @@ export async function sendSellerNewOrderEmail(p: {
     </div>
     <div style="text-align:center;margin:24px 0 0 0;">
       <a href="${escapeHtml(siteUrl())}/dashboard/pasutijumi" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:12px 32px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:14px;">Apskatīt pasūtījumus →</a>
-    </div>`;
+    </div>${p.sellerSlug ? `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin:24px 0 0 0;">
+      <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#15803d;">🔗 Tava personalizētā referral saite</p>
+      <p style="margin:0 0 6px 0;font-size:13px;color:#166534;">Dalies ar šo saiti — redzi GA4, kuri pircēji nāk no Tevis:</p>
+      <p style="margin:0;font-size:13px;word-break:break-all;"><a href="https://tirgus.izipizi.lv/r/${escapeHtml(p.sellerSlug)}?utm_source=razotajs&amp;utm_medium=story&amp;utm_campaign=starter" style="color:#15803d;font-weight:600;">tirgus.izipizi.lv/r/${escapeHtml(p.sellerSlug)}</a></p>
+    </div>` : ""}`;
 
   return sendEmail({
     to: p.sellerEmail,
@@ -380,7 +386,7 @@ export async function sendAllOrderEmails(orderId: string): Promise<{
   if (order.seller_ids?.length) {
     const { data: sellers } = await supabase
       .from("sellers")
-      .select("id, name, email")
+      .select("id, name, email, slug")
       .in("id", order.seller_ids);
 
     for (const seller of sellers ?? []) {
@@ -392,6 +398,7 @@ export async function sendAllOrderEmails(orderId: string): Promise<{
       const r = await sendSellerNewOrderEmail({
         sellerEmail: seller.email,
         sellerName: seller.name ?? "Ražotāj",
+        sellerSlug: seller.slug ?? null,
         orderNumber: order.order_number,
         buyerName: order.buyer_name ?? "Pircējs",
         items: sellerItems.length > 0 ? sellerItems : (order.items ?? []),

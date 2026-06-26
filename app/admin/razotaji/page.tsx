@@ -14,6 +14,7 @@ type Seller = {
   user_id: string | null;
   email: string | null;
   name: string;
+  slug: string | null;
   description: string | null;
   location: string | null;
   status: "draft" | "pending" | "approved" | "rejected";
@@ -83,6 +84,9 @@ export default function AdminRazotajiPage() {
   const [impersonateUrl, setImpersonateUrl] = useState<{ name: string; url: string } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [slugGenerating, setSlugGenerating] = useState(false);
+  const [slugMsg, setSlugMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
   // Invitation system
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -357,6 +361,40 @@ export default function AdminRazotajiPage() {
     setTimeout(() => setInviteMsg(null), 6000);
   }
 
+  function refLink(slug: string) {
+    return `https://tirgus.izipizi.lv/r/${slug}?utm_source=razotajs&utm_medium=story&utm_campaign=starter`;
+  }
+
+  async function generateSlugs() {
+    setSlugGenerating(true);
+    setSlugMsg(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/generate-slugs", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSlugMsg({ ok: true, text: `Ģenerēti ${data.generated} slugi (${data.alreadyHadSlug} jau bija)` });
+        await load();
+      } else {
+        setSlugMsg({ ok: false, text: data.error ?? "Kļūda" });
+      }
+    } catch (e) {
+      setSlugMsg({ ok: false, text: e instanceof Error ? e.message : "Tīkla kļūda" });
+    }
+    setSlugGenerating(false);
+    setTimeout(() => setSlugMsg(null), 5000);
+  }
+
+  function copyRefLink(sellerId: string, link: string) {
+    navigator.clipboard.writeText(link).catch(() => {});
+    setCopiedRef(sellerId);
+    setTimeout(() => setCopiedRef(null), 2000);
+  }
+
   async function deleteSeller() {
     if (!deleteModal) return;
     setDeleting(true);
@@ -421,6 +459,23 @@ export default function AdminRazotajiPage() {
               {sellers.filter(s => s.status === "pending").length} gaida apstiprinājumu
             </span>
           </div>
+        )}
+      </div>
+
+      {/* Generate slugs button */}
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
+        <button
+          onClick={generateSlugs}
+          disabled={slugGenerating}
+          className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition disabled:opacity-50"
+        >
+          {slugGenerating ? <Loader2 size={14} className="animate-spin" /> : <LinkIcon size={14} />}
+          {slugGenerating ? "Ģenerē..." : "Ģenerēt referral slugus"}
+        </button>
+        {slugMsg && (
+          <span className={`text-xs font-semibold ${slugMsg.ok ? "text-green-700" : "text-red-600"}`}>
+            {slugMsg.ok ? "✓ " : "✗ "}{slugMsg.text}
+          </span>
         )}
       </div>
 
@@ -774,6 +829,31 @@ export default function AdminRazotajiPage() {
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Referral link row — always visible for approved sellers with a slug */}
+                {seller.slug && seller.status === "approved" && (
+                  <div className="border-t border-gray-50 bg-emerald-50/40 px-5 py-2.5 text-xs flex items-center gap-3 flex-wrap">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                      <LinkIcon size={11} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Referral saite</span>
+                      <p className="font-mono text-[11px] text-emerald-900 truncate mt-0.5">
+                        {refLink(seller.slug)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => copyRefLink(seller.id, refLink(seller.slug!))}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
+                        copiedRef === seller.id
+                          ? "bg-emerald-600 text-white"
+                          : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                      }`}
+                    >
+                      {copiedRef === seller.id ? "✓ Nokopēts!" : "Kopēt saiti"}
+                    </button>
                   </div>
                 )}
 
