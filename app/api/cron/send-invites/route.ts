@@ -32,57 +32,52 @@ export async function GET(req: Request) {
   }
 
   const supabase = adminClient();
+  const BATCH_SIZE = 3; // send up to 3 per cron run
 
-  // Pick the oldest queued invitation
-  const { data: next, error: fetchErr } = await supabase
+  // Pick oldest queued invitations
+  const { data: queue, error: fetchErr } = await supabase
     .from("invitations")
     .select("id, email, name")
     .eq("status", "rinda")
     .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+    .limit(BATCH_SIZE);
 
-  if (fetchErr || !next) {
+  if (fetchErr || !queue || queue.length === 0) {
     return NextResponse.json({
       ok: true,
-      sent: false,
-      message: "Nav rindā gaidošu uzaicinājumu",
+      sent: 0,
+      message: "Nav rind\u0101 gaido\u0161u uzaicin\u0101jumu",
       remaining: 0,
     });
   }
 
-  // Send the email
-  const result = await sendInvitationEmail({
-    to: next.email,
-    name: next.name ?? undefined,
-    invitationId: next.id,
-  });
+  const results: Array<{ email: string; ok: boolean; error?: string }> = [];
 
-  if (!result.ok) {
-    // Mark as failed but don't block the queue
-    await supabase
-      .from("invitations")
-      .update({ status: "sent", notes: `Email failed: ${result.error}` })
-      .eq("id", next.id);
-
-    return NextResponse.json({
-      ok: false,
-      email: next.email,
-      error: result.error,
+  for (const inv of queue) {
+    const result = await sendInvitationEmail({
+      to: inv.email,
+      name: inv.name ?? undefined,
+      invitationId: inv.id,
     });
+
+    if (!result.ok) {
+      await supabase
+        .from("invitations")
+        .update({ status: "sent", notes: `Email failed: ${result.error}` })
+        .eq("id", inv.id);
+      results.push({ email: inv.email, ok: false, error: result.error });
+    } else {
+      await supabase
+        .from("invitations")
+        .update({ status: "sent", sent_at: new Date().toISOString(), resend_id: result.id })
+        .eq("id", inv.id);
+      results.push({ email: inv.email, ok: true });
+    }
+
+    // Small delay between sends to avoid rate limits
+    await new Promise(r => setTimeout(r, 2000));
   }
 
-  // Update status to 'sent' and store Resend ID
-  await supabase
-    .from("invitations")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      resend_id: result.id,
-    })
-    .eq("id", next.id);
-
-  // Count remaining
   const { count } = await supabase
     .from("invitations")
     .select("*", { count: "exact", head: true })
@@ -90,9 +85,9 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    sent: true,
-    email: next.email,
-    name: next.name,
+    sent: results.filter(r => r.ok).length,
+    failed: results.filter(r => !r.ok).length,
+    results,
     remaining: count ?? 0,
   });
 }
