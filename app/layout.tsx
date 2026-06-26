@@ -153,21 +153,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-        <script
-          type="text/javascript"
-          dangerouslySetInnerHTML={{
-            __html: `(function() {
-  const script = document.createElement('script');
-  const dateToday = new Date();
-  const todayFullDate = dateToday.getDate() + '-' + (dateToday.getMonth() + 1) + '-' + dateToday.getFullYear();
-  script.src = 'https://bank.paysera.com/js/compiled/quality-sign.js?v=' + todayFullDate;
-  script.setAttribute('data-paysera-project-id', 138034);
-  script.setAttribute('data-lang', 'lv');
-  script.async = true;
-  document.head.appendChild(script);
-})();`,
-          }}
-        />
+        {/* Paysera quality-sign badge no\u0146emts \u2014 trauc\u0113ja mobilo menu. verify-paysera meta tags paliek. */}
       </head>
       <body spellCheck={false}>
         <ServiceWorkerRegister />
