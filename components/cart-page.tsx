@@ -27,32 +27,83 @@ type SellerInfo = {
 type DeliveryMethod = "locker" | "courier" | "express";
 type Step = "cart" | "delivery" | "confirm";
 
+// Checkout state that persists in localStorage
+type CheckoutDraft = {
+  step: Step;
+  deliveryMethod: DeliveryMethod;
+  lockerId: string;
+  postalCode: string;
+  address: string;
+  city: string;
+  addressSearch: string;
+  apartment: string;
+  floor: string;
+  entryCode: string;
+  deliveryDate: string;
+  timeSlot: string;
+  deliveryNote: string;
+  form: { name: string; phone: string; email: string };
+  promoCode: string;
+};
+
+const CHECKOUT_KEY = "checkout_draft";
+
+function loadDraft(): Partial<CheckoutDraft> {
+  try {
+    const raw = localStorage.getItem(CHECKOUT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveDraft(d: CheckoutDraft) {
+  try { localStorage.setItem(CHECKOUT_KEY, JSON.stringify(d)); } catch {}
+}
+
 export function CartPage() {
   const { items, updateQty, removeItem, total, count } = useCart();
   const { address: buyerCtxAddress } = useBuyerAddress();
-  const [step, setStep] = useState<Step>("cart");
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("locker");
-  const [lockerId, setLockerId] = useState("");
-  const [postalCode, setPostalCode] = useState(buyerCtxAddress?.postalCode ?? "");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState(buyerCtxAddress?.city ?? "");
-  const [addressSearch, setAddressSearch] = useState(buyerCtxAddress?.fullText ?? ""); // autocomplete input
-  const [apartment, setApartment] = useState("");
-  const [floor, setFloor] = useState("");
-  const [entryCode, setEntryCode] = useState("");
+
+  // Restore saved checkout state from localStorage
+  const [draft] = useState<Partial<CheckoutDraft>>(loadDraft);
+
+  const [step, setStep] = useState<Step>(draft.step ?? "cart");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(draft.deliveryMethod ?? "locker");
+  const [lockerId, setLockerId] = useState(draft.lockerId ?? "");
+  const [postalCode, setPostalCode] = useState(draft.postalCode ?? buyerCtxAddress?.postalCode ?? "");
+  const [address, setAddress] = useState(draft.address ?? "");
+  const [city, setCity] = useState(draft.city ?? buyerCtxAddress?.city ?? "");
+  const [addressSearch, setAddressSearch] = useState(draft.addressSearch ?? buyerCtxAddress?.fullText ?? "");
+  const [apartment, setApartment] = useState(draft.apartment ?? "");
+  const [floor, setFloor] = useState(draft.floor ?? "");
+  const [entryCode, setEntryCode] = useState(draft.entryCode ?? "");
   const [deliveryDate, setDeliveryDate] = useState(() => {
+    if (draft.deliveryDate) return draft.deliveryDate;
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
   });
-  const [timeSlot, setTimeSlot] = useState("");
-  const [deliveryNote, setDeliveryNote] = useState("");
-  const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [timeSlot, setTimeSlot] = useState(draft.timeSlot ?? "");
+  const [deliveryNote, setDeliveryNote] = useState(draft.deliveryNote ?? "");
+  const [form, setForm] = useState(draft.form ?? { name: "", phone: "", email: "" });
   const [saveLabel, setSaveLabel] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(true);
   const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
+
+  // Promo code (must be before the save effect)
+  const [promoCode, setPromoCode] = useState(draft.promoCode ?? "");
+
+  // Auto-save checkout state to localStorage on every change
+  useEffect(() => {
+    saveDraft({
+      step, deliveryMethod, lockerId, postalCode, address, city,
+      addressSearch, apartment, floor, entryCode, deliveryDate,
+      timeSlot, deliveryNote, form, promoCode,
+    });
+  }, [step, deliveryMethod, lockerId, postalCode, address, city,
+      addressSearch, apartment, floor, entryCode, deliveryDate,
+      timeSlot, deliveryNote, form, promoCode]);
 
   // Sync address fields from context when it loads from localStorage (delayed hydration)
   useEffect(() => {
@@ -116,8 +167,7 @@ export function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
 
-  // Promo code
-  const [promoCode, setPromoCode] = useState("");
+  // Promo code (promoCode state is declared earlier, near draft restore)
   const [promoDiscount, setPromoDiscount] = useState(0); // cents
   const [promoMsg, setPromoMsg] = useState("");
   const [promoValid, setPromoValid] = useState(false);
@@ -384,6 +434,9 @@ export function CartPage() {
           body: JSON.stringify({ email: form.email.trim(), name: form.name.trim() || undefined, source: "checkout" }),
         }).catch(() => {});
       }
+
+      // Clear checkout draft on successful submit
+      try { localStorage.removeItem(CHECKOUT_KEY); } catch {}
 
       // Navigate via /pay which does a server-side 302 redirect to Paysera.
       // The 302 preserves Referer in the HTTP redirect chain, fixing Paysera
