@@ -75,12 +75,10 @@ export function OnboardingForm() {
     ...EMPTY_LEGAL,
   });
 
-  function toggleLocker(id: string) {
+  function selectLocker(id: string) {
     setForm((f) => ({
       ...f,
-      home_locker_ids: f.home_locker_ids.includes(id)
-        ? f.home_locker_ids.filter((x) => x !== id)
-        : [...f.home_locker_ids, id],
+      home_locker_ids: f.home_locker_ids[0] === id ? [] : [id],
     }));
   }
 
@@ -358,26 +356,29 @@ export function OnboardingForm() {
                     Kurjers paņem no manis
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5">Kurjers ierodas pie manis un paņem preci</p>
-                  <p className="text-[11px] font-bold text-amber-600 mt-1">€3,50 / piegāde</p>
+                  <p className="text-[11px] font-bold text-amber-600 mt-1">Cena pēc kurjera tarifa</p>
                 </div>
                 {form.delivery_mode === "courier" && <CheckCircle size={16} className="text-brand-600" />}
               </button>
             </div>
 
-            {/* Locker selector */}
+            {/* Locker selector — single select, sistēma sagatavos leiblu uz šo pakomātu */}
             {form.delivery_mode === "locker" && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Izvēlies pārtikas pakomātus, kuros liksi produktus *
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Izvēlies pārtikas pakomātu, kurā liksi produktus *
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Sistēma sagatavos sūtījuma leiblu uz šo pakomātu.
+                </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {LOCKERS.map((l) => {
-                    const active = form.home_locker_ids.includes(l.id);
+                    const active = form.home_locker_ids[0] === l.id;
                     return (
                       <button
                         key={l.id}
                         type="button"
-                        onClick={() => toggleLocker(l.id)}
+                        onClick={() => selectLocker(l.id)}
                         className={cn(
                           "flex items-start gap-2.5 rounded-xl border-2 p-2.5 text-left transition",
                           active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
@@ -455,7 +456,7 @@ export function OnboardingForm() {
         {triedNext && step === 4 && !canNext() && (
           <div className="mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {form.delivery_mode === "locker"
-              ? "✗ Atvēlī vismaz vienu pārtikas pakomātu"
+              ? "✗ Izvēlies vienu pārtikas pakomātu"
               : "✗ Ievadi adresi, kur kurjers paņems produktus"}
           </div>
         )}
