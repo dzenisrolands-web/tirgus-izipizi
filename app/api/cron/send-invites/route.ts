@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   }
 
   const supabase = adminClient();
-  const BATCH_SIZE = 3; // send up to 3 per cron run
+  const BATCH_SIZE = 10; // send up to 10 per cron run (daily cron on Hobby)
 
   // Pick oldest queued invitations
   const { data: queue, error: fetchErr } = await supabase
