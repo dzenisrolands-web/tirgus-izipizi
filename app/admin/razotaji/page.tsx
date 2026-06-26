@@ -483,14 +483,14 @@ export default function AdminRazotajiPage() {
               <div className="mt-3 flex items-center gap-2 rounded-lg bg-violet-50 border border-violet-200 px-3 py-2 text-xs flex-wrap">
                 <span className="inline-flex h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
                 <span className="font-semibold text-violet-700 flex-1">
-                  Rindā: {invitations.filter(i => i.status === "rinda").length} gaida izsūtīšanu (10/dienā automātiski)
+                  Rindā: {invitations.filter(i => i.status === "rinda").length} gaida izsūtīšanu (5 ik 20 min)
                 </span>
                 <button
                   onClick={async () => {
                     const { data: { session } } = await supabase.auth.getSession();
                     const token = session?.access_token;
                     if (!token) { alert("Nav sesijas"); return; }
-                    setInviteMsg({ ok: true, text: "Sūta 10 uzaicinājumus..." });
+                    setInviteMsg({ ok: true, text: "Sūta 5 uzaicinājumus..." });
                     const res = await fetch("/api/cron/send-invites", { headers: { Authorization: `Bearer ${token}` } });
                     const data = await res.json();
                     if (data.ok) {
@@ -503,7 +503,7 @@ export default function AdminRazotajiPage() {
                   }}
                   className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-violet-700 transition"
                 >
-                  <Send size={10} /> Sūtīt tagad (10)
+                  <Send size={10} /> Sūtīt tagad (5)
                 </button>
               </div>
             )}
