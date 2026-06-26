@@ -468,7 +468,17 @@ export default function AdminRazotajiPage() {
               <div className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
                 inviteMsg.ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
               }`}>
-                {inviteMsg.ok ? "✓ " : "✗ "}{inviteMsg.text}
+                {inviteMsg.ok ? "\u2713 " : "\u2717 "}{inviteMsg.text}
+              </div>
+            )}
+
+            {/* Queue stats */}
+            {invitations.filter(i => i.status === "rinda").length > 0 && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-violet-50 border border-violet-200 px-3 py-2 text-xs">
+                <span className="inline-flex h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+                <span className="font-semibold text-violet-700">
+                  Rind\u0101: {invitations.filter(i => i.status === "rinda").length} gaida izs\u016bt\u012b\u0161anu (1 ik 20 min)
+                </span>
               </div>
             )}
 
@@ -476,17 +486,18 @@ export default function AdminRazotajiPage() {
             {invitations.length > 0 && (
               <div className="mt-4">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Nosūtītie uzaicinājumi ({invitations.length})
+                  Uzaicin\u0101jumi ({invitations.length}) \u00b7 Rind\u0101: {invitations.filter(i => i.status === "rinda").length} \u00b7 Nos\u016bt\u012bti: {invitations.filter(i => i.status === "sent").length}
                 </p>
                 <div className="rounded-xl border border-purple-100 bg-white overflow-hidden divide-y divide-purple-50">
                   {invitations.map(inv => (
                     <div key={inv.id} className="flex items-center gap-3 px-4 py-2.5 text-xs">
                       <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                        inv.status === "opened" || inv.status === "registered"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-400"
+                        inv.status === "registered" ? "bg-brand-100 text-brand-700" :
+                        inv.status === "opened" ? "bg-green-100 text-green-700" :
+                        inv.status === "rinda" ? "bg-violet-100 text-violet-600" :
+                        "bg-gray-100 text-gray-400"
                       }`}>
-                        {inv.status === "opened" || inv.status === "registered" ? <Eye size={11} /> : <EyeOff size={11} />}
+                        {inv.status === "rinda" ? <Clock size={11} /> : inv.status === "opened" || inv.status === "registered" ? <Eye size={11} /> : <EyeOff size={11} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 truncate">
@@ -509,6 +520,10 @@ export default function AdminRazotajiPage() {
                         ) : inv.opened_at ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
                             <Eye size={9} /> Atv\u0113ra {inv.opened_count > 1 ? `(${inv.opened_count}\u00d7)` : ""}
+                          </span>
+                        ) : inv.status === "rinda" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600">
+                            <Clock size={9} /> Rind\u0101
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
