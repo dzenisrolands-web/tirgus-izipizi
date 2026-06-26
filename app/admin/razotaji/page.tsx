@@ -34,6 +34,11 @@ type Seller = {
   rejected_reason: string | null;
   rejected_at: string | null;
   approved_at: string | null;
+  website: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  youtube_channel: string | null;
 };
 
 type SellerStats = {
@@ -877,6 +882,43 @@ export default function AdminRazotajiPage() {
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Social links row */}
+                {(seller.website || seller.facebook || seller.instagram || seller.tiktok || seller.youtube_channel) && (
+                  <div className="border-t border-gray-50 bg-gray-50/30 px-5 py-2 text-xs flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Saites:</span>
+                    {seller.website && (
+                      <a href={seller.website} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-100 transition">
+                        <ExternalLink size={9} /> Mājas lapa
+                      </a>
+                    )}
+                    {seller.facebook && (
+                      <a href={seller.facebook} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-semibold text-blue-600 hover:bg-blue-50 transition">
+                        FB
+                      </a>
+                    )}
+                    {seller.instagram && (
+                      <a href={seller.instagram} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-semibold text-pink-600 hover:bg-pink-50 transition">
+                        IG
+                      </a>
+                    )}
+                    {seller.tiktok && (
+                      <a href={seller.tiktok} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-700 hover:bg-gray-100 transition">
+                        TikTok
+                      </a>
+                    )}
+                    {seller.youtube_channel && (
+                      <a href={seller.youtube_channel} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-2 py-0.5 text-[10px] font-semibold text-red-600 hover:bg-red-50 transition">
+                        YT
+                      </a>
+                    )}
                   </div>
                 )}
 

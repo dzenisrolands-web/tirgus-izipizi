@@ -29,6 +29,29 @@ export const EMPTY_LEGAL: LegalData = {
   self_billing_agreed: false,
 };
 
+// Latvian bank code → bank name + SWIFT
+const LV_BANKS: Record<string, { name: string; swift: string }> = {
+  HABA: { name: "AS Swedbank",          swift: "HABALV22" },
+  UNLA: { name: "AS SEB banka",         swift: "UNLALV2X" },
+  PARX: { name: "AS Citadele banka",    swift: "PARXLV22" },
+  NDEA: { name: "Luminor Bank AS",      swift: "NDEALV2X" },
+  RIKO: { name: "AS Rietumu Banka",     swift: "RIKOLV2X" },
+  MULT: { name: "AS LPB Bank",          swift: "MULTLV2X" },
+  CBBR: { name: "BluOr Bank AS",        swift: "CBBRLV22" },
+  LATB: { name: "AS Baltic International Bank", swift: "LATBLV22" },
+  AIZK: { name: "AS Industra Bank",     swift: "AIZKLV22" },
+  LAPB: { name: "AS Privātbanka",       swift: "LAPBLV2X" },
+  VIRU: { name: "AS Virši",             swift: "VIRULV22" },
+  REVO: { name: "Revolut",              swift: "REVOLT21" },
+};
+
+export function bankFromIban(iban: string): { name: string; swift: string } | null {
+  const clean = iban.replace(/\s/g, "").toUpperCase();
+  if (clean.length < 8 || !clean.startsWith("LV")) return null;
+  const code = clean.slice(4, 8);
+  return LV_BANKS[code] ?? null;
+}
+
 export function validateLegal(d: LegalData): string[] {
   const errs: string[] = [];
   if (!d.legal_name.trim()) errs.push("Juridiskais nosaukums ir obligāts");
@@ -38,8 +61,11 @@ export function validateLegal(d: LegalData): string[] {
     errs.push("PVN reģistrācijas numuram jābūt formātā LV + 11 cipari");
   if (!d.legal_address.trim()) errs.push("Juridiskā adrese ir obligāta");
   if (!d.bank_name.trim()) errs.push("Bankas nosaukums ir obligāts");
-  if (!/^LV\d{2}[A-Z]{4}\d{13}$/i.test(d.bank_iban.replace(/\s/g, "")))
-    errs.push("Nepareizs IBAN formāts (gaidītais: LV + 19 zīmes)");
+  const cleanIban = d.bank_iban.replace(/\s/g, "");
+  if (!/^LV\d{2}[A-Z]{4}\d{13}$/i.test(cleanIban))
+    errs.push("IBAN jābūt 21 zīme garam (LV + 2 cipari + 4 burti + 13 cipari)");
+  else if (cleanIban.length !== 21)
+    errs.push("Latvijas IBAN ir tiei 21 zīme (piem. LV50HABA0000000000000)");
   if (!d.self_billing_agreed)
     errs.push("Lai turpinātu, jāpiekrīt self-billing kārtībai");
   return errs;
@@ -168,25 +194,55 @@ export function SellerLegalSection({
           darba dienu laikā).
         </p>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700">IBAN *</label>
+          <input
+            value={data.bank_iban}
+            onChange={(e) => {
+              const v = e.target.value.toUpperCase().replace(/\s/g, "");
+              const patch: Partial<LegalData> = { bank_iban: v };
+              const bank = bankFromIban(v);
+              if (bank) {
+                patch.bank_name = bank.name;
+                patch.bank_swift = bank.swift;
+              }
+              onChange(patch);
+            }}
+            className="input mt-1 w-full"
+            placeholder="LV00XXXX0000000000000"
+            maxLength={21}
+          />
+          {data.bank_iban.length > 0 && data.bank_iban.length !== 21 && (
+            <p className="mt-1 text-xs text-amber-600">
+              {data.bank_iban.length}/21 zīmes — Latvijas IBAN ir tieši 21 zīme
+            </p>
+          )}
+          {data.bank_iban.length === 21 && !bankFromIban(data.bank_iban) && (
+            <p className="mt-1 text-xs text-amber-600">
+              Neatpazīts bankas kods — lūdzu pārbaudi IBAN
+            </p>
+          )}
+          {data.bank_iban.length === 21 && bankFromIban(data.bank_iban) && (
+            <p className="mt-1 text-xs text-green-600">
+              ✓ {data.bank_name}
+            </p>
+          )}
+        </div>
+
         <Field
           label="Bankas nosaukums *"
           value={data.bank_name}
           onChange={(v) => set("bank_name", v)}
-          placeholder="AS Swedbank / AS SEB / AS Citadele banka / Luminor"
+          placeholder="Aizpildās automātiski no IBAN"
+          readOnly={!!bankFromIban(data.bank_iban)}
         />
 
         <Field
-          label="IBAN *"
-          value={data.bank_iban}
-          onChange={(v) => set("bank_iban", v.toUpperCase().replace(/\s/g, ""))}
-          placeholder="LV00XXXX0000000000000"
-        />
-
-        <Field
-          label="SWIFT / BIC (neobligāti)"
+          label="SWIFT / BIC"
           value={data.bank_swift}
           onChange={(v) => set("bank_swift", v.toUpperCase())}
-          placeholder="HABALV22 / UNLALV2X / PARXLV22 / RIKOLV2X"
+          placeholder="Aizpildās automātiski no IBAN"
+          readOnly={!!bankFromIban(data.bank_iban)}
         />
       </div>
 
@@ -241,12 +297,14 @@ function Field({
   onChange,
   placeholder,
   inputMode,
+  readOnly,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   inputMode?: "numeric" | "text";
+  readOnly?: boolean;
 }) {
   return (
     <div>
@@ -254,9 +312,10 @@ function Field({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="input mt-1 w-full"
+        className={cls("input mt-1 w-full", readOnly && "bg-gray-50 text-gray-500")}
         placeholder={placeholder}
         inputMode={inputMode}
+        readOnly={readOnly}
       />
     </div>
   );
