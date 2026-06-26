@@ -119,6 +119,7 @@ export function OnboardingForm() {
 
       const { error } = await supabase.from("sellers").insert({
         user_id: user.id,
+        email: user.email ?? null,
         ...form,
         bank_iban: form.bank_iban.replace(/\s/g, "").toUpperCase(),
         vat_number: form.is_vat_registered ? form.vat_number.toUpperCase() : null,

@@ -120,11 +120,34 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          {/*
-            Sociālo tīklu ikonas paslēptas pirms launch — onboardingā lauiem
-            joprojām vācam (skat. project_marketing_module.md atmiņā).
-          */}
-          <div className="mb-8 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 pb-6 pt-4">
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-6 pt-4">
+            {/* Sociālie tīkli + mājas lapa */}
+            <div className="flex flex-wrap items-center gap-2">
+              {meta?.website && (
+                <a href={meta.website} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                  🌐 Mājas lapa
+                </a>
+              )}
+              {meta?.facebook && (
+                <a href={meta.facebook} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                  Facebook
+                </a>
+              )}
+              {meta?.instagram && (
+                <a href={meta.instagram} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                  Instagram
+                </a>
+              )}
+              {meta?.youtubeChannel && (
+                <a href={meta.youtubeChannel} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                  YouTube
+                </a>
+              )}
+            </div>
             <FollowSellerButton sellerId={id} sellerName={seller.name} />
           </div>
 
