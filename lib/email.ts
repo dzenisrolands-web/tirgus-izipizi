@@ -634,7 +634,69 @@ export async function sendInvitationEmail(p: InvitationEmailParams): Promise<Sen
   });
 }
 
-// ─── Branded layout ──────────────────────────────────────────────────────────
+// ─── Seller approval email ──────────────────────────────────────────────────────────────
+
+export type SellerApprovalEmailParams = {
+  to: string;
+  sellerName: string;
+  sellerId: string;
+  sellerSlug?: string | null;
+};
+
+/**
+ * Send a branded approval notification to a seller.
+ * Includes dashboard link + referral link.
+ */
+export async function sendSellerApprovalEmail(p: SellerApprovalEmailParams): Promise<SendEmailResult> {
+  const site = siteUrl();
+  const dashboardUrl = `${site}/dashboard`;
+  const storeUrl = `${site}/seller/${p.sellerId}`;
+  const refUrl = p.sellerSlug
+    ? `${site}/r/${p.sellerSlug}?utm_source=razotajs&utm_medium=story&utm_campaign=starter`
+    : null;
+
+  const body = `
+    <h1 style="margin:0 0 8px 0;font-size:22px;font-weight:800;">🎉 Tavs profils ir apstiprināts!</h1>
+    <p style="margin:0 0 20px 0;color:#555;font-size:15px;line-height:1.6;">
+      Sveiki, <strong>${escapeHtml(p.sellerName)}</strong>!<br>
+      Tava ražotāja profils <strong>tirgus.izipizi.lv</strong> ir apstiprināts un tagad ir aktīvs.
+    </p>
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin:0 0 20px 0;">
+      <p style="margin:0 0 8px 0;font-size:14px;font-weight:700;color:#15803d;">Ko tagad?</p>
+      <p style="margin:0;font-size:14px;color:#166534;line-height:1.6;">
+        <span style="color:#15803d;font-weight:700;margin-right:6px;">✓</span> Pievieno produktus savā <a href="${escapeHtml(dashboardUrl)}" style="color:#15803d;font-weight:600;">vadības panelī</a><br>
+        <span style="color:#15803d;font-weight:700;margin-right:6px;">✓</span> Norādi piegādes veidu un pakomātus<br>
+        <span style="color:#15803d;font-weight:700;margin-right:6px;">✓</span> Pircēji varēs pasūtīt uzreiz pēc produktu aktivēšanas
+      </p>
+    </div>
+
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${escapeHtml(dashboardUrl)}" style="display:inline-block;background:linear-gradient(90deg,#53F3A4,#AD47FF);color:#192635;padding:14px 36px;border-radius:9999px;font-weight:700;text-decoration:none;font-size:15px;">Atvērt vadības paneli →</a>
+    </div>
+
+    <p style="margin:0 0 12px 0;color:#555;font-size:13px;">
+      Tavs veikals: <a href="${escapeHtml(storeUrl)}" style="color:#AD47FF;font-weight:600;">${escapeHtml(storeUrl)}</a>
+    </p>${refUrl ? `
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin:16px 0 0 0;">
+      <p style="margin:0 0 6px 0;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#15803d;">🔗 Tava personalizētā referral saite</p>
+      <p style="margin:0;font-size:13px;word-break:break-all;"><a href="${escapeHtml(refUrl)}" style="color:#15803d;font-weight:600;">tirgus.izipizi.lv/r/${escapeHtml(p.sellerSlug!)}</a></p>
+      <p style="margin:6px 0 0 0;font-size:12px;color:#166534;">Dalies — redzi GA4, kuri pircēji nāk no Tevis. Der arī QR kodam!</p>
+    </div>` : ""}
+
+    <p style="margin:24px 0 0 0;color:#888;font-size:12px;">
+      Ja ir jautājumi — raksti <a href="mailto:tirgus@izipizi.lv" style="color:#AD47FF;">tirgus@izipizi.lv</a>
+    </p>`;
+
+  return sendEmail({
+    to: p.to,
+    subject: `✅ Tavs profils ir apstiprināts — tirgus.izipizi.lv`,
+    html: brandedEmailLayout(body),
+  });
+}
+
+// ─── Branded layout ────────────────────────────────────────────────────────────────────────
 
 type BrandedLayoutOptions = {
   /** Override header subtitle text (default: none) */

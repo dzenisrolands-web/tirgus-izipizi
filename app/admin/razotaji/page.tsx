@@ -172,29 +172,44 @@ export default function AdminRazotajiPage() {
     ];
   }
 
+  const [approving, setApproving] = useState<string | null>(null);
+  const [approveResult, setApproveResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+
   async function approveSeller(id: string) {
-    const now = new Date().toISOString();
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("sellers").update({
-      status: "approved",
-      approved_at: now,
-      approved_by: user?.id ?? null,
-      rejected_reason: null,
-      rejected_at: null,
-    }).eq("id", id);
-    if (error) {
-      alert(`Kļūda apstiprinot ražotāju: ${error.message}`);
-      console.error("[approve seller]", error);
-      return;
+    setApproving(id);
+    setApproveResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/admin/approve-seller", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ sellerId: id }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const now = new Date().toISOString();
+        setSellers(p => p.map(s => s.id === id
+          ? { ...s, status: "approved", approved_at: now, rejected_reason: null, rejected_at: null }
+          : s
+        ));
+        const emailMsg = data.emailSent
+          ? `E-pasts nosūtīts uz ${data.emailTo}`
+          : data.emailTo
+            ? `Apstiprināts, bet e-pasts neizdevās: ${data.emailError ?? "?"}`
+            : "Apstiprināts (nav e-pasta)";
+        setApproveResult({ id, ok: true, msg: emailMsg });
+      } else {
+        alert(`Kļūda: ${data.error}`);
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Tīkla kļūda");
     }
-    const seller = sellers.find(s => s.id === id);
-    if (seller?.user_id) {
-      await supabase.from("profiles").update({ role: "seller" }).eq("id", seller.user_id);
-    }
-    setSellers(p => p.map(s => s.id === id
-      ? { ...s, status: "approved", approved_at: now, rejected_reason: null, rejected_at: null }
-      : s
-    ));
+    setApproving(null);
+    setTimeout(() => setApproveResult(null), 6000);
   }
 
   async function rejectSellerWithReason() {
@@ -746,8 +761,10 @@ export default function AdminRazotajiPage() {
                     {seller.status === "pending" && (
                       <>
                         <button onClick={() => approveSeller(seller.id)}
-                          className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
-                          <CheckCircle size={11} /> Apstiprināt
+                          disabled={approving === seller.id}
+                          className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition disabled:opacity-50">
+                          {approving === seller.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                          {approving === seller.id ? "Apstiprina..." : "Apstiprināt"}
                         </button>
                         <button onClick={() => setRejectModal({ id: seller.id, name: seller.name })}
                           className="flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
@@ -756,15 +773,46 @@ export default function AdminRazotajiPage() {
                       </>
                     )}
                     {seller.status === "approved" && (
-                      <button onClick={() => setRejectModal({ id: seller.id, name: seller.name })}
-                        className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
-                        Noraidīt
-                      </button>
+                      <>
+                        <button
+                          onClick={async () => {
+                            setApproving(seller.id);
+                            try {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              const token = session?.access_token;
+                              const res = await fetch("/api/admin/approve-seller", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                                body: JSON.stringify({ sellerId: seller.id, resendOnly: true }),
+                              });
+                              const data = await res.json();
+                              if (data.ok && data.emailSent) {
+                                setApproveResult({ id: seller.id, ok: true, msg: `E-pasts nosūtīts uz ${data.emailTo}` });
+                              } else {
+                                setApproveResult({ id: seller.id, ok: false, msg: data.emailError ?? "Nav e-pasta" });
+                              }
+                            } catch { setApproveResult({ id: seller.id, ok: false, msg: "Tīkla kļūda" }); }
+                            setApproving(null);
+                            setTimeout(() => setApproveResult(null), 5000);
+                          }}
+                          disabled={approving === seller.id}
+                          className="flex items-center gap-1 rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition disabled:opacity-50"
+                          title="Pārsūtīt apstiprināšanas e-pastu"
+                        >
+                          {approving === seller.id ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                          Pārsūtīt
+                        </button>
+                        <button onClick={() => setRejectModal({ id: seller.id, name: seller.name })}
+                          className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition">
+                          Noraidīt
+                        </button>
+                      </>
                     )}
                     {seller.status === "rejected" && (
                       <button onClick={() => approveSeller(seller.id)}
-                        className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition">
-                        Apstiprināt
+                        disabled={approving === seller.id}
+                        className="rounded-lg bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition disabled:opacity-50">
+                        {approving === seller.id ? "Apstiprina..." : "Apstiprināt"}
                       </button>
                     )}
                     <button
@@ -946,6 +994,15 @@ export default function AdminRazotajiPage() {
                     reminderResult.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
                   }`}>
                     {reminderResult.ok ? "✓ " : "✗ "}{reminderResult.msg}
+                  </div>
+                )}
+
+                {/* Approve result toast */}
+                {approveResult && approveResult.id === seller.id && (
+                  <div className={`border-t border-gray-50 px-5 py-2 text-xs ${
+                    approveResult.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
+                  }`}>
+                    {approveResult.ok ? "✓ " : "✗ "}{approveResult.msg}
                   </div>
                 )}
 
