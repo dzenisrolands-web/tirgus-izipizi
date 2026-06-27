@@ -63,45 +63,64 @@ export function CartPage() {
   const { items, updateQty, removeItem, total, count } = useCart();
   const { address: buyerCtxAddress } = useBuyerAddress();
 
-  // Restore saved checkout state from localStorage
-  const [draft] = useState<Partial<CheckoutDraft>>(loadDraft);
-
-  const [step, setStep] = useState<Step>(draft.step ?? "cart");
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(draft.deliveryMethod ?? "locker");
-  const [lockerId, setLockerId] = useState(draft.lockerId ?? "");
-  const [postalCode, setPostalCode] = useState(draft.postalCode ?? buyerCtxAddress?.postalCode ?? "");
-  const [address, setAddress] = useState(draft.address ?? "");
-  const [city, setCity] = useState(draft.city ?? buyerCtxAddress?.city ?? "");
-  const [addressSearch, setAddressSearch] = useState(draft.addressSearch ?? buyerCtxAddress?.fullText ?? "");
-  const [apartment, setApartment] = useState(draft.apartment ?? "");
-  const [floor, setFloor] = useState(draft.floor ?? "");
-  const [entryCode, setEntryCode] = useState(draft.entryCode ?? "");
+  const [step, setStep] = useState<Step>("cart");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("locker");
+  const [lockerId, setLockerId] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [addressSearch, setAddressSearch] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [floor, setFloor] = useState("");
+  const [entryCode, setEntryCode] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(() => {
-    if (draft.deliveryDate) return draft.deliveryDate;
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
   });
-  const [timeSlot, setTimeSlot] = useState(draft.timeSlot ?? "");
-  const [deliveryNote, setDeliveryNote] = useState(draft.deliveryNote ?? "");
-  const [form, setForm] = useState(draft.form ?? { name: "", phone: "", email: "" });
+  const [timeSlot, setTimeSlot] = useState("");
+  const [deliveryNote, setDeliveryNote] = useState("");
+  const [form, setForm] = useState({ name: "", phone: "", email: "" });
   const [saveLabel, setSaveLabel] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(true);
   const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
+  const [promoCode, setPromoCode] = useState("");
 
-  // Promo code (must be before the save effect)
-  const [promoCode, setPromoCode] = useState(draft.promoCode ?? "");
-
-  // Auto-save checkout state to localStorage on every change
+  // Restore checkout draft from localStorage after hydration (SSR-safe)
+  const [draftLoaded, setDraftLoaded] = useState(false);
   useEffect(() => {
+    const d = loadDraft();
+    if (Object.keys(d).length > 0) {
+      if (d.step) setStep(d.step);
+      if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
+      if (d.lockerId) setLockerId(d.lockerId);
+      if (d.postalCode) setPostalCode(d.postalCode);
+      if (d.address) setAddress(d.address);
+      if (d.city) setCity(d.city);
+      if (d.addressSearch) setAddressSearch(d.addressSearch);
+      if (d.apartment) setApartment(d.apartment);
+      if (d.floor) setFloor(d.floor);
+      if (d.entryCode) setEntryCode(d.entryCode);
+      if (d.deliveryDate) setDeliveryDate(d.deliveryDate);
+      if (d.timeSlot) setTimeSlot(d.timeSlot);
+      if (d.deliveryNote) setDeliveryNote(d.deliveryNote);
+      if (d.form) setForm(d.form);
+      if (d.promoCode) setPromoCode(d.promoCode);
+    }
+    setDraftLoaded(true);
+  }, []);
+
+  // Auto-save checkout state to localStorage on every change (skip first render before draft loads)
+  useEffect(() => {
+    if (!draftLoaded) return;
     saveDraft({
       step, deliveryMethod, lockerId, postalCode, address, city,
       addressSearch, apartment, floor, entryCode, deliveryDate,
       timeSlot, deliveryNote, form, promoCode,
     });
-  }, [step, deliveryMethod, lockerId, postalCode, address, city,
+  }, [draftLoaded, step, deliveryMethod, lockerId, postalCode, address, city,
       addressSearch, apartment, floor, entryCode, deliveryDate,
       timeSlot, deliveryNote, form, promoCode]);
 
