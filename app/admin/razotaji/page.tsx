@@ -763,6 +763,17 @@ export default function AdminRazotajiPage() {
                       <ShoppingBag size={11} />
                       Pasūtījumi
                     </Link>
+                    {seller.email && (
+                      <button
+                        onClick={() => impersonate(seller.email!, seller.id)}
+                        disabled={impersonating === seller.id}
+                        className="flex items-center gap-1 rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 transition disabled:opacity-50"
+                        title={`Ieiet kā ${seller.name} — atver incognito logā`}
+                      >
+                        {impersonating === seller.id ? <Loader2 size={11} className="animate-spin" /> : <LogIn size={11} />}
+                        Ieiet kā
+                      </button>
+                    )}
                     {seller.status === "pending" && (
                       <>
                         <button onClick={() => approveSeller(seller.id)}
