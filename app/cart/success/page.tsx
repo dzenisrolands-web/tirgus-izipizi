@@ -98,27 +98,48 @@ function CartSuccessContent() {
     setTimeout(() => fire(0.5, 90), 250);
   }, [order]);
 
-  // Fetch order; poll a few times in case Paysera callback hasn't landed yet
+  // Fetch order; poll a few times in case Paysera callback hasn't landed yet.
+  // If still awaiting after 6s, call confirm-arrival as webhook fallback.
+  const fallbackCalledRef = useRef(false);
   useEffect(() => {
     if (!orderNumber) { setLoading(false); return; }
     let cancelled = false;
 
-    async function fetch() {
+    async function fetchOrder() {
       const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
       if (cancelled) return;
       if (res.ok) {
-        const data = await res.json();
-        setOrder(data as Order);
+        const data = await res.json() as Order;
+        setOrder(data);
+
+        // If still awaiting after a few polls, trigger fallback confirmation
+        if (data.payment_status !== "paid" && !fallbackCalledRef.current) {
+          fallbackCalledRef.current = true;
+          window.fetch("/api/checkout/confirm-arrival", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderNumber }),
+          }).then(async (r) => {
+            if (r.ok) {
+              const result = await r.json();
+              if (result.ok && (result.confirmed || result.already)) {
+                // Re-fetch to get updated status
+                const r2 = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
+                if (r2.ok && !cancelled) setOrder(await r2.json() as Order);
+              }
+            }
+          }).catch(() => {});
+        }
       }
       setLoading(false);
     }
 
-    fetch();
+    fetchOrder();
 
-    // Poll every 2s for up to 20s if still awaiting
+    // Poll every 2s for up to 20s
     const interval = setInterval(() => {
       setPollAttempt((p) => p + 1);
-      fetch();
+      fetchOrder();
     }, 2000);
     const timeout = setTimeout(() => clearInterval(interval), 20_000);
 
