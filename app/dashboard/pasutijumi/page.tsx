@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle, Percent } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRound, X, Send, AlertTriangle, Percent, Printer } from "lucide-react";
+import { ShippingLabel } from "@/components/shipping-label";
+import { SIZES, type LabelData, type ShipmentSize } from "@/lib/shipping";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { COMMISSION_RATE, COURIER_FEE, commissionForPrice } from "@/lib/commission";
@@ -39,6 +41,8 @@ export default function DashboardPasutijumiPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [shipDialog, setShipDialog] = useState<Order | null>(null);
   const [lockerCodeDraft, setLockerCodeDraft] = useState("");
+  const [shipSize, setShipSize] = useState<ShipmentSize>("M");
+  const [labelData, setLabelData] = useState<LabelData | null>(null);
   const [sellerId, setSellerId] = useState("");
 
   const NEXT_STATUS: Record<string, { label: string; next: string }> = {
@@ -91,14 +95,35 @@ export default function DashboardPasutijumiPage() {
     const code = lockerCodeDraft.trim();
     if (!code) return;
     setUpdating(shipDialog.id);
-    await supabase
-      .from("orders")
-      .update({ status: "shipped", locker_code: code })
-      .eq("id", shipDialog.id);
-    setOrders((prev) =>
-      prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-    );
-    notifyBuyer(shipDialog.id, "shipped"); // fire and forget
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/shipments/create-from-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ orderId: shipDialog.id, size: shipSize, lockerCode: code }),
+      });
+      const data = await res.json();
+      if (data.ok && data.label) {
+        setLabelData(data.label);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
+        );
+        notifyBuyer(shipDialog.id, "shipped");
+      } else {
+        // Fallback: just update status directly
+        await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
+        );
+        notifyBuyer(shipDialog.id, "shipped");
+      }
+    } catch {
+      await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
+      );
+    }
     setShipDialog(null);
     setLockerCodeDraft("");
     setUpdating(null);
@@ -326,17 +351,17 @@ export default function DashboardPasutijumiPage() {
         </div>
       )}
 
-      {/* Locker code dialog */}
+      {/* Ship dialog — size selection + locker code + label */}
       {shipDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100">
-                  <KeyRound size={16} className="text-brand-600" />
+                  <Package size={16} className="text-brand-600" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-gray-900">Atzīmēt kā ievietotu pārtikas pakomātā</h3>
+                  <h3 className="font-extrabold text-gray-900">Nosūtīt pasūtījumu</h3>
                   <p className="text-xs text-gray-500">{shipDialog.order_number}</p>
                 </div>
               </div>
@@ -346,15 +371,42 @@ export default function DashboardPasutijumiPage() {
               </button>
             </div>
 
-            <div className="mt-5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-              <p className="font-semibold">Saņemšanas vieta:</p>
-              <p className="text-xs">{shipDialog.delivery_info?.locker_city} — {shipDialog.delivery_info?.locker_name}</p>
+            <div className="mt-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm">
+              <p className="font-semibold text-green-900">Saņemšanas vieta:</p>
+              <p className="text-xs text-green-800">{shipDialog.delivery_info?.locker_city} — {shipDialog.delivery_info?.locker_name}</p>
+              <p className="text-xs text-green-700 mt-0.5">{shipDialog.buyer_name} · {shipDialog.buyer_phone}</p>
             </div>
 
+            {/* Size selection */}
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">PIN kods pārtikas pakomātam *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Skapīša izmērs *</label>
+              <div className="grid grid-cols-3 gap-2">
+                {SIZES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setShipSize(s.id)}
+                    className={`rounded-xl border-2 p-3 text-center transition ${
+                      shipSize === s.id
+                        ? s.cold ? "border-violet-400 bg-violet-50" : "border-brand-400 bg-brand-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className={`text-lg font-extrabold ${
+                      shipSize === s.id ? (s.cold ? "text-violet-700" : "text-brand-800") : "text-gray-900"
+                    }`}>{s.id === "XL" ? "L" : s.id === "L" ? "❄" : s.id}</p>
+                    <p className="text-[10px] font-semibold text-gray-500">{s.temp}</p>
+                    <p className="text-[9px] text-gray-400">{s.dims}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Locker PIN */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">PIN kods pakomātam *</label>
               <p className="mt-1 text-xs text-gray-500">
-                Pircējs saņems push paziņojumu ar šo kodu, lai izņemtu pasūtījumu.
+                Pircējs saņems paziņojumu ar šo kodu, lai izņemtu pasūtījumu.
               </p>
               <input
                 value={lockerCodeDraft}
@@ -376,12 +428,17 @@ export default function DashboardPasutijumiPage() {
                 className="btn-primary flex flex-1 items-center justify-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50">
                 {updating === shipDialog.id
                   ? <Loader2 size={14} className="animate-spin" />
-                  : <Send size={14} />}
-                Saglabāt un paziņot
+                  : <Printer size={14} />}
+                Nosūtīt + ģenerēt leiblu
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Shipping label overlay */}
+      {labelData && (
+        <ShippingLabel label={labelData} onClose={() => setLabelData(null)} />
       )}
     </div>
   );
