@@ -26,6 +26,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/nedelas-piedavajums",  label: "Ned\u0113\u013cas pied\u0101v\u0101jums", icon: Star },
       { href: "/admin/pasutijumi",           label: "Pas\u016bt\u012bjumi",          icon: ShoppingBag },
       { href: "/admin/pirceji",              label: "Pirc\u0113ji",             icon: UserCheck },
+      { href: "/admin/lietotaji",             label: "Lietot\u0101ji",            icon: Users },
       { href: "/admin/rekini",               label: "R\u0113\u0137ini",              icon: FileText },
     ],
   },
