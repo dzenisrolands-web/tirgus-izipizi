@@ -185,7 +185,7 @@ export function ProductForm({
         const { error } = await supabase.from("listings").update(base).eq("id", productId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("listings").insert({ ...base, status: "pending_review" });
+        const { error } = await supabase.from("listings").insert({ ...base, status: "active" });
         if (error) throw error;
       }
 

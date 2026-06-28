@@ -126,6 +126,8 @@ export default function DashboardPage() {
   const [todayOrderCount, setTodayOrderCount] = useState(0);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [expiringSoon, setExpiringSoon] = useState<ExpiringProduct[]>([]);
+  const [newOrderCount, setNewOrderCount] = useState(0);    // paid, gaida apstiprināšanu
+  const [processingCount, setProcessingCount] = useState(0); // apstrādē
 
   useEffect(() => {
     async function load() {
@@ -143,10 +145,8 @@ export default function DashboardPage() {
         setStatus(newStatus);
         setSellerName(seller.farm_name || seller.name || "");
         setMissingFields(computeMissing(seller as SellerData));
+        // Show approved banner only on first visit AND when no products yet
         const seenKey = `approved_banner_${user.id}`;
-        if (newStatus === "approved" && !sessionStorage.getItem(seenKey)) {
-          setShowApprovedBanner(true);
-        }
 
         // Listings owned by this seller (for product count + Sb3 expiring)
         const { data: myListings } = await supabase
@@ -155,6 +155,11 @@ export default function DashboardPage() {
           .eq("seller_id", seller.id);
         const listingsArr = myListings ?? [];
         setProductCount(listingsArr.length);
+
+        // Show approved banner only if no products yet (first-time seller)
+        if (newStatus === "approved" && listingsArr.length === 0 && !sessionStorage.getItem(seenKey)) {
+          setShowApprovedBanner(true);
+        }
 
         // Sb3 — expiring within 3 days (active only)
         const threeDaysAhead = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -214,6 +219,15 @@ export default function DashboardPage() {
         setTopProducts(
           [...productAgg.values()].sort((a, b) => b.units - a.units).slice(0, 5)
         );
+
+        // Fetch order statuses for this seller (new + processing)
+        const { data: sellerOrders } = await supabase
+          .from("orders")
+          .select("status")
+          .contains("seller_ids", [seller.id])
+          .or("payment_status.eq.paid,status.in.(paid,processing)");
+        setNewOrderCount((sellerOrders ?? []).filter(o => o.status === "paid").length);
+        setProcessingCount((sellerOrders ?? []).filter(o => o.status === "processing").length);
       }
       setLoading(false);
     }
@@ -331,28 +345,42 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick stats — Sa1, Sa2 + product count */}
-      <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Produkti</p>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900">{productCount}</p>
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Produkti</p>
+          <p className="mt-1 text-2xl font-extrabold text-gray-900">{productCount}</p>
           <Link href="/dashboard/produkti" className="mt-1 flex items-center gap-1 text-xs text-brand-600 hover:underline">
             Skatīt <ArrowRight size={11} />
           </Link>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Šodien</p>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900">{todayOrderCount}</p>
+        {newOrderCount > 0 && (
+          <Link href="/dashboard/pasutijumi" className="rounded-2xl border-2 border-red-200 bg-red-50 p-4 shadow-sm hover:border-red-300 transition">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600">Jauni!</p>
+            <p className="mt-1 text-2xl font-extrabold text-red-700">{newOrderCount}</p>
+            <p className="mt-1 text-xs text-red-600">gaida apstiprināšanu</p>
+          </Link>
+        )}
+        {processingCount > 0 && (
+          <Link href="/dashboard/pasutijumi" className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm hover:border-blue-300 transition">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">Apstrādē</p>
+            <p className="mt-1 text-2xl font-extrabold text-blue-700">{processingCount}</p>
+            <p className="mt-1 text-xs text-blue-600">sagatavošanā</p>
+          </Link>
+        )}
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Šodien</p>
+          <p className="mt-1 text-2xl font-extrabold text-gray-900">{todayOrderCount}</p>
           <p className="mt-1 text-xs text-gray-400">jauni pasūtījumi</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">30 dienas</p>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900">{monthOrderCount}</p>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">30 dienas</p>
+          <p className="mt-1 text-2xl font-extrabold text-gray-900">{monthOrderCount}</p>
           <p className="mt-1 text-xs text-gray-400">pasūtījumi</p>
         </div>
-        <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">Apgrozījums 30d</p>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900">{formatPrice(monthRevenueCents / 100)}</p>
+        <div className="rounded-2xl border border-brand-200 bg-brand-50 p-4 shadow-sm">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-700">Apgrozījums 30d</p>
+          <p className="mt-1 text-2xl font-extrabold text-gray-900">{formatPrice(monthRevenueCents / 100)}</p>
           <p className="mt-1 text-xs text-brand-700/70">pirms komisijas</p>
         </div>
       </div>
