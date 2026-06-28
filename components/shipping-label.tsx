@@ -79,17 +79,28 @@ export function ShippingLabel({ label, onClose }: { label: LabelData; onClose: (
                 </div>
               </div>
 
-              {/* Delivery destination */}
+              {/* Route: FROM locker → TO locker (for courier to see both) */}
+              {label.fromLockerName && (
+                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "10px 12px", marginBottom: "8px" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#1d4ed8", marginBottom: "4px" }}>
+                    📥 NO — paņemšanas pakomāts
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#192635" }}>{label.fromLockerName}</div>
+                  <div style={{ fontSize: "11px", color: "#3b82f6" }}>
+                    {label.fromLockerCity}{label.fromLockerAddress ? ` · ${label.fromLockerAddress}` : ""}
+                  </div>
+                </div>
+              )}
               <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "10px 12px", marginBottom: "14px" }}>
                 <div style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#15803d", marginBottom: "4px" }}>
-                  {label.deliveryType === "locker" ? "📦 Pārtikas pakomāts" : "🚚 Kurjers"}
+                  {label.deliveryType === "locker" ? "📦 UZ — piegādes pakomāts" : "🚚 Kurjers uz adresi"}
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "#192635" }}>
-                  {label.lockerName ?? label.courierAddress ?? "—"}
+                  {label.toLockerName ?? label.courierAddress ?? "—"}
                 </div>
                 <div style={{ fontSize: "12px", color: "#166534" }}>
-                  {label.lockerCity ?? label.courierCity ?? ""}
-                  {label.lockerAddress ? ` · ${label.lockerAddress}` : ""}
+                  {label.toLockerCity ?? label.courierCity ?? ""}
+                  {label.toLockerAddress ? ` · ${label.toLockerAddress}` : ""}
                 </div>
               </div>
 
@@ -111,16 +122,15 @@ export function ShippingLabel({ label, onClose }: { label: LabelData; onClose: (
                 )}
               </div>
 
-              {/* QR + Items */}
-              <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+              {/* QR code + date */}
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="QR" width={100} height={100} style={{ borderRadius: "8px", border: "1px solid #dde7e1" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "9px", fontWeight: 700, color: "#8696a0", textTransform: "uppercase", marginBottom: "4px" }}>Saturs</div>
-                  <div style={{ fontSize: "11px", color: "#5d6f78", lineHeight: 1.5 }}>{label.itemsSummary}</div>
-                  <div style={{ fontSize: "10px", color: "#8696a0", marginTop: "8px" }}>
-                    {new Date(label.createdAt).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                <img src={qrUrl} alt="QR" width={90} height={90} style={{ borderRadius: "8px", border: "1px solid #dde7e1" }} />
+                <div style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+                  <div style={{ fontSize: "10px", color: "#8696a0" }}>
+                    {new Date(label.createdAt).toLocaleDateString("lv-LV", { day: "numeric", month: "short", year: "numeric" })}
                   </div>
+                  <div style={{ fontSize: "9px", color: "#8696a0", marginTop: "4px" }}>Skenē QR lai izsekotu sūtījumu</div>
                 </div>
               </div>
             </div>

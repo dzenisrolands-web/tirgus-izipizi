@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   // Fetch seller (the user making this request must be a seller on the order)
   const { data: seller } = await sb
     .from("sellers")
-    .select("id, name, farm_name, location, email")
+    .select("id, name, farm_name, location, email, home_locker_ids")
     .eq("user_id", user.id)
     .single();
 
@@ -57,11 +57,22 @@ export async function POST(req: Request) {
   const shipmentNumber = generateShipmentNumber();
   const di = order.delivery_info as Record<string, unknown> | null;
   const isLocker = order.delivery_type === "locker" || !!di?.locker_id;
-  const items = (order.items ?? []) as Array<{ title?: string; quantity?: number }>;
-  const itemsSummary = items.map(i => `${i.title ?? "?"} ×${i.quantity ?? 1}`).join(", ");
 
   // Determine temp mode from size
   const tempMode = size === "L" ? "−18 °C" : "+2…+6 °C";
+
+  // Resolve seller's home locker (FROM locker)
+  const LOCKERS: Record<string, { name: string; address: string; city: string }> = {
+    brivibas:   { name: "Brīvības 253",       address: "Brīvības iela 253 / NESTE", city: "Rīga" },
+    agenskalna: { name: "Āgenskalna tirgus",  address: "Nometņu iela 64 / Tirgus",  city: "Rīga" },
+    salaspils:  { name: "Salaspils",          address: "Zviedru iela 1C / NESTE",   city: "Salaspils" },
+    ikskile:    { name: "Ikšķile",            address: "Daugavas iela 63",          city: "Ikšķile" },
+    tukums:     { name: "Tukuma tirgus",      address: "J. Raiņa iela 30",         city: "Tukums" },
+    dundaga:    { name: "Dundagas tirgus",    address: "Pils 3B",                   city: "Dundaga" },
+    iukstes:    { name: "Ilūkstes iela 40A",  address: "Ilūkstes iela 40A",         city: "Rīga" },
+  };
+  const fromLockerId = (seller.home_locker_ids as string[] | null)?.[0];
+  const fromLocker = fromLockerId ? LOCKERS[fromLockerId] : null;
 
   // Build label data
   const label: LabelData = {
@@ -73,16 +84,18 @@ export async function POST(req: Request) {
     recipientName: order.buyer_name ?? "",
     recipientPhone: order.buyer_phone ?? "",
     deliveryType: isLocker ? "locker" : "courier",
-    lockerName: di?.locker_name as string | undefined,
-    lockerAddress: di?.locker_address as string | undefined,
-    lockerCity: di?.locker_city as string | undefined,
+    fromLockerName: fromLocker?.name,
+    fromLockerAddress: fromLocker?.address,
+    fromLockerCity: fromLocker?.city,
+    toLockerName: di?.locker_name as string | undefined,
+    toLockerAddress: di?.locker_address as string | undefined,
+    toLockerCity: di?.locker_city as string | undefined,
     courierAddress: di?.address as string | undefined,
     courierCity: di?.city as string | undefined,
     size,
     tempMode,
     lockerCode,
     createdAt: new Date().toISOString(),
-    itemsSummary,
   };
 
   // Insert sutijumi record (best effort — table may not exist yet)
@@ -92,7 +105,7 @@ export async function POST(req: Request) {
       from_locker: null,
       from_locker_name: label.senderAddress,
       to_locker: di?.locker_id as string | null,
-      to_locker_name: label.lockerName ?? label.courierAddress ?? "",
+      to_locker_name: label.toLockerName ?? label.courierAddress ?? "",
       same_locker: false,
       courier_address: label.courierAddress ?? null,
       courier_zip: null,
@@ -103,7 +116,7 @@ export async function POST(req: Request) {
       sender_email: seller.email,
       recipient_name: label.recipientName,
       recipient_phone: label.recipientPhone,
-      note: itemsSummary,
+      note: `${order.order_number} - ${label.senderName}`,
       status: "confirmed",
     });
   } catch {

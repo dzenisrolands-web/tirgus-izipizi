@@ -21,11 +21,16 @@ export type LabelData = {
   // Recipient (buyer)
   recipientName: string;
   recipientPhone: string;
-  // Delivery
+  // Delivery route
   deliveryType: "locker" | "courier";
-  lockerName?: string;
-  lockerAddress?: string;
-  lockerCity?: string;
+  // FROM locker (seller drops off here)
+  fromLockerName?: string;
+  fromLockerAddress?: string;
+  fromLockerCity?: string;
+  // TO locker (buyer picks up here) or courier address
+  toLockerName?: string;
+  toLockerAddress?: string;
+  toLockerCity?: string;
   courierAddress?: string;
   courierCity?: string;
   // Shipment
@@ -34,7 +39,6 @@ export type LabelData = {
   lockerCode?: string;
   // Meta
   createdAt: string;
-  itemsSummary: string;
 };
 
 /** Generate shipment number: IZI-YYYYMMDD-XXXX */

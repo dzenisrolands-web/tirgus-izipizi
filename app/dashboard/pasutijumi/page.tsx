@@ -109,14 +109,12 @@ export default function DashboardPasutijumiPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
         );
-        notifyBuyer(shipDialog.id, "shipped");
+        // NB: pircejs sanem SMS tikai kad sutijums tiek ielikts pakomata (sistema apstiprina)
       } else {
-        // Fallback: just update status directly
         await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
         setOrders((prev) =>
           prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
         );
-        notifyBuyer(shipDialog.id, "shipped");
       }
     } catch {
       await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
