@@ -5,6 +5,7 @@ import {
   Building2, Plus, Search, RefreshCw, ChevronDown, ChevronUp,
   Thermometer, Wifi, WifiOff, Warehouse, MapPin, Clock, Edit2,
   Save, X, Loader2, Handshake, Package, Snowflake, AlertTriangle,
+  Image, BoxIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -29,11 +30,22 @@ type Pakomats = {
   has_warehouse: boolean;
   is_hub: boolean;
   note: string | null;
+  image_url: string | null;
+  capabilities: string[];
+  working_hours: string | null;
+  description: string | null;
   created_at: string;
   // joined
   partner_name?: string;
   compartments?: Compartment[];
 };
+
+const CAPABILITIES = [
+  { key: "noliktava_dzeseta", label: "Noliktava +6°C", icon: "🌡️", cls: "bg-blue-50 text-blue-700" },
+  { key: "noliktava_saldetava", label: "Noliktava −18°C", icon: "❄️", cls: "bg-violet-50 text-violet-700" },
+  { key: "komplektesana", label: "Komplektēšana", icon: "📦", cls: "bg-amber-50 text-amber-700" },
+  { key: "pasiznemsana", label: "Pašizņemšana", icon: "🛒", cls: "bg-green-50 text-green-700" },
+];
 
 type Partner = { id: string; company_name: string };
 
@@ -224,7 +236,11 @@ export default function AdminPakomatiPage() {
 
           return (
             <div key={p.id} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-              {/* Header */}
+              {/* Header with image */}
+              {p.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.image_url} alt={p.name} className="w-full h-28 object-cover" />
+              )}
               <div className={`px-4 py-3 ${p.status === "aktivs" ? "bg-[#192635]" : p.status === "serviss" ? "bg-amber-700" : "bg-gray-400"} text-white`}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-sm truncate">{p.name}</h3>
@@ -248,6 +264,10 @@ export default function AdminPakomatiPage() {
                 <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500 flex-wrap">
                   {p.has_warehouse && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700 font-semibold"><Warehouse size={10} /> Noliktava</span>}
                   {p.is_hub && <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-violet-700 font-semibold"><MapPin size={10} /> Hub</span>}
+                  {(p.capabilities ?? []).map(cap => {
+                    const c = CAPABILITIES.find(x => x.key === cap);
+                    return c ? <span key={cap} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${c.cls}`}>{c.icon} {c.label}</span> : null;
+                  })}
                   {p.partner_name ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-brand-700 font-semibold"><Handshake size={10} /> {p.partner_name}</span>
                   ) : (
@@ -277,7 +297,7 @@ export default function AdminPakomatiPage() {
                   <button onClick={() => setExpanded(isOpen ? null : p.id)} className="text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-1">
                     {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />} {isOpen ? "Aizvērt" : "Detaļas"}
                   </button>
-                  <button onClick={() => { setEditing(isEdit ? null : p.id); setEditData({ franchise_partner_id: p.franchise_partner_id ?? "", has_warehouse: p.has_warehouse, is_hub: p.is_hub, status: p.status, note: p.note ?? "" }); }}
+                  <button onClick={() => { setEditing(isEdit ? null : p.id); setEditData({ franchise_partner_id: p.franchise_partner_id ?? "", has_warehouse: p.has_warehouse, is_hub: p.is_hub, status: p.status, note: p.note ?? "", image_url: p.image_url ?? "", capabilities: p.capabilities ?? [], working_hours: p.working_hours ?? "00:00–24:00", description: p.description ?? "" }); }}
                     className="text-[11px] text-brand-600 hover:text-brand-700 flex items-center gap-1 ml-auto">
                     <Edit2 size={10} /> Labot
                   </button>
@@ -286,7 +306,17 @@ export default function AdminPakomatiPage() {
 
               {/* Edit form */}
               {isEdit && (
-                <div className="border-t border-gray-50 px-4 py-3 space-y-2 bg-gray-50/50">
+                <div className="border-t border-gray-50 px-4 py-3 space-y-3 bg-gray-50/50">
+                  {/* Image */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-500 flex items-center gap-1"><Image size={10} /> Bilde (URL)</label>
+                    <input value={editData.image_url ?? ""} onChange={e => setEditData(d => ({ ...d, image_url: e.target.value }))} placeholder="https://..." className="input text-xs w-full mt-1" />
+                    {editData.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={editData.image_url} alt="" className="mt-2 h-20 w-full rounded-lg object-cover border border-gray-200" />
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] font-semibold text-gray-500">Partneris</label>
@@ -304,11 +334,43 @@ export default function AdminPakomatiPage() {
                       </select>
                     </div>
                   </div>
+
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-500">Darba laiks</label>
+                    <input value={editData.working_hours ?? "00:00–24:00"} onChange={e => setEditData(d => ({ ...d, working_hours: e.target.value }))} className="input text-xs w-full mt-1" />
+                  </div>
+
+                  {/* Capabilities */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-gray-500 mb-1 block">Iespējas</label>
+                    <div className="flex flex-wrap gap-2">
+                      {CAPABILITIES.map(cap => {
+                        const active = (editData.capabilities ?? []).includes(cap.key);
+                        return (
+                          <button key={cap.key} type="button"
+                            onClick={() => setEditData(d => {
+                              const cur = d.capabilities ?? [];
+                              return { ...d, capabilities: active ? cur.filter(c => c !== cap.key) : [...cur, cap.key] };
+                            })}
+                            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition ${
+                              active ? `${cap.cls} border-current` : "bg-white text-gray-400 border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            {cap.icon} {cap.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="flex gap-4 text-xs">
                     <label className="flex items-center gap-1"><input type="checkbox" checked={editData.has_warehouse ?? false} onChange={e => setEditData(d => ({ ...d, has_warehouse: e.target.checked }))} /> Noliktava</label>
                     <label className="flex items-center gap-1"><input type="checkbox" checked={editData.is_hub ?? false} onChange={e => setEditData(d => ({ ...d, is_hub: e.target.checked }))} /> Hub</label>
                   </div>
-                  <textarea value={editData.note ?? ""} onChange={e => setEditData(d => ({ ...d, note: e.target.value }))} placeholder="Piezīme" className="input text-xs w-full" rows={2} />
+
+                  <textarea value={editData.description ?? ""} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} placeholder="Apraksts (publisks)" className="input text-xs w-full" rows={2} />
+                  <textarea value={editData.note ?? ""} onChange={e => setEditData(d => ({ ...d, note: e.target.value }))} placeholder="Iekšēja piezīme (tikai admin)" className="input text-xs w-full" rows={2} />
+
                   <div className="flex gap-2">
                     <button onClick={() => savePakomats(p.id)} disabled={saving} className="btn-primary text-[11px] flex items-center gap-1"><Save size={10} /> {saving ? "..." : "Saglabāt"}</button>
                     <button onClick={() => setEditing(null)} className="btn-outline text-[11px]">Atcelt</button>
