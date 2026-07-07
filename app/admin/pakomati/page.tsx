@@ -17,6 +17,17 @@ type Compartment = {
   status: string;
 };
 
+type FranchiseShare = {
+  id: string;
+  pakomats_id: string;
+  partner_id: string;
+  shares_pct: number;
+  price_paid: number | null;
+  note: string | null;
+  purchased_at: string;
+  partner_name?: string;
+};
+
 type Pakomats = {
   id: string;
   code: string;
@@ -34,10 +45,17 @@ type Pakomats = {
   capabilities: string[];
   working_hours: string | null;
   description: string | null;
+  total_shares: number;
+  share_price_eur: number;
+  revenue_split_pct: number;
+  compartment_config: Record<string, number> | null;
   created_at: string;
   // joined
   partner_name?: string;
   compartments?: Compartment[];
+  shares?: FranchiseShare[];
+  sold_pct?: number;
+  free_pct?: number;
 };
 
 const CAPABILITIES = [
@@ -90,6 +108,8 @@ export default function AdminPakomatiPage() {
   const [newPak, setNewPak] = useState({ code: "", name: "", address: "", postal_code: "", lat: "", lng: "", status: "aktivs", has_warehouse: false, is_hub: false, note: "", franchise_partner_id: "" });
   const [newComp, setNewComp] = useState({ code: "", size: "M", temp_mode: "atdzesets" });
   const [addingComp, setAddingComp] = useState<string | null>(null);
+  const [addingShare, setAddingShare] = useState<string | null>(null);
+  const [newShare, setNewShare] = useState({ partner_id: "", shares_pct: "10", price_paid: "" });
 
   const load = useCallback(async () => {
     const sb = izpClient();
@@ -98,11 +118,29 @@ export default function AdminPakomatiPage() {
       sb.from("franchise_partners").select("id, company_name"),
       sb.from("compartments").select("*"),
     ]);
-    const paks: Pakomats[] = (pakRes.data ?? []).map((p: Pakomats) => ({
-      ...p,
-      compartments: (compRes.data ?? []).filter((c: Compartment & { pakomats_id: string }) => c.pakomats_id === p.id),
-      partner_name: (partRes.data ?? []).find((fp: Partner) => fp.id === p.franchise_partner_id)?.company_name ?? null,
-    }));
+    // franchise_shares may not exist yet — fetch separately with error handling
+    let sharesData: FranchiseShare[] = [];
+    try {
+      const sharesRes = await sb.from("franchise_shares").select("*");
+      sharesData = (sharesRes.data ?? []) as FranchiseShare[];
+    } catch { /* table may not exist */ }
+
+    const partnerMap = new Map((partRes.data ?? []).map((fp: Partner) => [fp.id, fp.company_name]));
+
+    const paks: Pakomats[] = (pakRes.data ?? []).map((p: Pakomats) => {
+      const pakShares = sharesData.filter((s) => s.pakomats_id === p.id)
+        .map((s) => ({ ...s, partner_name: partnerMap.get(s.partner_id) ?? "?" }));
+      const soldPct = pakShares.reduce((sum, s) => sum + Number(s.shares_pct), 0);
+      const totalShares = Number(p.total_shares) || 100;
+      return {
+        ...p,
+        compartments: (compRes.data ?? []).filter((c: Compartment & { pakomats_id: string }) => c.pakomats_id === p.id),
+        partner_name: partnerMap.get(p.franchise_partner_id ?? "") ?? null,
+        shares: pakShares,
+        sold_pct: soldPct,
+        free_pct: totalShares - soldPct,
+      };
+    });
     setItems(paks);
     setPartners(partRes.data ?? []);
     setLoading(false);
@@ -156,6 +194,29 @@ export default function AdminPakomatiPage() {
     if (!confirm("Dz\u0113st nodal\u012bjumu?")) return;
     const sb = izpClient();
     const { error } = await sb.from("compartments").delete().eq("id", compId);
+    if (error) alert("K\u013c\u016bda: " + error.message);
+    else await load();
+  }
+
+  async function addShare(pakId: string) {
+    if (!newShare.partner_id || !newShare.shares_pct) return;
+    setSaving(true);
+    const sb = izpClient();
+    const { error } = await sb.from("franchise_shares").insert({
+      pakomats_id: pakId,
+      partner_id: newShare.partner_id,
+      shares_pct: parseFloat(newShare.shares_pct),
+      price_paid: newShare.price_paid ? parseFloat(newShare.price_paid) : null,
+    });
+    if (error) alert("K\u013c\u016bda: " + error.message);
+    else { setNewShare({ partner_id: "", shares_pct: "10", price_paid: "" }); setAddingShare(null); await load(); }
+    setSaving(false);
+  }
+
+  async function deleteShare(shareId: string) {
+    if (!confirm("No\u0146emt partnera da\u013cas?")) return;
+    const sb = izpClient();
+    const { error } = await sb.from("franchise_shares").delete().eq("id", shareId);
     if (error) alert("K\u013c\u016bda: " + error.message);
     else await load();
   }
@@ -275,6 +336,35 @@ export default function AdminPakomatiPage() {
                   )}
                 </div>
 
+                {/* Franchise shares bar */}
+                {(p.total_shares ?? 100) > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-[10px] font-semibold mb-1">
+                      <span className="text-gray-500"><Handshake size={10} className="inline" /> Franšīzes daļas</span>
+                      <span className={p.free_pct === 0 ? "text-red-500" : "text-green-600"}>
+                        {p.sold_pct ?? 0}% pārdots · {p.free_pct ?? 100}% brīvs
+                      </span>
+                    </div>
+                    <div className="h-3 rounded-full bg-gray-100 overflow-hidden flex">
+                      {(p.shares ?? []).map((s, i) => (
+                        <div key={s.id} title={`${s.partner_name}: ${s.shares_pct}%`}
+                          style={{ width: `${s.shares_pct}%` }}
+                          className={`h-full ${i % 2 === 0 ? "bg-brand-400" : "bg-violet-400"}`} />
+                      ))}
+                      <div style={{ width: `${Math.max(0, 100 - (p.sold_pct ?? 0))}%` }} className="h-full bg-gray-200" />
+                    </div>
+                    {(p.shares ?? []).length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {(p.shares ?? []).map(s => (
+                          <span key={s.id} className="text-[9px] font-semibold text-gray-500">
+                            {s.partner_name} {s.shares_pct}%
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Compartment grid visual */}
                 {comps.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1">
@@ -297,7 +387,7 @@ export default function AdminPakomatiPage() {
                   <button onClick={() => setExpanded(isOpen ? null : p.id)} className="text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-1">
                     {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />} {isOpen ? "Aizvērt" : "Detaļas"}
                   </button>
-                  <button onClick={() => { setEditing(isEdit ? null : p.id); setEditData({ franchise_partner_id: p.franchise_partner_id ?? "", has_warehouse: p.has_warehouse, is_hub: p.is_hub, status: p.status, note: p.note ?? "", image_url: p.image_url ?? "", capabilities: p.capabilities ?? [], working_hours: p.working_hours ?? "00:00–24:00", description: p.description ?? "" }); }}
+                  <button onClick={() => { setEditing(isEdit ? null : p.id); setEditData({ franchise_partner_id: p.franchise_partner_id ?? "", has_warehouse: p.has_warehouse, is_hub: p.is_hub, status: p.status, note: p.note ?? "", image_url: p.image_url ?? "", capabilities: p.capabilities ?? [], working_hours: p.working_hours ?? "00:00–24:00", description: p.description ?? "", share_price_eur: p.share_price_eur ?? 400, revenue_split_pct: p.revenue_split_pct ?? 50 }); }}
                     className="text-[11px] text-brand-600 hover:text-brand-700 flex items-center gap-1 ml-auto">
                     <Edit2 size={10} /> Labot
                   </button>
@@ -363,6 +453,25 @@ export default function AdminPakomatiPage() {
                     </div>
                   </div>
 
+                  {/* Franšīzes konfigurācija */}
+                  <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-violet-700"><Handshake size={10} className="inline" /> Franšīzes iestatījumi</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-500">Daļu cena (€/1%)</label>
+                        <input type="number" value={editData.share_price_eur ?? 400} onChange={e => setEditData(d => ({ ...d, share_price_eur: parseFloat(e.target.value) || 400 }))} className="input text-xs w-full mt-0.5" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-500">Ieņ. dalījums (%)</label>
+                        <input type="number" value={editData.revenue_split_pct ?? 50} onChange={e => setEditData(d => ({ ...d, revenue_split_pct: parseFloat(e.target.value) || 50 }))} className="input text-xs w-full mt-0.5" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-500">50% cena</label>
+                        <p className="text-xs font-bold text-violet-700 mt-1">{((editData.share_price_eur ?? 400) * 50).toLocaleString()} €</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex gap-4 text-xs">
                     <label className="flex items-center gap-1"><input type="checkbox" checked={editData.has_warehouse ?? false} onChange={e => setEditData(d => ({ ...d, has_warehouse: e.target.checked }))} /> Noliktava</label>
                     <label className="flex items-center gap-1"><input type="checkbox" checked={editData.is_hub ?? false} onChange={e => setEditData(d => ({ ...d, is_hub: e.target.checked }))} /> Hub</label>
@@ -388,6 +497,51 @@ export default function AdminPakomatiPage() {
                     <div><span className="text-gray-500">Izveidots:</span> {new Date(p.created_at).toLocaleDateString("lv-LV")}</div>
                   </div>
                   {p.note && <p className="text-gray-500 italic">{p.note}</p>}
+
+                  {/* Franchise shares */}
+                  <div>
+                    <div className="flex items-center justify-between mt-2 mb-1">
+                      <p className="font-bold text-violet-700"><Handshake size={11} className="inline" /> Franšīzes daļas ({p.sold_pct ?? 0}% pārdots)</p>
+                      <button onClick={() => setAddingShare(addingShare === p.id ? null : p.id)} className="text-[10px] text-violet-600 font-semibold flex items-center gap-1"><Plus size={10} /> Pievienot partneri</button>
+                    </div>
+                    {addingShare === p.id && (
+                      <div className="flex gap-2 mb-2 items-end flex-wrap">
+                        <select value={newShare.partner_id} onChange={e => setNewShare(s => ({ ...s, partner_id: e.target.value }))} className="input text-[11px] flex-1 min-w-[120px]">
+                          <option value="">Izvēlies partneri...</option>
+                          {partners.map(fp => <option key={fp.id} value={fp.id}>{fp.company_name}</option>)}
+                        </select>
+                        <input type="number" value={newShare.shares_pct} onChange={e => setNewShare(s => ({ ...s, shares_pct: e.target.value }))} placeholder="%" className="input text-[11px] w-16" />
+                        <input type="number" value={newShare.price_paid} onChange={e => setNewShare(s => ({ ...s, price_paid: e.target.value }))} placeholder="€ samaksāts" className="input text-[11px] w-24" />
+                        <button onClick={() => addShare(p.id)} disabled={!newShare.partner_id || saving} className="btn-primary text-[10px] px-2 py-1">{saving ? "..." : "+"}</button>
+                      </div>
+                    )}
+                    {(p.shares ?? []).length > 0 ? (
+                      <div className="rounded border border-violet-100 overflow-hidden mb-3">
+                        <table className="w-full text-[11px]">
+                          <thead className="bg-violet-50">
+                            <tr>
+                              <th className="px-2 py-1 text-left font-semibold text-violet-700">Partneris</th>
+                              <th className="px-2 py-1 text-right font-semibold text-violet-700">Daļas</th>
+                              <th className="px-2 py-1 text-right font-semibold text-violet-700">Samaksāts</th>
+                              <th className="px-2 py-1 w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-violet-50">
+                            {(p.shares ?? []).map(s => (
+                              <tr key={s.id}>
+                                <td className="px-2 py-1 font-semibold">{s.partner_name}</td>
+                                <td className="px-2 py-1 text-right font-bold text-violet-700">{s.shares_pct}%</td>
+                                <td className="px-2 py-1 text-right">{s.price_paid ? `${s.price_paid.toLocaleString()} €` : "—"}</td>
+                                <td className="px-2 py-1"><button onClick={() => deleteShare(s.id)} className="text-red-400 hover:text-red-600"><X size={10} /></button></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-gray-400 mb-3">Nav partneru — 100% IziPizi</p>
+                    )}
+                  </div>
 
                   {/* Compartments table + add */}
                   <div>
