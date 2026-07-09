@@ -292,7 +292,9 @@ export default function AdminPasutijumiPage() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${st.cls}`}>{st.label}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {order.buyer_name} · {new Date(order.created_at).toLocaleDateString("lv-LV")}
+                      {order.buyer_name}
+                      {order.buyer_phone && <span className="ml-1">· 📞 {order.buyer_phone}</span>}
+                      <span className="ml-1">· {new Date(order.created_at).toLocaleDateString("lv-LV")}</span>
                       {(() => {
                         const names = [...new Set((order.items ?? []).map(it => it.sellerName).filter(Boolean))];
                         return names.length > 0 ? ` · 🏪 ${names.join(", ")}` : "";

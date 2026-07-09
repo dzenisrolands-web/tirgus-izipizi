@@ -11,7 +11,7 @@ import { notifySellerReminder, notifyOrderAutoCancelled } from "@/lib/order-noti
 // still pending live credentials).
 
 const REMINDER_SLOTS_MIN = [30, 120, 360]; // 30 min, 2 h, 6 h
-const AUTO_CANCEL_HOURS = 24;
+const AUTO_CANCEL_HOURS = 72; // 3 dienas (bija 24h — par īsu)
 
 type PendingOrder = {
   id: string;
