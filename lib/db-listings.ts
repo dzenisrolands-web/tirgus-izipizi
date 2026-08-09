@@ -204,7 +204,7 @@ const SELLER_COLS = "id, name, farm_name, avatar_url, logo_url, cover_url, statu
 
 function mapSellerMeta(s: Record<string, unknown>): SellerMeta {
   return {
-    cover: (s.cover_url as string) ?? "",
+    cover: (s.cover_url as string) || "",
     description: (s.description as string) ?? "",
     shortDesc: (s.short_desc as string) ?? "",
     quote: s.quote_text ? { text: s.quote_text as string, author: (s.quote_author as string) ?? "" } : undefined,

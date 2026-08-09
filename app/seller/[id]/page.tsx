@@ -13,6 +13,7 @@ import { FollowSellerButton } from "@/components/follow-seller-button";
 import { isPublicReady } from "@/lib/utils";
 
 export const dynamicParams = true;
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   return sellers.map((s) => ({ id: s.id }));
@@ -91,8 +92,12 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <article>
-        <div className="relative h-64 w-full sm:h-80"
-          style={{ background: meta?.cover ? `url(${meta.cover}) center/cover no-repeat` : "linear-gradient(135deg, #192635 0%, #2d1f45 100%)" }}>
+        <div className="relative h-64 w-full sm:h-80 overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #192635 0%, #2d1f45 100%)" }}>
+          {meta?.cover && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={meta.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-6xl flex items-end gap-4">
