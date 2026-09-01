@@ -11,6 +11,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { emailFooterLine } from "@/lib/operator-info";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -146,7 +147,7 @@ export async function sendOrderConfirmationEmail(o: OrderEmailData): Promise<Sen
         </tr>
         <tr>
           <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · Reģ. nr. 40103915568 · tirgus.izipizi.lv
+            ${escapeHtml(emailFooterLine())}
           </td>
         </tr>
       </table>
@@ -270,7 +271,7 @@ export async function sendSellerNewOrderEmail(p: {
         </tr>
         <tr>
           <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · Reģ. nr. 40103915568 · tirgus.izipizi.lv
+            ${escapeHtml(emailFooterLine())}
           </td>
         </tr>
       </table>

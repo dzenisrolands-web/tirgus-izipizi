@@ -7,9 +7,9 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
+import { SELF_BILLING_VERSION } from "@/lib/legal/self-billing";
 
 const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Nodošana", "Juridiskā info"];
-const SELF_BILLING_VERSION = "1.0";
 
 const LOCKERS = [
   { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },

@@ -16,11 +16,10 @@ import {
   type LegalData,
 } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
+import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
-
-const SELF_BILLING_VERSION = "1.0";
 
 const LOCKERS = [
   { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
@@ -90,6 +89,12 @@ export function DashboardProfileEditor() {
           home_locker_ids: data.home_locker_ids ?? [],
           courier_pickup_address: data.courier_pickup_address ?? "",
         };
+        // The agreement binds the seller to a specific operator entity, so a new
+        // agreement version invalidates the stored consent. Clear the checkbox so
+        // the seller has to actively accept the new version before we invoice again.
+        if (needsReconsent(p.self_billing_agreement_version)) {
+          p.self_billing_agreed = false;
+        }
         setProfile(p);
         setSaved(p);
       } else {
@@ -339,7 +344,7 @@ export function DashboardProfileEditor() {
                       </div>
                       <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5 sm:col-span-2 text-xs text-green-700">
                         <CheckCircle size={13} />
-                        Self-billing kārtība pieņemta (versija {profile.self_billing_agreement_version ?? "1.0"})
+                        Self-billing kārtība pieņemta (versija {profile.self_billing_agreement_version ?? SELF_BILLING_VERSION})
                       </div>
                     </div>
                   ) : (

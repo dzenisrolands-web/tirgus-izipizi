@@ -5,6 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
+import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 import type { Period } from "./period";
 
 type OrderItem = {
@@ -36,6 +37,7 @@ type SellerRow = {
   bank_name: string | null;
   bank_iban: string | null;
   self_billing_agreed: boolean | null;
+  self_billing_agreement_version: string | null;
 };
 
 type GenerateResult = {
@@ -134,7 +136,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   const sellerIds = Array.from(bySeller.keys());
   const { data: sellers } = await supabase
     .from("sellers")
-    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed")
+    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed, self_billing_agreement_version")
     .in("id", sellerIds);
   const sellerMap = new Map<string, SellerRow>();
   for (const s of (sellers ?? []) as SellerRow[]) sellerMap.set(s.id, s);
@@ -150,6 +152,16 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
     if (!seller.self_billing_agreed) {
       skipped.push({ sellerId, reason: "self-billing not agreed" });
+      continue;
+    }
+    // The agreement names a specific operator entity. A consent given to a
+    // previous operator does not authorise us to issue invoices in the
+    // seller's name, so hold the payout until they accept the new version.
+    if (needsReconsent(seller.self_billing_agreement_version)) {
+      skipped.push({
+        sellerId,
+        reason: `self-billing consent is version ${seller.self_billing_agreement_version}, needs ${SELF_BILLING_VERSION}`,
+      });
       continue;
     }
     if (!seller.legal_name || !seller.bank_iban) {
@@ -181,7 +193,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     const invoiceNumber = numData as unknown as string;
 
     // VAT handling: 21% on commission only if seller is VAT-registered
-    // (Operator SIA Svaigi is VAT registered and charges VAT on its commission service)
+    // (The operator is VAT registered and charges VAT on its commission service)
     const vatRate = 21;
     const vatAmountCents = Math.round(agg.commissionCents * (vatRate / 100));
 

@@ -7,6 +7,7 @@ import {
   SchemaType,
 } from "@google/generative-ai";
 import { TOOL_DECLARATIONS, dispatchTool } from "@/lib/assistant-tools";
+import { operatorInfo } from "@/lib/operator-info";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ Konteksts:
 - tirgus.izipizi.lv ir Latvijas vietējo ražotāju online tirgus.
 - Produkti tiek piegādāti caur izipizi pakomātu tīklu (3€/pakomāts) vai ar kurjeru (no 5€).
 - Maksājumi caur Paysera.
-- Operators: SIA Svaigi.
+- Operators: ${operatorInfo.shortName}.
 
 Rīcības principi:
 1. Vienmēr atbildi LATVIEŠU valodā.

@@ -16,6 +16,7 @@ import { PWAInstallTracker } from "@/components/pwa-install-tracker";
 import { PWAInstallButton } from "@/components/pwa-install-button";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { operatorInfo, siteFooterLine } from "@/lib/operator-info";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -72,7 +73,7 @@ export const metadata: Metadata = {
   },
   verification: {
     other: {
-      "verify-paysera": "6567d173da1185168a8bf3c13a6d3456",
+      "verify-paysera": "f3000390816d8fda7eb2d4188878ff36",
     },
   },
   manifest: "/manifest.webmanifest",
@@ -111,21 +112,21 @@ const organizationJsonLd = {
   areaServed: { "@type": "Country", name: "Latvia" },
   parentOrganization: {
     "@type": "Organization",
-    name: 'Sabiedrība ar ierobežotu atbildību "Svaigi"',
-    legalName: 'Sabiedrība ar ierobežotu atbildību "Svaigi"',
-    taxID: "LV40103915568",
-    vatID: "LV40103915568",
+    name: operatorInfo.legalName,
+    legalName: operatorInfo.legalName,
+    taxID: operatorInfo.vatNumber,
+    vatID: operatorInfo.vatNumber,
     address: {
       "@type": "PostalAddress",
-      streetAddress: "Margrietas iela 7",
-      addressLocality: "Rīga",
-      postalCode: "LV-1046",
+      streetAddress: operatorInfo.legalAddress.street,
+      addressLocality: operatorInfo.legalAddress.city,
+      postalCode: operatorInfo.legalAddress.postalCode,
       addressCountry: "LV",
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+371 20031552",
-      email: "tirgus@izipizi.lv",
+      telephone: operatorInfo.contact.phone,
+      email: operatorInfo.contact.emailGeneral,
       contactType: "customer service",
       availableLanguage: ["Latvian", "English"],
     },
@@ -154,7 +155,7 @@ export default function RootLayout({
   const dateToday = new Date();
   const todayFullDate = dateToday.getDate() + '-' + (dateToday.getMonth() + 1) + '-' + dateToday.getFullYear();
   script.src = 'https://bank.paysera.com/js/compiled/quality-sign.js?v=' + todayFullDate;
-  script.setAttribute('data-paysera-project-id', 138034);
+  script.setAttribute('data-paysera-project-id', ${JSON.stringify(operatorInfo.paysera.projectId)});
   script.setAttribute('data-lang', 'lv');
   script.async = true;
   document.head.appendChild(script);
@@ -191,8 +192,7 @@ export default function RootLayout({
                   Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz pakomātam.
                 </p>
                 <p className="mt-4 text-[10px] leading-relaxed text-gray-400">
-                  SIA &quot;Svaigi&quot; · Reģ. Nr. 40103915568 ·
-                  PVN reģ. Nr. LV40103915568 · Margrietas iela 7, Rīga, LV-1046
+                  {siteFooterLine()}
                 </p>
               </div>
               <div>
@@ -227,7 +227,7 @@ export default function RootLayout({
               </div>
             </div>
             <div className="mt-10 flex flex-col items-center gap-2 border-t border-gray-200 pt-6 text-center text-xs text-gray-400 sm:flex-row sm:justify-between">
-              <span>© 2026 SIA &quot;Svaigi&quot; — Visas tiesības aizsargātas</span>
+              <span>© {new Date().getFullYear()} {operatorInfo.shortName} — Visas tiesības aizsargātas</span>
               <span className="flex items-center gap-3">
                 <a href="mailto:tirgus@izipizi.lv" className="hover:text-brand-600">tirgus@izipizi.lv</a>
                 <span className="text-gray-300">·</span>

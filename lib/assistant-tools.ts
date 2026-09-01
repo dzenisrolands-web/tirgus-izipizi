@@ -1,4 +1,5 @@
 import { createServerClient } from "./supabase";
+import { operatorInfo } from "./operator-info";
 
 const BASE_URL = "https://tirgus.izipizi.lv";
 
@@ -154,7 +155,7 @@ const HELP_TOPICS: Record<string, string> = {
   about:
     "tirgus.izipizi.lv ir Latvijas vietējo ražotāju tirgus vieta — savieno fermas ar pircējiem caur izipizi pakomātu tīklu. " +
     "Pērc no tieši ražotāja, saņem ērti pakomātā vai ar piegādi. " +
-    "Operators: SIA Svaigi (40103915568, LV-VAT). Lapa: /par-mums.",
+    `Operators: ${operatorInfo.shortName} (${operatorInfo.registrationNumber}, LV-VAT). Lapa: /par-mums.`,
 };
 
 export async function getHelpTopic({ topic }: { topic: string }) {

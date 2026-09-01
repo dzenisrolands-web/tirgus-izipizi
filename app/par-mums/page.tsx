@@ -101,16 +101,20 @@ export default function ParMumsPage() {
           <h2 className="text-xl font-extrabold text-gray-900">Mūsu stāsts</h2>
           <div className="mt-4 space-y-4 text-sm leading-relaxed text-gray-600">
             <p>
-              SIA &quot;Svaigi&quot; tika dibināta 2015. gadā ar vienkāršu mērķi — padarīt
-              Latvijas svaigu, vietējo pārtiku pieejamāku ikdienas pircējam. Sākotnēji
-              strādājām kā mazs ražotāju kooperatīvs, vēlāk attīstoties par tirgus vietu.
+              <strong>{operatorInfo.shortName}</strong> operē Latvijas pārtikas pakomātu
+              tīklu — skapjīšus ar temperatūras kontroli, kas darbojas 24/7 un ļauj saņemt
+              svaigu pārtiku tad, kad tas ir ērti, nevis tad, kad atvērts veikals.
             </p>
             <p>
-              2026. gadā mēs apvienojām spēkus ar <strong>SIA &quot;IziPizi&quot;</strong>,
-              kas operē Latvijas pārtikas pakomātu tīklu. Pateicoties šai sadarbībai, ražotāji
-              piegādā produktus uz pakomātiem ar temperatūras kontroli, kā arī izmantojam
-              kurjera un ekspres piegādes pakalpojumus, lai pircēji saņem svaigu
-              pārtiku tā, kā tiem ērti.
+              Pakomātu tīkls atrisināja piegādi, bet neatbildēts palika galvenais jautājums:
+              kur pircējam atrast pašus ražotājus? Tā radās <strong>tirgus.izipizi.lv</strong>{" "}
+              — tirgus vieta, kas savieno Latvijas zemniekus un mazos pārtikas ražotājus ar
+              pircējiem tieši, bez starpniekiem un veikalu plauktiem.
+            </p>
+            <p>
+              Šodien ražotājs ievieto produktu pakomātā sev tuvākajā vietā, un pircējs to
+              saņem vai nu pakomātā, vai ar kurjeru un ekspres piegādi uz mājām — atkarībā
+              no tā, kas kuram ir ērtāk.
             </p>
           </div>
         </section>
@@ -165,7 +169,7 @@ export default function ParMumsPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Kontakti</p>
               <p>{operatorInfo.contact.phone}</p>
               <p>{operatorInfo.contact.emailGeneral}</p>
-              <p><a href={operatorInfo.contact.publicWebsite} target="_blank" rel="noopener" className="text-brand-600 hover:underline">svaigi.lv</a></p>
+              <p><a href={operatorInfo.contact.publicWebsite} target="_blank" rel="noopener" className="text-brand-600 hover:underline">{operatorInfo.contact.publicWebsite.replace(/^https?:\/\//, "")}</a></p>
             </div>
           </div>
         </section>

@@ -10,13 +10,17 @@
  * Served as plain text at /llms.txt.
  */
 import { NextResponse } from "next/server";
+import { operatorInfo } from "@/lib/operator-info";
 
 export const dynamic = "force-static";
 export const revalidate = 86400; // 24 h
 
+const a = operatorInfo.legalAddress;
+const OPERATOR_SUMMARY = `${operatorInfo.shortName} (reg. nr. ${operatorInfo.registrationNumber}, VAT ${operatorInfo.vatNumber}, ${a.street}, ${a.city}, ${a.postalCode})`;
+
 const BODY = `# tirgus.izipizi.lv
 
-> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by SIA Svaigi (reg. nr. 40103915568, VAT LV40103915568, Margrietas iela 7, Rīga, LV-1046). Pickup at IziPizi parcel lockers across Latvia (currently 6 locations) or courier delivery (zoned 0–3, 5.45 €–10.77 €). Express delivery in Rīga 2–5 h.
+> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by ${OPERATOR_SUMMARY}. Pickup at IziPizi parcel lockers across Latvia (currently 6 locations) or courier delivery (zoned 0–3, 5.45 €–10.77 €). Express delivery in Rīga 2–5 h.
 
 ## What we sell
 
@@ -68,8 +72,8 @@ Each product page (https://tirgus.izipizi.lv/listing/{id}) carries Product JSON-
 
 ## Contact
 
-- General: tirgus@izipizi.lv · +371 20031552
-- Operator: SIA Svaigi, reg. nr. 40103915568, Margrietas iela 7, Rīga, LV-1046
+- General: ${operatorInfo.contact.emailGeneral} · ${operatorInfo.contact.phone}
+- Operator: ${operatorInfo.shortName}, reg. nr. ${operatorInfo.registrationNumber}, ${a.street}, ${a.city}, ${a.postalCode}
 `;
 
 export async function GET() {

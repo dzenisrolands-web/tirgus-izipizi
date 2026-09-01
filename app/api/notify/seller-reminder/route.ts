@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email";
+import { operatorInfo } from "@/lib/operator-info";
 
 /**
  * Sūta e-pasta atgādinājumu pārdevējam par trūkstošajiem profila datiem.
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
         </tr>
         <tr>
           <td style="background:#fafafa;padding:16px 28px;color:#888;font-size:12px;border-top:1px solid #f0f0f0;">
-            SIA Svaigi · tirgus.izipizi.lv
+            ${escape(operatorInfo.shortName)} · tirgus.izipizi.lv
           </td>
         </tr>
       </table>
