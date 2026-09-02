@@ -107,11 +107,10 @@ export const lockers: Locker[] = [
   },
   {
     "id": "sigulda",
-    "name": "Siguldas tirgus",
-    "address": "Raīņa iela 3 / Tirgus",
+    "name": "Sigulda",
+    "address": "Rūdolfa Blaumaņa iela 2",
     "city": "Sigulda",
-    "hours": "24/7",
-    "coming_soon": true
+    "hours": "24/7"
   },
   {
     "id": "tinuzi",
