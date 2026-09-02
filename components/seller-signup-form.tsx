@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Loader2, Store, ArrowLeft, Truck, Percent, Shield, Star, ChevronRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+function isAlreadyRegisteredError(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("already registered") || m.includes("already exists") || m.includes("user already");
+}
 
 export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
   const [firstName, setFirstName] = useState("");
@@ -12,7 +17,17 @@ export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [done, setDone] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setLoggedInEmail(data.user?.email ?? null);
+      setCheckingSession(false);
+    });
+  }, []);
 
   // Track invitation click (fire-and-forget)
   useState(() => {
@@ -34,6 +49,7 @@ export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setAlreadyRegistered(false);
     if (password.length < 8) {
       setError("Parolei jābūt vismaz 8 rakstzīmes");
       return;
@@ -68,7 +84,12 @@ export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
       await supabase.auth.signOut();
       setDone(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Kļūda");
+      const msg = err instanceof Error ? err.message : "Kļūda";
+      if (isAlreadyRegisteredError(msg)) {
+        setAlreadyRegistered(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -89,6 +110,58 @@ export function SellerSignupForm({ invitationId }: { invitationId?: string }) {
           <Link href="/login" className="btn-primary mt-6 inline-block">
             Pieslēgties
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Already logged in — no need to sign up again, just go finish the seller profile
+  // under the existing account (buyer + seller share one identity).
+  if (!checkingSession && loggedInEmail) {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-[#192635] px-4">
+        <div className="max-w-sm rounded-3xl bg-white p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl">
+            👋
+          </div>
+          <h1 className="mt-5 text-2xl font-extrabold text-gray-900">Tu jau esi ielogojies!</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            Konts <strong>{loggedInEmail}</strong> jau ir pieslēdzies. Nav jāveido jauns konts —
+            vari uzreiz turpināt un aizpildīt ražotāja profilu zem šī konta.
+          </p>
+          <Link href="/dashboard/onboarding" className="btn-primary mt-6 inline-block">
+            Turpināt kā ražotājs
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-[#192635] px-4">
+        <div className="max-w-sm rounded-3xl bg-white p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl">
+            ℹ️
+          </div>
+          <h1 className="mt-5 text-2xl font-extrabold text-gray-900">Šis e-pasts jau ir reģistrēts</h1>
+          <p className="mt-3 text-sm text-gray-500">
+            <strong>{email}</strong> jau ir konts šajā platformā (piemēram, kā pircējs).
+            Pieslēdzies ar šo e-pastu — pēc tam vari uzreiz aizpildīt ražotāja profilu, neveidojot jaunu kontu.
+          </p>
+          <Link
+            href={`/login?next=${encodeURIComponent("/dashboard/onboarding")}`}
+            className="btn-primary mt-6 inline-block"
+          >
+            Pieslēgties
+          </Link>
+          <button
+            type="button"
+            onClick={() => setAlreadyRegistered(false)}
+            className="mt-3 block w-full text-center text-xs text-gray-400 hover:text-gray-600"
+          >
+            Atpakaļ uz reģistrācijas formu
+          </button>
         </div>
       </div>
     );

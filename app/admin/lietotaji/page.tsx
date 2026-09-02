@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Users, Search, ShoppingBag, Store, Clock, CheckCircle, AlertCircle,
-  Loader2, ExternalLink, Mail,
+  Loader2, ExternalLink, Mail, UserPlus,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -35,26 +35,47 @@ export default function AdminLietotajiPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
+  const [makingSellerId, setMakingSellerId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
+  async function load() {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { setError("Nav sesijas"); setLoading(false); return; }
+
+    const res = await fetch("/api/admin/users", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setUsers(data.users);
+    } else {
+      setError(data.error ?? "Kļūda");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleMakeSeller(user: User) {
+    if (makingSellerId) return;
+    setMakingSellerId(user.id);
+    try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) { setError("Nav sesijas"); setLoading(false); return; }
-
-      const res = await fetch("/api/admin/users", {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch("/api/admin/make-seller", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId: user.id, email: user.email, name: user.name }),
       });
       const data = await res.json();
-      if (data.ok) {
-        setUsers(data.users);
-      } else {
-        setError(data.error ?? "Kļūda");
-      }
-      setLoading(false);
+      if (!data.ok) { alert(data.error ?? "Kļūda"); return; }
+      await load();
+    } catch {
+      alert("Kļūda sazinoties ar serveri");
+    } finally {
+      setMakingSellerId(null);
     }
-    load();
-  }, []);
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const todayCount = users.filter(u => u.created_at.startsWith(today)).length;
@@ -200,11 +221,23 @@ export default function AdminLietotajiPage() {
                         <ShoppingBag size={11} /> {user.orders.paid} pasūt.
                       </span>
                     )}
-                    {user.seller && (
+                    {user.seller ? (
                       <Link href={`/seller/${user.seller.id}`} target="_blank"
                         className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-500 hover:bg-gray-100 transition">
                         <ExternalLink size={9} /> profils
                       </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleMakeSeller(user)}
+                        disabled={makingSellerId === user.id}
+                        title="Izveido melnraksta ražotāja profilu šim lietotājam — viņš to var pabeigt pēc ielogošanās"
+                        className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 text-[10px] font-semibold text-brand-700 hover:bg-brand-100 transition disabled:opacity-50"
+                      >
+                        {makingSellerId === user.id
+                          ? <Loader2 size={9} className="animate-spin" />
+                          : <UserPlus size={9} />}
+                        Padarīt par ražotāju
+                      </button>
                     )}
                   </div>
                 </div>

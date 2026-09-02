@@ -159,7 +159,7 @@ export function BuyerProfile() {
         </div>
 
         {/* Seller switcher — shown if user has a seller account */}
-        {sellerStatus && (
+        {sellerStatus ? (
           <Link
             href="/dashboard"
             className="mt-6 flex items-center gap-4 rounded-2xl p-5 ring-2 ring-brand-200 bg-gradient-to-r from-brand-50 to-purple-50 transition hover:shadow-md hover:ring-brand-400"
@@ -179,6 +179,22 @@ export function BuyerProfile() {
               </p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-brand-400" />
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/onboarding"
+            className="mt-6 flex items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-md"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
+              <Store size={22} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-gray-900">Kļūt par ražotāju</p>
+              <p className="text-xs text-gray-500">
+                Pārdod savus produktus zem šī paša konta — bez maksas, nav jāreģistrējas no jauna
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-gray-400" />
           </Link>
         )}
 
