@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     tukums:     { name: "Tukuma tirgus",      address: "J. Raiņa iela 30",         city: "Tukums" },
     dundaga:    { name: "Dundagas tirgus",    address: "Pils 3B",                   city: "Dundaga" },
     iukstes:    { name: "Ilūkstes iela 40A",  address: "Ilūkstes iela 40A",         city: "Rīga" },
+    sigulda:    { name: "Sigulda",            address: "Rūdolfa Blaumaņa iela 2",   city: "Sigulda" },
   };
   const fromLockerId = (seller.home_locker_ids as string[] | null)?.[0];
   const fromLocker = fromLockerId ? LOCKERS[fromLockerId] : null;

@@ -67,6 +67,7 @@ const LOCKERS = [
   { id: "ikskile",   label: "Ikšķile" },
   { id: "tukums",    label: "Tukuma tirgus" },
   { id: "dundaga",   label: "Dundagas tirgus" },
+  { id: "sigulda",   label: "Sigulda" },
 ];
 
 export default function AdminRazotajiPage() {

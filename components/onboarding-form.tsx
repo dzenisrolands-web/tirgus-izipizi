@@ -20,6 +20,7 @@ const LOCKERS = [
   { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
   { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
   { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
+  { id: "sigulda",    name: "Sigulda",            city: "Sigulda",   address: "Rūdolfa Blaumaņa iela 2" },
 ];
 
 export function OnboardingForm() {
