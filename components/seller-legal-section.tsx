@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, FileText, CreditCard, ExternalLink } from "lucide-react";
+import { Building2, FileText, CreditCard, ExternalLink, AlertTriangle } from "lucide-react";
+import { operatorInfo } from "@/lib/operator-info";
+import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 
 export type LegalData = {
   legal_name: string;
@@ -89,7 +91,7 @@ export function SellerLegalSection({
       <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
         <p className="font-semibold mb-1">Kāpēc šī informācija?</p>
         <p className="text-xs leading-relaxed">
-          Mēs (SIA Svaigi) izrakstām rēķinus tavā vārdā <strong>2 reizes mēnesī</strong> par
+          Mēs ({operatorInfo.shortName}) izrakstām rēķinus tavā vārdā <strong>2 reizes mēnesī</strong> par
           platformā veiktajām pārdošanām (self-billing kārtība). Lai to varētu darīt
           legāli un izmaksāt naudu, vajag tavus juridiskos rekvizītus un bankas kontu.
         </p>
@@ -166,7 +168,7 @@ export function SellerLegalSection({
             label="PVN reģistrācijas numurs *"
             value={data.vat_number}
             onChange={(v) => set("vat_number", v.toUpperCase().slice(0, 13))}
-            placeholder="LV40103915568"
+            placeholder="LV00000000000"
           />
         )}
 
@@ -254,9 +256,27 @@ export function SellerLegalSection({
             Self-billing vienošanās
           </div>
 
+          {needsReconsent(data.self_billing_agreement_version) && !data.self_billing_agreed && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <div className="text-xs leading-relaxed">
+                <p className="font-semibold">
+                  Vienošanās ir atjaunināta (versija {SELF_BILLING_VERSION})
+                </p>
+                <p className="mt-1">
+                  Platformas operators ir mainījies uz <strong>{operatorInfo.shortName}</strong>,
+                  tāpēc tava iepriekšējā piekrišana (versija{" "}
+                  {data.self_billing_agreement_version}) vairs nav spēkā. Lūdzu izlasi
+                  jauno tekstu un apstiprini to vēlreiz — bez tā nevaram izrakstīt rēķinus
+                  un veikt izmaksas.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 text-sm text-gray-700 leading-relaxed">
             <p className="mb-2">
-              Self-billing nozīmē, ka <strong>SIA Svaigi izraksta rēķinus tavā vārdā</strong>{" "}
+              Self-billing nozīmē, ka <strong>{operatorInfo.shortName} izraksta rēķinus tavā vārdā</strong>{" "}
               par platformā veiktajām pārdošanām, un mēs tev apmaksājam neto summu (pārdošana
               mīnus mūsu komisija). Tev pašam nav jāizraksta rēķins mums.
             </p>
@@ -281,8 +301,9 @@ export function SellerLegalSection({
               className="mt-0.5 h-4 w-4 accent-brand-600"
             />
             <span className="text-sm text-gray-700">
-              Esmu izlasījis self-billing vienošanos (versija 1.0) un piekrītu, ka SIA Svaigi
-              izraksta rēķinus manā vārdā saskaņā ar tās noteikumiem.
+              Esmu izlasījis self-billing vienošanos (versija {SELF_BILLING_VERSION}) un
+              piekrītu, ka {operatorInfo.shortName} izraksta rēķinus manā vārdā saskaņā ar
+              tās noteikumiem.
             </span>
           </label>
         </div>

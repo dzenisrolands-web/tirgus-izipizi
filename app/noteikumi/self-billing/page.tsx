@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import {
+  SELF_BILLING_VERSION,
+  SELF_BILLING_EFFECTIVE_DATE,
+} from "@/lib/legal/self-billing";
 
 export const metadata: Metadata = {
   title: "Self-billing vienošanās — tirgus.izipizi.lv",
-  description:
-    "Vienošanās par klienta sastādītiem rēķiniem (self-billing) starp SIA Svaigi un tirgotājiem.",
+  description: `Vienošanās par klienta sastādītiem rēķiniem (self-billing) starp ${operatorInfo.shortName} un tirgotājiem.`,
   robots: { index: false, follow: false },
 };
 
@@ -22,7 +25,7 @@ export default function SelfBillingAgreementPage() {
 
       <article className="prose prose-sm max-w-none prose-headings:font-extrabold prose-h1:text-2xl prose-h2:text-lg prose-h2:mt-8 prose-h3:text-base prose-strong:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-li:text-gray-700">
         <p className="text-xs uppercase tracking-widest text-brand-600 font-bold">
-          Versija 1.0 · Spēkā no 2026-04-29
+          Versija {SELF_BILLING_VERSION} · Spēkā no {SELF_BILLING_EFFECTIVE_DATE}
         </p>
 
         <h1>Vienošanās par self-billing kārtību</h1>
@@ -118,8 +121,8 @@ export default function SelfBillingAgreementPage() {
             PVN maksātājs — 21 %), <strong>neto summa, kas izmaksājama Tirgotājam</strong>
           </li>
           <li>
-            Norāde: <em>"Šis rēķins sastādīts klienta self-billing kārtībā saskaņā ar PVN
-            direktīvas 224. pantu un Tirgotāja-Operatora vienošanos."</em>
+            Norāde: <em>&quot;Šis rēķins sastādīts klienta self-billing kārtībā saskaņā ar PVN
+            direktīvas 224. pantu un Tirgotāja-Operatora vienošanos.&quot;</em>
           </li>
         </ul>
         <p>
@@ -273,7 +276,7 @@ export default function SelfBillingAgreementPage() {
           <li>Apstiprināšanas datums un laiks (timestamp)</li>
           <li>Tirgotāja konta lietotāja ID</li>
           <li>Pieprasījuma IP adrese</li>
-          <li>Vienošanās versijas numurs (1.0)</li>
+          <li>Vienošanās versijas numurs ({SELF_BILLING_VERSION})</li>
         </ul>
         <p>
           Šis elektroniskais akcepts ir juridiski saistošs saskaņā ar Latvijas{" "}
@@ -287,7 +290,8 @@ export default function SelfBillingAgreementPage() {
         </p>
 
         <p className="mt-12 text-xs text-gray-400 italic">
-          Vienošanās dokuments versijā 1.0, sastādīts 2026-04-29 Rīgā.
+          Vienošanās dokuments versijā {SELF_BILLING_VERSION}, spēkā no{" "}
+          {SELF_BILLING_EFFECTIVE_DATE}, Rīga.
         </p>
       </article>
     </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FileText, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { operatorInfo } from "@/lib/operator-info";
 
 type Invoice = {
   id: string;
@@ -61,7 +62,7 @@ export default function DashboardRekiniPage() {
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-900">Rēķini</h1>
-        <p className="mt-0.5 text-sm text-gray-500">Self-billing rēķini, kurus SIA Svaigi izrakstījusi tavā vārdā · {invoices.length} kopā</p>
+        <p className="mt-0.5 text-sm text-gray-500">Self-billing rēķini, kurus {operatorInfo.shortName} izrakstījusi tavā vārdā · {invoices.length} kopā</p>
       </div>
 
       <div className="mb-6 flex items-start gap-2 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">

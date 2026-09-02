@@ -12,6 +12,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { loadAndRender } from "@/lib/email-templates";
+import { emailFooterLine } from "@/lib/operator-info";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -744,7 +745,7 @@ export function brandedEmailLayout(body: string, options?: BrandedLayoutOptions)
               <tr>
                 <td style="color:#888;font-size:11px;line-height:1.6;">
                   Šis ir automātisks e-pasts no <a href="${escapeHtml(siteUrl())}" style="color:#AD47FF;text-decoration:none;font-weight:600;">tirgus.izipizi.lv</a><br>
-                  SIA &quot;Svaigi&quot; · Reģ. nr. 40103915568 · Margrietas iela 7, Rīga, LV-1046<br>
+                  ${escapeHtml(emailFooterLine())}<br>
                   <a href="mailto:tirgus@izipizi.lv" style="color:#888;">tirgus@izipizi.lv</a>
                 </td>
               </tr>

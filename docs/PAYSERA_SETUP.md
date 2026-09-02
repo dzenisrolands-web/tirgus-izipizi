@@ -7,7 +7,8 @@ Soli pa solim, kas jākonfigurē Paysera merchant panelī, lai checkout strādā
 ## 1. Reģistrēt projektu Paysera
 
 1. Atver: https://bank.paysera.com
-2. Pieslēdzies ar SIA Svaigi kontu (vai izveido jaunu, ja vēl nav)
+2. Pieslēdzies ar **SIA IziPizi** kontu — to pašu, ar kuru jau tiek pieņemti
+   maksājumi par piegādēm
 3. Kreisajā izvēlnē: **Projekti un darbības** → **Mani projekti** → **Jauns projekts**
 4. Aizpildi:
    - **Projekta nosaukums**: `tirgus.izipizi.lv`
@@ -28,6 +29,11 @@ Pēc apstiprināšanas projekta lapā redzēsi:
 | **Paroles** → **Sign password** | `PAYSERA_SIGN_PASSWORD` |
 
 ⚠️ **Sign password ir slepena** — neglabā Git, tikai Vercel env mainīgajos.
+
+⚠️ **Projekta ID ir divās vietās.** Serverpuses checkout lasa `PAYSERA_PROJECT_ID`
+no vides mainīgajiem, bet Quality Sign nozīmes skripts `app/layout.tsx` galvenē lieto
+`operatorInfo.paysera.projectId` (`lib/operator-info.ts`). Abām jānorāda **viens un
+tas pats projekts** — ja tās atšķiras, nozīme rādīs svešu projektu.
 
 ---
 
