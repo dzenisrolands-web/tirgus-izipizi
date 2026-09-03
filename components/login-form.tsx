@@ -16,6 +16,10 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   async function handleGoogle() {
     setGoogleLoading(true);
@@ -49,6 +53,71 @@ export function LoginForm() {
     }
   }
 
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) { setForgotError("Ievadi e-pastu"); return; }
+    setForgotError("");
+    setForgotLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${location.origin}/auth/callback`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+    } catch (err: unknown) {
+      setForgotError(err instanceof Error ? err.message : "Kļūda");
+    } finally {
+      setForgotLoading(false);
+    }
+  }
+
+  if (showForgot) {
+    if (forgotSent) {
+      return (
+        <div className="mt-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-2xl">
+            ✉️
+          </div>
+          <h2 className="mt-4 text-lg font-extrabold text-gray-900">Pārbaudi e-pastu!</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Ja <strong>{email}</strong> ir reģistrēts, nosūtījām tām paroles atjaunošanas saiti.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setShowForgot(false); setForgotSent(false); }}
+            className="mt-5 font-medium text-brand-600 hover:underline text-sm"
+          >
+            Atpakaļ uz pieslēgšanos
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-6">
+        <h2 className="text-lg font-extrabold text-gray-900">Aizmirsi paroli?</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Ievadi savu e-pastu — nosūtīsim saiti paroles atjaunošanai.
+        </p>
+        <form onSubmit={handleForgotPassword} className="mt-4 space-y-3">
+          {forgotError && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{forgotError}</div>}
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            className="input w-full" placeholder="E-pasts" required autoFocus />
+          <button type="submit" disabled={forgotLoading} className="btn-primary w-full py-2.5 flex items-center justify-center gap-2">
+            {forgotLoading && <Loader2 size={16} className="animate-spin" />}
+            Sūtīt atjaunošanas saiti
+          </button>
+        </form>
+        <button
+          type="button"
+          onClick={() => { setShowForgot(false); setForgotError(""); }}
+          className="mt-4 block w-full text-center text-sm font-medium text-gray-500 hover:text-gray-700"
+        >
+          Atpakaļ uz pieslēgšanos
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
         {/* Google */}
@@ -77,6 +146,15 @@ export function LoginForm() {
             <button type="button" onClick={() => setShowPass(!showPass)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => { setShowForgot(true); setForgotError(""); }}
+              className="text-xs font-medium text-gray-500 hover:text-brand-600"
+            >
+              Aizmirsi paroli?
             </button>
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 flex items-center justify-center gap-2">

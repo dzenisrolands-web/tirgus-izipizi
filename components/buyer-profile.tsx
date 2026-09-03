@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ShoppingBag, Heart, Gift, Settings, LogOut, ChevronRight,
-  Loader2, Package, MapPin, Bell, Mail, Store,
+  Loader2, Package, MapPin, Bell, Mail, Store, AlertTriangle, X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -25,6 +25,11 @@ export function BuyerProfile() {
   const [subscribing, setSubscribing] = useState(false);
   const [sellerStatus, setSellerStatus] = useState<string | null>(null); // null = no seller, else seller.status
   const [loading, setLoading] = useState(true);
+  const [removingSeller, setRemovingSeller] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -84,6 +89,49 @@ export function BuyerProfile() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/");
+  }
+
+  async function handleRemoveSeller() {
+    if (removingSeller) return;
+    if (!confirm("Vai tiešām vēlies pārtraukt pārdošanu? Tavi produkti tiks dzēsti, bet pircēja konts paliks.")) return;
+    setRemovingSeller(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/account/remove-seller", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.ok) { alert(data.error ?? "Kļūda"); return; }
+      setSellerStatus(null);
+    } catch {
+      alert("Kļūda sazinoties ar serveri");
+    } finally {
+      setRemovingSeller(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleting || deleteConfirmText !== "DZĒST") return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.ok) { setDeleteError(data.error ?? "Kļūda"); return; }
+      await supabase.auth.signOut();
+      router.push("/");
+    } catch {
+      setDeleteError("Kļūda sazinoties ar serveri");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function toggleNewsletter() {
@@ -180,7 +228,19 @@ export function BuyerProfile() {
             </div>
             <ChevronRight size={18} className="shrink-0 text-brand-400" />
           </Link>
-        ) : (
+        ) : null}
+        {sellerStatus && (
+          <button
+            type="button"
+            onClick={handleRemoveSeller}
+            disabled={removingSeller}
+            className="mt-2 flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600 transition disabled:opacity-50"
+          >
+            {removingSeller && <Loader2 size={11} className="animate-spin" />}
+            Pārtraukt pārdošanu (atgriezties pie pircēja konta)
+          </button>
+        )}
+        {!sellerStatus && (
           <Link
             href="/dashboard/onboarding"
             className="mt-6 flex items-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-md"
@@ -305,7 +365,78 @@ export function BuyerProfile() {
             </button>
           </div>
         </div>
+
+        {/* Danger zone */}
+        <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/50 p-5">
+          <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-red-500">
+            <AlertTriangle size={12} /> Bīstamā zona
+          </h2>
+          <p className="mt-2 text-xs text-gray-500">
+            Konta dzēšana ir neatgriezeniska — tiks dzēsts tavs konts un (ja ir) ražotāja profils ar produktiem.
+            Jau veiktie pasūtījumi un rēķini paliek saglabāti grāmatvedibas nolūkos.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="mt-3 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            Dzēst kontu
+          </button>
+        </div>
       </div>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <AlertTriangle size={20} />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <h3 className="mt-3 text-lg font-extrabold text-gray-900">Dzēst kontu neatgriezeniski?</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Šī darbība dzēsīs tavu kontu ({email}){sellerStatus ? " un ražotāja profilu ar visiem produktiem" : ""}.
+              To nevar atsaukt. Lai apstiprinātu, ieraksti <strong>DZĒST</strong> zemāk.
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="input mt-3 w-full"
+              placeholder="DZĒST"
+            />
+            {deleteError && (
+              <p className="mt-2 text-xs text-red-600">{deleteError}</p>
+            )}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); setDeleteError(""); }}
+                className="btn-outline flex-1 text-sm"
+              >
+                Atcelt
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== "DZĒST" || deleting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting && <Loader2 size={14} className="animate-spin" />}
+                Dzēst neatgriezeniski
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
