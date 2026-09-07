@@ -47,7 +47,7 @@ function mapRpcToListing(row: Record<string, unknown>): Listing {
     },
     quantity: 1,
     freshnessDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    createdAt: new Date().toISOString(),
+    createdAt: (row.created_at as string) ?? new Date().toISOString(),
     slug: (row.slug as string) ?? undefined,
   };
 }
