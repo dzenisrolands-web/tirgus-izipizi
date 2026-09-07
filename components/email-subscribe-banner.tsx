@@ -21,8 +21,8 @@ export function EmailSubscribeBanner() {
       const dismissed = localStorage.getItem(DISMISS_KEY);
       const subscribed = localStorage.getItem(SUBSCRIBED_KEY);
       if (!dismissed && !subscribed) {
-        // Show after 5 seconds
-        const timer = setTimeout(() => setVisible(true), 5000);
+        // Show after 30 seconds — dod lietotājam laiku iepazīties ar lapu, pirms baneris aicina pierakstīties.
+        const timer = setTimeout(() => setVisible(true), 30000);
         return () => clearTimeout(timer);
       }
     } catch {}
