@@ -426,7 +426,13 @@ export function CartPage() {
           }),
           contact: { name: form.name, email: form.email, phone: form.phone },
           sellerIds: uniqueSellerIds,
-          totalCents: Math.round(grandTotal * 100),
+          // IMPORTANT: send the PRE-discount total (items + delivery). The server
+          // independently re-validates the promo code and subtracts the discount
+          // exactly once (see app/api/checkout/create-session/route.ts). Sending
+          // grandTotal here (which already has the discount subtracted client-side)
+          // caused the discount to be applied TWICE, undercharging buyers by the
+          // full discount amount a second time.
+          totalCents: Math.round((total + deliveryFee) * 100),
           promoCode: promoValid ? promoCode.trim().toUpperCase() : undefined,
           // Delivery fee breakdown — one fee per seller, commission per product
           deliveryFeeCents: Math.round(deliveryFee * 100),
