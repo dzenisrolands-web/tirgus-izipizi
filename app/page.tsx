@@ -79,6 +79,16 @@ export default async function HomePage() {
   const liveSellerNames = (dbApproved.length ? dbApproved.map((s) => s.seller.name) : sellers.map((s) => s.name))
     .filter(Boolean)
     .slice(0, 4);
+  // Tirgotāju sadaļas (hero logo josla + "Mūsu saimnieki" kartes) — jārāda
+  // VISI reālie apstiprinātie tirgotāji no DB, nevis fiksēta mock apakškopa.
+  // Mock saraksts paliek tikai kā fallback, ja DB vēl nav nācis neviena tirgotāja.
+  const spotlightSellers = dbApproved.length > 0
+    ? dbApproved
+    : sellers.map((s) => ({
+        seller: s,
+        meta: sellersMeta[s.id],
+        listings: listings.filter((l) => l.sellerId === s.id),
+      }));
   // "Šonedēļ pievienoti" — last 7 days, active listings only
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   const freshThisWeekCount = dbListings.filter((l) => {
@@ -318,10 +328,10 @@ export default async function HomePage() {
           {/* Seller logos strip */}
           <div className="border-t border-white/10 py-5">
             <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-              Mūsu ražotāji
+              Mūsu tirgotāji
             </p>
             <div className="flex flex-wrap items-center justify-center gap-6 opacity-60">
-              {sellers.map((s) => (
+              {spotlightSellers.map(({ seller: s }) => (
                 <Link key={s.id} href={`/seller/${s.id}`}
                   className="h-8 transition hover:opacity-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -447,14 +457,13 @@ export default async function HomePage() {
             </div>
             <Link href="/razotaji"
               className="flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline">
-              Visi ražotāji <ArrowRight size={14} />
+              Visi tirgotāji <ArrowRight size={14} />
             </Link>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sellers.map((seller) => {
-              const meta = sellersMeta[seller.id];
-              const count = listings.filter((l) => l.sellerId === seller.id).length;
+            {spotlightSellers.map(({ seller, meta, listings: sellerListings }) => {
+              const count = sellerListings.length;
               return (
                 <Link key={seller.id} href={`/seller/${seller.id}`}
                   className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition">
