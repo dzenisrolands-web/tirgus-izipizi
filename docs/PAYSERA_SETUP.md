@@ -30,10 +30,13 @@ Pēc apstiprināšanas projekta lapā redzēsi:
 
 ⚠️ **Sign password ir slepena** — neglabā Git, tikai Vercel env mainīgajos.
 
-⚠️ **Projekta ID ir divās vietās.** Serverpuses checkout lasa `PAYSERA_PROJECT_ID`
-no vides mainīgajiem, bet Quality Sign nozīmes skripts `app/layout.tsx` galvenē lieto
-`operatorInfo.paysera.projectId` (`lib/operator-info.ts`). Abām jānorāda **viens un
-tas pats projekts** — ja tās atšķiras, nozīme rādīs svešu projektu.
+Serverpuses checkout (maksājumu URL un webhook paraksta verifikācija) lasa
+**tikai** `PAYSERA_PROJECT_ID` un `PAYSERA_SIGN_PASSWORD` no Vercel vides
+mainīgajiem — tas ir vienīgais avots, kas nosaka, kurā Paysera kontā nonāk
+maksājumi. (`operatorInfo.paysera.projectId` faktiski vairs netiek izmantots
+kodā — Quality Sign nozīmītes skripts `app/layout.tsx` tika noņemts, jo
+traucēja mobilo izvēlni. Lauks palicis `lib/operator-info.ts` tikai kā
+dokumentācijai/atsaucei.)
 
 ---
 
