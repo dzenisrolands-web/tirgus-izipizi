@@ -5,15 +5,12 @@ import Image from "next/image";
 import { Minus, Plus, MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
-import { formatPrice, daysUntil, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
+import { formatPrice, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useStorageTypes } from "@/lib/storage-types-context";
 
 export function ListingCard({ listing }: { listing: Listing }) {
-  const days = daysUntil(listing.freshnessDate);
-  const freshLabel = days <= 1 ? "Šodien" : days <= 3 ? `${days} dienas` : null;
-  const freshUrgent = days <= 1;
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const storageTypes = useStorageTypes();
   const rawStorageType = storageTypes[listing.id] ?? getStorageType(listing);
@@ -66,12 +63,6 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <ShoppingCart size={32} className="text-gray-300" />
             <p className="text-[10px] font-medium text-gray-400">Bilde nav pieejama</p>
           </div>
-        )}
-        {freshLabel && (
-          <span className={cn("absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold",
-            freshUrgent ? "bg-red-500 text-white" : "bg-amber-400 text-amber-900")}>
-            {freshLabel}
-          </span>
         )}
         <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
           {listing.category}

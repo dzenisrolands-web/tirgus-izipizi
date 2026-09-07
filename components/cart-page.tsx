@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
-import { listings, lockers } from "@/lib/mock-data";
+import { listings, lockers, type Listing } from "@/lib/mock-data";
+import { fetchActiveListings, fetchBestSellers } from "@/lib/db-listings";
 import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -317,26 +318,46 @@ export function CartPage() {
 
   const grandTotal = total + deliveryFee - (promoValid ? promoDiscount / 100 : 0);
 
+  // Real product data for upsell sections (replaces hardcoded mock-data catalog,
+  // which showed unrelated demo products like caviar regardless of cart contents).
+  const [dbListings, setDbListings] = useState<Listing[]>([]);
+  const [bestSellerListings, setBestSellerListings] = useState<Listing[]>([]);
+  useEffect(() => {
+    (async () => {
+      const [active, best] = await Promise.all([
+        fetchActiveListings(),
+        fetchBestSellers(20),
+      ]);
+      setDbListings(active);
+      setBestSellerListings(best);
+    })();
+  }, []);
+
   const cartItemIds = new Set(items.map((i) => i.id));
-  const sellerIds = new Set(items.map((i) => {
-    const l = listings.find((x) => x.id === i.id);
-    return l?.sellerId;
-  }));
+  const sellerIds = new Set(items.map((i) => i.sellerId).filter(Boolean) as string[]);
 
+  // "No tiem pašiem ražotājiem" — other real products from sellers already in the cart.
   const upsells = useMemo(() =>
-    listings
-      .filter((l) => sellerIds.has(l.sellerId) && !cartItemIds.has(l.id) && isPublicReady(l))
+    dbListings
+      .filter((l) => sellerIds.has(l.sellerId) && !cartItemIds.has(l.id))
       .slice(0, 6),
-    [items]
+    [dbListings, items]
   );
 
-  const popularUpsells = useMemo(() =>
-    listings
-      .filter((l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId) && isPublicReady(l))
-      .sort((a, b) => b.seller.rating - a.seller.rating)
-      .slice(0, 4),
-    [items]
-  );
+  // "Pircēji bieži pievieno arī" — real best-sellers (based on actual paid orders
+  // in the last 7 days), from OTHER sellers for diversity. Falls back to filling
+  // remaining slots with newest real listings if there isn't enough order data yet.
+  const popularUpsells = useMemo(() => {
+    const fromOrders = bestSellerListings.filter(
+      (l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId)
+    );
+    if (fromOrders.length >= 4) return fromOrders.slice(0, 4);
+    const seen = new Set(fromOrders.map((l) => l.id));
+    const fallback = dbListings.filter(
+      (l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId) && !seen.has(l.id)
+    );
+    return [...fromOrders, ...fallback].slice(0, 4);
+  }, [bestSellerListings, dbListings, items]);
 
   function setField(k: keyof typeof form, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -1407,7 +1428,7 @@ function CartItemRow({
   );
 }
 
-function UpsellSection({ title, items }: { title: string; items: ReturnType<typeof listings.filter> }) {
+function UpsellSection({ title, items }: { title: string; items: Listing[] }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState<Record<string, boolean>>({});
 
@@ -1420,7 +1441,9 @@ function UpsellSection({ title, items }: { title: string; items: ReturnType<type
       unit: item.unit,
       image: item.image,
       sellerName: item.seller.farmName,
+      sellerId: item.sellerId,
       storageType: getStorageType(item),
+      express_delivery: item.express_delivery ?? false,
     });
     setAdded((prev) => ({ ...prev, [item.id]: true }));
     setTimeout(() => setAdded((prev) => ({ ...prev, [item.id]: false })), 1500);
