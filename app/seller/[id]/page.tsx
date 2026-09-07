@@ -10,7 +10,7 @@ import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
 import { FollowSellerButton } from "@/components/follow-seller-button";
-import { isPublicReady } from "@/lib/utils";
+import { isPublicReady, normalizeUrl } from "@/lib/utils";
 
 export const dynamicParams = true;
 export const revalidate = 60;
@@ -129,25 +129,32 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
             {/* Sociālie tīkli + mājas lapa */}
             <div className="flex flex-wrap items-center gap-2">
               {meta?.website && (
-                <a href={meta.website} target="_blank" rel="noopener noreferrer"
+                <a href={normalizeUrl(meta.website)} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
                   🌐 Mājas lapa
                 </a>
               )}
               {meta?.facebook && (
-                <a href={meta.facebook} target="_blank" rel="noopener noreferrer"
+                <a href={normalizeUrl(meta.facebook)} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
                   Facebook
                 </a>
               )}
               {meta?.instagram && (
-                <a href={meta.instagram} target="_blank" rel="noopener noreferrer"
+                <a href={normalizeUrl(meta.instagram)} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
                   Instagram
                 </a>
               )}
+              {meta?.tiktok && (
+                <a href={normalizeUrl(meta.tiktok)} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.14 8.14 0 0 0 4.77 1.52V6.75a4.85 4.85 0 0 1-1-.06z"/></svg>
+                  TikTok
+                </a>
+              )}
               {meta?.youtubeChannel && (
-                <a href={meta.youtubeChannel} target="_blank" rel="noopener noreferrer"
+                <a href={normalizeUrl(meta.youtubeChannel)} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition">
                   YouTube
                 </a>

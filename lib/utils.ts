@@ -126,3 +126,21 @@ export function toUniqueSlug(title: string, id: string): string {
 export function listingUrl(l: { id: string; slug?: string | null }): string {
   return `/listing/${l.slug ?? l.id}`;
 }
+
+/**
+ * Ensure an external URL (website, Facebook, Instagram, TikTok, YouTube, etc.)
+ * has a protocol. Sellers often type "www.mysite.lv" or "mysite.lv" without
+ * "https://" — an <a href> with no protocol is resolved as a RELATIVE path by
+ * the browser, so it 404s on our own domain instead of leaving the site.
+ *
+ * Returns an empty string unchanged (so callers can still do `{url && <a .../>}`).
+ */
+export function normalizeUrl(url: string | null | undefined): string {
+  const trimmed = (url ?? "").trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Also handle other explicit schemes (mailto:, tel:) by leaving them as-is —
+  // unlikely for social/website fields, but avoids mangling edge cases.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}

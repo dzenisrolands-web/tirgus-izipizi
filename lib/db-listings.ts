@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import { lockers } from "./mock-data";
 import type { Listing, Seller, Variant } from "./mock-data";
 import type { SellerMeta } from "./sellers-meta";
-import { isPublicReady } from "./utils";
+import { isPublicReady, normalizeUrl } from "./utils";
 
 function extractYoutubeId(url?: string | null): string | undefined {
   if (!url) return undefined;
@@ -200,7 +200,7 @@ export type DbSellerProfile = {
   listings: Listing[];
 };
 
-const SELLER_COLS = "id, name, farm_name, avatar_url, logo_url, cover_url, status, location, description, short_desc, website, facebook, instagram, youtube_channel, youtube_video_url, quote_text, quote_author, facts, milestones, events";
+const SELLER_COLS = "id, name, farm_name, avatar_url, logo_url, cover_url, status, location, description, short_desc, website, facebook, instagram, tiktok, youtube_channel, youtube_video_url, quote_text, quote_author, facts, milestones, events";
 
 function mapSellerMeta(s: Record<string, unknown>): SellerMeta {
   return {
@@ -208,10 +208,11 @@ function mapSellerMeta(s: Record<string, unknown>): SellerMeta {
     description: (s.description as string) ?? "",
     shortDesc: (s.short_desc as string) ?? "",
     quote: s.quote_text ? { text: s.quote_text as string, author: (s.quote_author as string) ?? "" } : undefined,
-    website: (s.website as string) ?? undefined,
-    facebook: (s.facebook as string) ?? undefined,
-    instagram: (s.instagram as string) ?? undefined,
-    youtubeChannel: (s.youtube_channel as string) ?? undefined,
+    website: normalizeUrl(s.website as string) || undefined,
+    facebook: normalizeUrl(s.facebook as string) || undefined,
+    instagram: normalizeUrl(s.instagram as string) || undefined,
+    tiktok: normalizeUrl(s.tiktok as string) || undefined,
+    youtubeChannel: normalizeUrl(s.youtube_channel as string) || undefined,
     youtubeVideoId: extractYoutubeId(s.youtube_video_url as string | null),
     facts: Array.isArray(s.facts) ? s.facts : [],
     milestones: Array.isArray(s.milestones) ? s.milestones : [],

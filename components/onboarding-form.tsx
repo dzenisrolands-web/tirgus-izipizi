@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X, FileText, Truck, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, normalizeUrl } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
 import { SellerCostCalculator } from "@/components/seller-cost-calculator";
@@ -122,6 +122,11 @@ export function OnboardingForm() {
         user_id: user.id,
         email: user.email ?? null,
         ...form,
+        website: normalizeUrl(form.website),
+        facebook: normalizeUrl(form.facebook),
+        instagram: normalizeUrl(form.instagram),
+        tiktok: normalizeUrl(form.tiktok),
+        youtube_channel: normalizeUrl(form.youtube_channel),
         bank_iban: form.bank_iban.replace(/\s/g, "").toUpperCase(),
         vat_number: form.is_vat_registered ? form.vat_number.toUpperCase() : null,
         self_billing_agreed: true,

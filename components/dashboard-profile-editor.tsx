@@ -7,7 +7,7 @@ import {
   Quote, Award, Calendar, Video, Save, Send, FileText, Package, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, normalizeUrl } from "@/lib/utils";
 import { ImageUpload } from "@/components/image-upload";
 import {
   SellerLegalSection,
@@ -135,10 +135,10 @@ export function DashboardProfileEditor() {
       avatar_url: profile.avatar_url,
       cover_url: profile.cover_url,
       youtube_video_url: profile.youtube_video_url,
-      youtube_channel: profile.youtube_channel,
-      website: profile.website,
-      facebook: profile.facebook,
-      instagram: profile.instagram,
+      youtube_channel: normalizeUrl(profile.youtube_channel),
+      website: normalizeUrl(profile.website),
+      facebook: normalizeUrl(profile.facebook),
+      instagram: normalizeUrl(profile.instagram),
       facts: profile.facts,
       milestones: profile.milestones,
       events: profile.events,
@@ -163,7 +163,7 @@ export function DashboardProfileEditor() {
       updated_at: new Date().toISOString(),
     };
     // Include tiktok only if it's a non-empty string (column may not exist yet)
-    if (profile.tiktok) payload.tiktok = profile.tiktok;
+    if (profile.tiktok) payload.tiktok = normalizeUrl(profile.tiktok);
 
     if (profile.id) {
       const { error } = await supabase.from("sellers").update(payload).eq("id", profile.id);
@@ -318,11 +318,11 @@ export function DashboardProfileEditor() {
             </div>
           }>
           <div className="my-4 flex items-center justify-end gap-2">
-            {profile.website && <SocialIcon href={profile.website}><Globe size={15} /></SocialIcon>}
-            {profile.facebook && <SocialIcon href={profile.facebook}><Facebook size={15} /></SocialIcon>}
-            {profile.instagram && <SocialIcon href={profile.instagram}><Instagram size={15} /></SocialIcon>}
-            {profile.youtube_channel && <SocialIcon href={profile.youtube_channel}><Youtube size={15} /></SocialIcon>}
-            {profile.tiktok && <SocialIcon href={profile.tiktok}><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.14 8.14 0 0 0 4.77 1.52V6.75a4.85 4.85 0 0 1-1-.06z"/></svg></SocialIcon>}
+            {profile.website && <SocialIcon href={normalizeUrl(profile.website)}><Globe size={15} /></SocialIcon>}
+            {profile.facebook && <SocialIcon href={normalizeUrl(profile.facebook)}><Facebook size={15} /></SocialIcon>}
+            {profile.instagram && <SocialIcon href={normalizeUrl(profile.instagram)}><Instagram size={15} /></SocialIcon>}
+            {profile.youtube_channel && <SocialIcon href={normalizeUrl(profile.youtube_channel)}><Youtube size={15} /></SocialIcon>}
+            {profile.tiktok && <SocialIcon href={normalizeUrl(profile.tiktok)}><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.14 8.14 0 0 0 4.77 1.52V6.75a4.85 4.85 0 0 1-1-.06z"/></svg></SocialIcon>}
             {!profile.website && !profile.facebook && !profile.instagram && !profile.tiktok && (
               <span className="text-xs text-gray-300 italic">+ Pievienot sociālos tīklus</span>
             )}

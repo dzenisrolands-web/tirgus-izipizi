@@ -6,6 +6,7 @@ export type SellerMeta = {
   website?: string;
   facebook?: string;
   instagram?: string;
+  tiktok?: string;
   youtubeChannel?: string;
   youtubeVideoId?: string;
   facts: { label: string; value: string }[];
