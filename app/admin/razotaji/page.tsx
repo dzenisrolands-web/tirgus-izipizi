@@ -8,6 +8,7 @@ import {
   LinkIcon, Send, LogIn, UserPlus, Eye, EyeOff, Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getSellerOnboardingChecklist } from "@/lib/seller-onboarding";
 
 type Seller = {
   id: string;
@@ -31,6 +32,7 @@ type Seller = {
   self_billing_agreed: boolean | null;
   self_billing_agreed_at: string | null;
   self_billing_agreement_version: string | null;
+  courier_pickup_address: string | null;
   rejected_reason: string | null;
   rejected_at: string | null;
   approved_at: string | null;
@@ -169,13 +171,11 @@ export default function AdminRazotajiPage() {
   }, [sellers, listings, orders]);
 
   function onboardingChecklist(s: Seller) {
-    return [
-      { label: "Profils", done: !!s.name && !!s.description },
-      { label: "Juridiskā info", done: !!s.legal_name && !!s.registration_number },
-      { label: "IBAN", done: !!s.bank_iban },
-      { label: "Self-billing", done: !!s.self_billing_agreed },
-      { label: "1. produkts", done: (statsBySellerId.get(s.id)?.totalProducts ?? 0) > 0 },
-    ];
+    // Shared with app/api/notify/seller-reminder so the admin dashboard and
+    // the actual reminder e-mail always agree on what's still missing.
+    const shared = getSellerOnboardingChecklist(s).map(({ label, done }) => ({ label, done }));
+    shared.push({ label: "1. produkts", done: (statsBySellerId.get(s.id)?.totalProducts ?? 0) > 0 });
+    return shared;
   }
 
   const [approving, setApproving] = useState<string | null>(null);

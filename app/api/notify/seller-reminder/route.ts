@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, brandedEmailLayout } from "@/lib/email";
+import { getSellerOnboardingChecklist } from "@/lib/seller-onboarding";
 
 /**
  * Sūta e-pasta atgādinājumu pārdevējam par trūkstošajiem profila datiem.
@@ -58,17 +59,13 @@ export async function POST(req: Request) {
   const sellerEmail = sellerUser?.email;
   if (!sellerEmail) return NextResponse.json({ error: "Seller email not found" }, { status: 404 });
 
-  // Compute missing fields
-  const missing: string[] = [];
-  if (!seller.description || seller.description.length < 20) missing.push("Profila apraksts");
-  if (!seller.legal_name || !seller.registration_number) missing.push("Juridiskā informācija (nosaukums + reģ. nr.)");
-  if (seller.is_vat_registered && !seller.vat_number) missing.push("PVN reģistrācijas numurs");
-  if (!seller.bank_iban) missing.push("Bankas konts (IBAN)");
-  if (!seller.legal_address) missing.push("Juridiskā adrese");
-  if (!seller.self_billing_agreed) missing.push("Self-billing piekrišana");
-  const hasLocker = seller.home_locker_ids && seller.home_locker_ids.length > 0;
-  const hasPickup = !!seller.courier_pickup_address?.trim();
-  if (!hasLocker && !hasPickup) missing.push("Nodošanas vietas (pārtikas pakomāts vai kurjera adrese)");
+  // Compute missing fields — shared with app/admin/razotaji's onboarding
+  // checklist so admins and the reminder e-mail always agree on what's
+  // actually still missing (previously these were two separate, drifting
+  // implementations, causing sellers to keep receiving the full checklist
+  // even after completing everything the admin dashboard showed as done).
+  const checklist = getSellerOnboardingChecklist(seller);
+  const missing = checklist.filter((c) => c.inEmailReminder && !c.done).map((c) => c.label);
 
   if (missing.length === 0) {
     return NextResponse.json({ ok: true, message: "Nothing missing", sent: false });
