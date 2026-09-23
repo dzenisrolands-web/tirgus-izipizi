@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertSuperAdmin } from "@/lib/admin-auth";
 
-// izipizi-web Supabase (sutijumi table lives here)
-const IZP_URL = "https://wepyslyqcxpszobfkzzs.supabase.co";
-const IZP_KEY = "sb_publishable_BMqu4RvrA4cl72OJQQakLA_8Amc2F8-";
-
+// izipizi-web Supabase (sutijumi tabula dzīvo tur).
+// TODO(konsolidācija): pēc DB apvienošanas šis cross-project klients pazūd —
+// sutijumi pārceļas uz tirgus projektu un lasāms ar parasto service-role klientu.
 function izpClient() {
-  return createClient(IZP_URL, IZP_KEY);
+  const url = process.env.IZP_SUPABASE_URL;
+  const key = process.env.IZP_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
 }
+
+const MISCONFIGURED =
+  "Trūkst IZP_SUPABASE_URL vai IZP_SUPABASE_ANON_KEY vides mainīgo";
 
 /**
  * GET /api/admin/sutijumi — list all shipments
@@ -18,9 +23,10 @@ export async function GET(req: Request) {
   const ctx = await assertSuperAdmin(req);
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
 
-  // Use service-like approach: add a broad read policy or use anon with a policy
-  // For now we read with anon key — requires SELECT policy for anon on sutijumi
+  // Lasām ar anon atslēgu — prasa SELECT politiku anon lomai uz sutijumi.
   const sb = izpClient();
+  if (!sb) return NextResponse.json({ error: MISCONFIGURED }, { status: 500 });
+
   const { data, error } = await sb
     .from("sutijumi")
     .select("*")
@@ -46,6 +52,8 @@ export async function POST(req: Request) {
   }
 
   const sb = izpClient();
+  if (!sb) return NextResponse.json({ error: MISCONFIGURED }, { status: 500 });
+
   const { error } = await sb
     .from("sutijumi")
     .update({ status })

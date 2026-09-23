@@ -4,8 +4,8 @@
  * Endpoint: https://api.esteria.eu/send (sūtīšana)
  *           https://api1.esteria.lv/status-xml (statusa pārbaude)
  *
- * Konfigurācija .env.local:
- *   ESTERIA_API_KEY=7efb246e2f
+ * Konfigurācija (Vercel env vars vai .env.local):
+ *   ESTERIA_API_KEY=<atslēga no Esteria konta — NEKAD necommitot kodā>
  *   ESTERIA_SENDER=IziPiziAPP
  *
  * Ierobežojumi:
