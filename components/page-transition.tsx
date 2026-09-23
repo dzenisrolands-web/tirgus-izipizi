@@ -8,13 +8,20 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ref.current?.animate(
+    const anim = ref.current?.animate(
       [
         { opacity: 0, transform: "translateY(10px)" },
         { opacity: 1, transform: "translateY(0)" },
       ],
       { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" }
     );
+    // `fill: "forwards"` keeps applying the final transform indefinitely, which
+    // creates a new containing block for any `position: fixed` descendant
+    // (e.g. modals), breaking their placement. Cancel once finished — the end
+    // state (opacity 1, no transform) matches the element's resting style, so
+    // this is visually a no-op.
+    anim?.finished.then(() => anim.cancel()).catch(() => {});
+    return () => anim?.cancel();
   }, [pathname]);
 
   return <div ref={ref}>{children}</div>;
