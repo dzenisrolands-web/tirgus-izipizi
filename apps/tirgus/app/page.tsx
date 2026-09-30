@@ -18,6 +18,7 @@ import {
   fetchNewestListings,
   fetchWeeklyFeatured,
 } from "@/lib/db-listings";
+import { fetchSalesCountsServer } from "@/lib/best-sellers-server";
 import { hasValidImage, isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -65,9 +66,12 @@ const CATEGORIES = [
 export const revalidate = 60; // revalidate every 60s for fresh seller/product counts
 
 export default async function HomePage() {
+  // `orders` is service-role only (RLS, migration 0030), so the sales
+  // aggregate is resolved here and handed to fetchBestSellers.
+  const salesCounts = await fetchSalesCountsServer();
   const [dbListings, dbBestSellers, dbNewest, dbWeekly, dbApproved] = await Promise.all([
     fetchActiveListings(),
-    fetchBestSellers(6),
+    fetchBestSellers(6, salesCounts),
     fetchNewestListings(8),
     fetchWeeklyFeatured(7),
     fetchApprovedSellers(),

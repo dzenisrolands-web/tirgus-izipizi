@@ -88,33 +88,47 @@ export async function fetchActiveListings(): Promise<Listing[]> {
     .filter((l) => isPublicReady(l));
 }
 
+/** Sales volume per listing id, aggregated from paid orders. */
+export type SalesCounts = Record<string, number>;
+
+/**
+ * Fetch the sales aggregate from the API route.
+ *
+ * `orders` is not readable from the browser (RLS, migration 0030) — an
+ * anonymous visitor sees nothing and a logged-in buyer sees only their own
+ * orders. Both would produce a misleading ranking, so the aggregate is
+ * computed server-side with the service-role key and exposed without any
+ * buyer data attached.
+ */
+async function fetchSalesCounts(): Promise<SalesCounts> {
+  try {
+    const res = await fetch("/api/best-sellers");
+    if (!res.ok) return {};
+    return (await res.json()) as SalesCounts;
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Best sellers — listings with most paid orders in last 7 days.
  * Falls back to active listings sorted by rating if no orders.
+ *
+ * Server components should pass `counts` from `fetchSalesCountsServer()` to
+ * avoid an extra round trip; in the browser the aggregate is fetched from
+ * `/api/best-sellers`.
  */
-export async function fetchBestSellers(limit = 6): Promise<Listing[]> {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("items")
-    .eq("payment_status", "paid")
-    .gte("paid_at", sevenDaysAgo);
-
-  // Count item appearances
-  const counts = new Map<string, number>();
-  for (const o of orders ?? []) {
-    const items = o.items as Array<{ id?: string; quantity?: number }> | null;
-    for (const it of items ?? []) {
-      if (!it.id) continue;
-      counts.set(it.id, (counts.get(it.id) ?? 0) + (it.quantity ?? 1));
-    }
-  }
+export async function fetchBestSellers(
+  limit = 6,
+  counts?: SalesCounts,
+): Promise<Listing[]> {
+  const sales = counts ?? (typeof window === "undefined" ? {} : await fetchSalesCounts());
 
   const all = await fetchActiveListings();
   // Sort by sales count desc, then by rating
   const sorted = [...all].sort((a, b) => {
-    const aCount = counts.get(a.id) ?? 0;
-    const bCount = counts.get(b.id) ?? 0;
+    const aCount = sales[a.id] ?? 0;
+    const bCount = sales[b.id] ?? 0;
     if (aCount !== bCount) return bCount - aCount;
     return (b.seller.rating ?? 0) - (a.seller.rating ?? 0);
   });
