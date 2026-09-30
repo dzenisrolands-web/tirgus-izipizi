@@ -1,47 +1,20 @@
 {
-  "name": "tirgus-izipizi",
+  "name": "izipizi",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "qa:crawl": "node scripts/qa-crawl.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "^2.104.0",
-    "@types/leaflet": "^1.9.21",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
-    "canvas-confetti": "^1.9.4",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.38.0",
-    "leaflet": "^1.9.4",
-    "lucide-react": "^0.503.0",
-    "next": "^16.2.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.3.0",
-    "web-push": "^3.6.7"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "db:types": "supabase gen types typescript --project-id wepyslyqcxpszobfkzzs > packages/db/src/database.types.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
-    "@types/canvas-confetti": "^1.9.0",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/web-push": "^3.6.4",
-    "autoprefixer": "^10",
-    "cheerio": "^1.2.0",
-    "eslint": "^9",
-    "eslint-config-next": "^16.2.4",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5"
+    "turbo": "^2.5.0"
   }
 }
