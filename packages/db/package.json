@@ -8,6 +8,9 @@
     ".": "./src/index.ts",
     "./server": "./src/server.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
     "@supabase/ssr": "^0.6.1"

@@ -8,6 +8,9 @@
     ".": "./src/index.ts",
     "./middleware": "./src/middleware.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@izipizi/db": "*",
     "@supabase/supabase-js": "^2.104.0"
