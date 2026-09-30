@@ -4,11 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Building2, Plus, Search, RefreshCw, ChevronDown, ChevronUp,
   Thermometer, Wifi, WifiOff, Warehouse, MapPin, Clock, Edit2,
-  Save, X, Loader2, Handshake, Package, Snowflake, AlertTriangle,
+  Save, X, Loader2, Handshake, Package, Snowflake,
   Image, BoxIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
 
 type Compartment = {
   id: string;
@@ -88,25 +87,17 @@ const TEMP_ICONS: Record<string, { icon: typeof Thermometer; cls: string; label:
   karsts:    { icon: Thermometer, cls: "text-red-500", label: "Karsts" },
 };
 
-// izipizi-web Supabase client (pakomati / compartments / franchise tabulas dzīvo tur).
-// TODO(konsolidācija): pēc DB apvienošanas šis klients pazūd — tabulas pārceļas
-// uz tirgus projektu un lasāmas ar parasto @/lib/supabase klientu.
-const IZP_URL = process.env.NEXT_PUBLIC_IZP_SUPABASE_URL;
-const IZP_KEY = process.env.NEXT_PUBLIC_IZP_SUPABASE_ANON_KEY;
+// pakomati / compartments / franchise_partners atrodas tajā pašā Supabase
+// projektā, ko lieto pārējā lietotne. Agrāk šeit bija atsevišķs klients ar cieti
+// iekodētu atslēgu — tas bija lieks un ir izņemts.
 function izpClient() {
-  if (!IZP_URL || !IZP_KEY) {
-    throw new Error(
-      "Trūkst NEXT_PUBLIC_IZP_SUPABASE_URL vai NEXT_PUBLIC_IZP_SUPABASE_ANON_KEY vides mainīgo"
-    );
-  }
-  return createClient(IZP_URL, IZP_KEY);
+  return supabase;
 }
 
 export default function AdminPakomatiPage() {
   const [items, setItems] = useState<Pakomats[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [configError, setConfigError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Pakomats>>({});
@@ -120,14 +111,7 @@ export default function AdminPakomatiPage() {
   const [newShare, setNewShare] = useState({ partner_id: "", shares_pct: "10", price_paid: "" });
 
   const load = useCallback(async () => {
-    let sb: ReturnType<typeof izpClient>;
-    try {
-      sb = izpClient();
-    } catch (e) {
-      setConfigError(e instanceof Error ? e.message : "Nezināma konfigurācijas kļūda");
-      setLoading(false);
-      return;
-    }
+    const sb = izpClient();
     const [pakRes, partRes, compRes] = await Promise.all([
       sb.from("pakomati").select("*").order("name"),
       sb.from("franchise_partners").select("id, company_name"),
@@ -162,21 +146,6 @@ export default function AdminPakomatiPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  if (configError) {
-    return (
-      <div className="m-6 rounded-xl border border-red-200 bg-red-50 p-6">
-        <div className="flex items-center gap-2 font-bold text-red-800">
-          <AlertTriangle className="h-5 w-5" />
-          Pakomātu modulis nav konfigurēts
-        </div>
-        <p className="mt-2 text-sm text-red-700">{configError}</p>
-        <p className="mt-2 text-sm text-red-700">
-          Pievieno tos Vercel projekta vides mainīgajos un pārdeployē.
-        </p>
-      </div>
-    );
-  }
 
   async function savePakomats(id: string) {
     setSaving(true);

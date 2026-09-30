@@ -2,8 +2,15 @@
 -- Date: 2026-09-23
 --
 -- KONTEKSTS
--- Audita laikā atklājās, ka `anon` loma ar publisko (publishable) atslēgu
--- varēja nolasīt:
+-- Audita laikā atklājās divas problēmas.
+--
+-- 1) RAKSTĪŠANA. `anon` loma varēja arī MAINĪT datus tabulās `orders`,
+--    `pakomati` un `compartments`. Praktiski tas nozīmē, ka jebkurš varēja
+--    atzīmēt neapmaksātu pasūtījumu kā apmaksātu, nomainīt pakomāta PIN kodu
+--    vai mainīt pakomātu konfigurāciju. Tas ir integritātes un krapšanas risks,
+--    ne tikai datu noplūde.
+--
+-- 2) LASĪŠANA. `anon` loma varēja nolasīt:
 --   orders       86 rindas  — buyer_email, buyer_name, buyer_phone,
 --                             delivery_address, locker_code (pakomāta PIN),
 --                             payment_id, payment_session_id
@@ -211,5 +218,73 @@ CREATE POLICY seller_followers_admin_all ON public.seller_followers
   FOR ALL TO authenticated
   USING (public.is_super_admin())
   WITH CHECK (public.is_super_admin());
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- PAKOMATI / COMPARTMENTS / FRANCHISE — saraksts ir publisks (pircējam jāredz
+-- pakomāti), bet rakstīt drīkst tikai admins.
+-- /admin/pakomati raksta no pārlūka ar lietotāja sesiju, tāpēc tam vajag
+-- is_super_admin() politikas, nevis service role.
+-- ────────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.pakomati     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.compartments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pakomati_public_read     ON public.pakomati;
+DROP POLICY IF EXISTS pakomati_anon_all        ON public.pakomati;
+DROP POLICY IF EXISTS pakomati_admin_write     ON public.pakomati;
+DROP POLICY IF EXISTS compartments_public_read ON public.compartments;
+DROP POLICY IF EXISTS compartments_anon_all    ON public.compartments;
+DROP POLICY IF EXISTS compartments_admin_write ON public.compartments;
+
+CREATE POLICY pakomati_public_read ON public.pakomati
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY pakomati_admin_write ON public.pakomati
+  FOR ALL TO authenticated
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
+CREATE POLICY compartments_public_read ON public.compartments
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY compartments_admin_write ON public.compartments
+  FOR ALL TO authenticated
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
+-- franchise_partners un franchise_shares — komercdati, tikai admins.
+-- franchise_shares vēl var neeksistēt (migrācija 0004 nav izpildīta), tāpēc
+-- iesaiņojam nosacījumā.
+ALTER TABLE public.franchise_partners ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS franchise_partners_anon_all  ON public.franchise_partners;
+DROP POLICY IF EXISTS franchise_partners_admin_all ON public.franchise_partners;
+
+CREATE POLICY franchise_partners_admin_all ON public.franchise_partners
+  FOR ALL TO authenticated
+  USING (public.is_super_admin())
+  WITH CHECK (public.is_super_admin());
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = 'franchise_shares'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.franchise_shares ENABLE ROW LEVEL SECURITY';
+    EXECUTE 'DROP POLICY IF EXISTS franchise_shares_admin_all ON public.franchise_shares';
+    EXECUTE 'CREATE POLICY franchise_shares_admin_all ON public.franchise_shares
+               FOR ALL TO authenticated
+               USING (public.is_super_admin())
+               WITH CHECK (public.is_super_admin())';
+  END IF;
+END $$;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- PĒC IZPILDES JĀPĀRBAUDA, ka anon vairs nevar ne lasīt, ne rakstīt:
+--   curl -s -o /dev/null -w "%{http_code}\n" \
+--     -H "apikey: <publishable>" \
+--     "https://<ref>.supabase.co/rest/v1/orders?select=id&limit=1"
+-- Sagaidāmais: tukšs masivs vai 401/403, nevis dati.
+-- ────────────────────────────────────────────────────────────────────────────
 
 NOTIFY pgrst, 'reload schema';
