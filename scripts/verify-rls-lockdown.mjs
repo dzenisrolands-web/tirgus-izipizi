@@ -13,8 +13,15 @@
  * the environment, or from apps/tirgus/.env.local / apps/tirgus/.env.
  *
  * Writes are probed non-destructively: every UPDATE targets a row id that
- * cannot exist, so a "permitted" result means RLS allowed the statement
- * through (0 rows matched), never that data changed.
+ * cannot exist and sets `id` to that same value, so zero rows match and no
+ * data is ever changed.
+ *
+ * What the write probe actually measures: whether the anon role still HOLDS
+ * the UPDATE privilege on the table. PostgREST answers 401/403 when the
+ * privilege is revoked, and 204 when it is held -- even if RLS would then
+ * filter every row. A 204 therefore means "anon still has write privileges"
+ * (the attack surface), not "a row was changed". Migration 0032 revokes the
+ * privilege so this check becomes a clean pass/fail.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -69,7 +76,7 @@ const MUST_BE_PRIVATE = [
 const PUBLIC_READ = ["pakomati", "compartments", "listings", "sellers", "reviews"];
 
 /** Tables anonymous users must never be able to modify. */
-const MUST_BE_READ_ONLY = ["orders", "pakomati", "compartments"];
+const MUST_BE_READ_ONLY = ["orders", "pakomati", "compartments", "sutijumi", "seller_followers"];
 
 const IMPOSSIBLE_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -86,16 +93,25 @@ async function probeRead(table) {
 
 async function probeWrite(table) {
   // Targets a row id that cannot exist, so nothing is ever modified.
+  //
+  // The body must name a real column. An empty `{}` body makes PostgREST skip
+  // the UPDATE entirely, so on tables the anon role can SELECT it answers 204
+  // regardless of UPDATE privileges and the probe proves nothing. Setting `id`
+  // to the same impossible value forces a real UPDATE statement that needs the
+  // privilege, yet matches zero rows.
+  const sample = await probeRead(table);
+  const sampleId = sample.sample?.id;
+  const impossible = typeof sampleId === "number" ? -1 : IMPOSSIBLE_ID;
   const res = await fetch(
-    `${URL_}/rest/v1/${table}?id=eq.${IMPOSSIBLE_ID}`,
+    `${URL_}/rest/v1/${table}?id=eq.${impossible}`,
     {
       method: "PATCH",
       headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ id: impossible }),
     },
   );
-  // 2xx / 404-with-empty-body means the statement was accepted (RLS allowed it).
-  // 401/403/42501 means RLS blocked it, which is what we want.
+  // 2xx: anon holds the UPDATE privilege (RLS may still filter every row).
+  // 401/403 (42501): privilege revoked, which is what we want.
   return { permitted: res.ok, status: res.status };
 }
 
@@ -147,8 +163,8 @@ for (const t of MUST_BE_READ_ONLY) {
   record(
     !w.permitted,
     w.permitted
-      ? `${t} — anonymous UPDATE ACCEPTED (HTTP ${w.status})`
-      : `${t} — anonymous UPDATE rejected (HTTP ${w.status})`,
+      ? `${t} — anon still holds UPDATE privilege (HTTP ${w.status})`
+      : `${t} — anon UPDATE rejected (HTTP ${w.status})`,
   );
 }
 
@@ -158,8 +174,9 @@ console.log(
 
 if (results.failures > 0) {
   console.log(
-    "\nMigration 0030 has not been applied, or did not fully take effect.\n" +
-      "Apply supabase/migrations/0030_rls_lockdown_pii.sql and re-run.",
+    "\nLockdown is incomplete.\n" +
+      "Apply supabase/migrations/0030_rls_lockdown_pii.sql and then\n" +
+      "supabase/migrations/0032_rls_lockdown_followup.sql, and re-run.",
   );
   process.exit(1);
 }

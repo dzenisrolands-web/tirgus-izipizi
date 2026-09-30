@@ -89,6 +89,7 @@ CREATE POLICY orders_seller_select ON public.orders
   );
 
 -- Ražotājs drīkst mainīt statusu un ievadīt pakomāta kodu saviem pasūtījumiem.
+DROP POLICY IF EXISTS orders_seller_update ON public.orders;
 CREATE POLICY orders_seller_update ON public.orders
   FOR UPDATE TO authenticated
   USING (
@@ -121,6 +122,7 @@ CREATE POLICY profiles_select_own ON public.profiles
   FOR SELECT TO authenticated
   USING (id = auth.uid());
 
+DROP POLICY IF EXISTS profiles_update_own ON public.profiles;
 CREATE POLICY profiles_update_own ON public.profiles
   FOR UPDATE TO authenticated
   USING (id = auth.uid())
