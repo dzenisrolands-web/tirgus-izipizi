@@ -49,6 +49,17 @@ $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- ORDERS — pircējs redz savus, ražotājs redz sev adresētos, admins visus.
 -- Anonīmiem piekļuves nav.
+--
+-- PĀRBAUDĪTS (koda audits), ka šie ceļi turpina strādāt:
+--   * /api/orders/[orderNumber] (cart/success lapa) — createServerClient(),
+--     t.i. SUPABASE_SECRET_KEY, RLS apiet. Viesa pasūtījums bez konta OK.
+--   * dashboard/pasutijumi — .contains("seller_ids", [seller.id]) sakrīt ar
+--     orders_seller_select; statusa maiņa sakrīt ar orders_seller_update.
+--   * buyer-profile.tsx un reviews-section-db.tsx — pēc buyer_email / buyer_id,
+--     abus sedz orders_select_own.
+-- IZLABOTS pirms šīs migrācijas: lib/db-listings.ts fetchBestSellers() lasīja
+-- visu orders tabulu ar publisko atslēgu. Tagad agregāciju veic serveris
+-- (lib/best-sellers-server.ts + /api/best-sellers), atdodot tikai skaitītājus.
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
@@ -78,6 +89,7 @@ CREATE POLICY orders_seller_select ON public.orders
   );
 
 -- Ražotājs drīkst mainīt statusu un ievadīt pakomāta kodu saviem pasūtījumiem.
+DROP POLICY IF EXISTS orders_seller_update ON public.orders;
 CREATE POLICY orders_seller_update ON public.orders
   FOR UPDATE TO authenticated
   USING (
@@ -110,6 +122,7 @@ CREATE POLICY profiles_select_own ON public.profiles
   FOR SELECT TO authenticated
   USING (id = auth.uid());
 
+DROP POLICY IF EXISTS profiles_update_own ON public.profiles;
 CREATE POLICY profiles_update_own ON public.profiles
   FOR UPDATE TO authenticated
   USING (id = auth.uid())
@@ -198,9 +211,11 @@ CREATE POLICY email_subscribers_admin_all ON public.email_subscribers
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- SELLER_FOLLOWERS — lietotājs pārvalda savus sekojumus.
--- PĀRBAUDĪT: ja kādā vietā tiek rādīts publisks sekotāju SKAITS, tas pēc šīs
--- politikas rādīs tikai paša lietotāja rindas. Tad vajadzīgs atsevišķs skats vai
--- skaitītājs `sellers` tabulā. Sk. lib/hot-drops/queries.ts:169.
+-- PĀRBAUDĪTS (koda audits): publisks sekotāju skaits netiek rādīts nekur.
+-- Visi pārlūka vaicājumi ir lietotāja tvērumā (.eq("user_id", user.id)) —
+-- hot-drops/queries.ts, follow-seller-button.tsx, buyer-profile.tsx. Vienīgā
+-- vieta, kas lasa citu lietotāju rindas, ir /api/push/notify, un tā lieto
+-- SUPABASE_SECRET_KEY, kas RLS apiet. Atsevišķs skats nav vajadzīgs.
 -- ────────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.seller_followers ENABLE ROW LEVEL SECURITY;
 
