@@ -1,18 +1,21 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # testing
-/coverage
+coverage/
 
-# next.js
-/.next/
-/out/
+# next.js — jebkurā apps/* apakšmapē
+.next/
+out/
 
 # production
-/build
+build/
+
+# turborepo
+.turbo/
 
 # misc
 .DS_Store
@@ -34,8 +37,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*.local
+# testi un atskaites
 qa-report.md
 playwright-report/
 test-results/
