@@ -50,9 +50,9 @@ Lokāli: `apps/tirgus/.env.local` (parauga fails `apps/tirgus/.env.example`). Sl
 
 ### Ieteicamā secība pirmajai ieslēgšanai
 
-1. Izpildi migrāciju `0033` (tabula `social_daily_posts` pašlaik ražošanā neeksistē).
+1. Izpildi migrāciju `0033` (tā izveido tabulu `social_daily_posts`). Pārbaude: anonīms `GET /rest/v1/social_daily_posts` jāatbild ar `401 permission denied` (tabula ir, anonīmajam piekļuve noraidīta), nevis `404 Could not find the table`.
 2. Uzstādi `DAILY_PRODUCT_PREVIEW_EMAIL` (un pārliecinies, ka `RESEND_API_KEY` ir). **`DAILY_PRODUCT_MODE` nenorādi.**
-3. Pārdeploy, palaid `?dry=1` — pārbaudi izvēlēto produktu un tekstu.
+3. Pārdeploy, palaid `?dry=1` — pārbaudi izvēlēto produktu un tekstu. **`?dry=1` neko neieraksta tabulā**, tāpēc ar to vien nepietiek, lai pārbaudītu tabulu. Tad palaid **bez parametriem** (draft režīmā tas izveido ierakstu `social_daily_posts` un nosūta e-pastu, **bet nekas netiek publicēts**) un pārbaudi, ka e-pasts ir atnācis un rinda ir tabulā.
 4. Pievieno `META_*`, pārdeploy, palaid `?force=1` **vienreiz**, apskati rezultātu Facebook/Instagram.
 5. Tikai tad, kad apmierina, vari uzlikt `DAILY_PRODUCT_MODE=live`.
 
