@@ -61,6 +61,7 @@ const headers = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
 /** Tables that must be completely invisible to anonymous visitors. */
 const MUST_BE_PRIVATE = [
+  "sellers",
   "orders",
   "profiles",
   "invitations",
@@ -95,7 +96,16 @@ const SELLERS_PRIVATE_COLUMNS = [
 ];
 
 /** Tables anonymous users must never be able to modify. */
-const MUST_BE_READ_ONLY = ["orders", "pakomati", "compartments", "sutijumi", "seller_followers"];
+const MUST_BE_READ_ONLY = [
+  "sellers", "orders", "pakomati", "compartments", "sutijumi", "seller_followers",
+  "listings", "reviews", "weekly_featured", "hot_drops", "hot_drop_reservations",
+  "promo_codes", "promo_redemptions", "notifications", "push_subscriptions",
+  "feedback", "page_views", "referral_clicks", "delivery_lookups", "user_roles",
+  "invoices", "invoice_lines", "order_items", "profiles", "category_commission_benchmarks",
+  "locker_subscriptions", "email_subscribers", "invitations", "email_templates",
+  "franchise_partners",
+];
+// pwa_events is deliberately NOT here: anon may INSERT (never UPDATE/DELETE) there.
 
 const IMPOSSIBLE_ID = "00000000-0000-0000-0000-000000000000";
 
@@ -131,6 +141,21 @@ async function probeWrite(table) {
   );
   // 2xx: anon holds the UPDATE privilege (RLS may still filter every row).
   // 401/403 (42501): privilege revoked, which is what we want.
+  return { permitted: res.ok, status: res.status };
+}
+
+/**
+ * Non-destructive DELETE probe: targets an id that cannot exist, so no row is
+ * ever removed. 401/403 = privilege revoked; 2xx = anon holds DELETE.
+ */
+async function probeDelete(table) {
+  const sample = await probeRead(table);
+  const sampleId = sample.sample?.id;
+  const impossible = typeof sampleId === "number" ? -1 : IMPOSSIBLE_ID;
+  const res = await fetch(`${URL_}/rest/v1/${table}?id=eq.${impossible}`, {
+    method: "DELETE",
+    headers: { ...headers, Prefer: "return=minimal" },
+  });
   return { permitted: res.ok, status: res.status };
 }
 
@@ -179,31 +204,42 @@ for (const t of PUBLIC_READ) {
   record(r.status === 200, `${t} — HTTP ${r.status}, ${r.rows} row(s)`);
 }
 
-console.log("\nsellers: the public app's own queries must keep working");
+// The public app reads sellers through the `sellers_public` view (0035); the
+// base table is closed to anon (0036), so it is checked for refusal below.
+console.log("\nsellers_public: the public app's own queries must keep working");
 for (const cols of SELLERS_APP_SELECTS) {
-  const res = await fetch(`${URL_}/rest/v1/sellers?select=${encodeURIComponent(cols)}&limit=1`, { headers });
+  const res = await fetch(`${URL_}/rest/v1/sellers_public?select=${encodeURIComponent(cols)}&limit=1`, { headers });
   record(res.status === 200, `select ${cols.split(",").length} cols (${cols.slice(0, 40)}...) — HTTP ${res.status}`);
 }
 
-console.log("\nsellers: private columns must NOT be readable by anonymous visitors");
-for (const col of SELLERS_PRIVATE_COLUMNS) {
-  const res = await fetch(`${URL_}/rest/v1/sellers?select=${col}&limit=1`, { headers });
-  record(
-    !res.ok,
-    res.ok
-      ? `sellers.${col} — anon can still read this column (HTTP ${res.status})`
-      : `sellers.${col} — refused (HTTP ${res.status})`,
-  );
+console.log("\nsellers + sellers_public: private columns must NOT be readable by anonymous visitors");
+for (const rel of ["sellers", "sellers_public"]) {
+  for (const col of SELLERS_PRIVATE_COLUMNS) {
+    const res = await fetch(`${URL_}/rest/v1/${rel}?select=${col}&limit=1`, { headers });
+    record(
+      !res.ok,
+      res.ok
+        ? `${rel}.${col} — anon can still read this column (HTTP ${res.status})`
+        : `${rel}.${col} — refused (HTTP ${res.status})`,
+    );
+  }
 }
 
 console.log("\nMust NOT be writable by anonymous visitors");
 for (const t of MUST_BE_READ_ONLY) {
   const w = await probeWrite(t);
+  if (w.status === 404) {
+    console.log(`  [skip] ${t} — table does not exist`);
+    continue;
+  }
+  const d = await probeDelete(t);
+  // HTTP 400 means the probe could not run (e.g. the table has no `id` column).
+  // It is not evidence of exposure, but it is not proof of safety either.
+  const untestable = (s) => s === 400;
+  const note = untestable(w.status) || untestable(d.status) ? "  (probe inconclusive: no id column)" : "";
   record(
-    !w.permitted,
-    w.permitted
-      ? `${t} — anon still holds UPDATE privilege (HTTP ${w.status})`
-      : `${t} — anon UPDATE rejected (HTTP ${w.status})`,
+    !w.permitted && !d.permitted,
+    `${t} — UPDATE ${w.permitted ? "ALLOWED" : "rejected"} (HTTP ${w.status}), DELETE ${d.permitted ? "ALLOWED" : "rejected"} (HTTP ${d.status})${note}`,
   );
 }
 
@@ -215,7 +251,8 @@ if (results.failures > 0) {
   console.log(
     "\nLockdown is incomplete.\n" +
       "Apply, in order: 0030_rls_lockdown_pii.sql, 0032_rls_lockdown_followup.sql,\n" +
-      "0034_sellers_anon_column_lockdown.sql (all in supabase/migrations/), and re-run.",
+      "0034_sellers_anon_column_lockdown.sql, 0036_sellers_rls_and_anon_write_lockdown.sql\n" +
+      "(all in supabase/migrations/), and re-run.",
   );
   process.exit(1);
 }
