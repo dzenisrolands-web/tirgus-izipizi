@@ -75,6 +75,25 @@ const MUST_BE_PRIVATE = [
 /** Tables that are intentionally public to read (catalogue data). */
 const PUBLIC_READ = ["pakomati", "compartments", "listings", "sellers", "reviews"];
 
+/**
+ * Exact column sets the public app selects from `sellers` with the anon key
+ * (lib/db-listings.ts, lib/hot-drops/queries.ts, components/cart-page.tsx).
+ * Each must keep working after migration 0034 restricts anon to public columns.
+ */
+const SELLERS_APP_SELECTS = [
+  "id, name, farm_name, avatar_url, logo_url, status, location",
+  "id, name, farm_name, avatar_url, logo_url, cover_url, status, location, description, short_desc, website, facebook, instagram, tiktok, youtube_channel, youtube_video_url, quote_text, quote_author, facts, milestones, events",
+  "id, name, farm_name, avatar_url",
+  "id, name, home_locker_ids, courier_pickup_address",
+];
+
+/** `sellers` columns that must never be readable by anonymous visitors. */
+const SELLERS_PRIVATE_COLUMNS = [
+  "user_id", "email", "legal_name", "registration_number", "vat_number",
+  "legal_address", "bank_name", "bank_iban", "bank_swift",
+  "self_billing_agreed_ip", "admin_notes", "internal_notes", "rejected_reason",
+];
+
 /** Tables anonymous users must never be able to modify. */
 const MUST_BE_READ_ONLY = ["orders", "pakomati", "compartments", "sutijumi", "seller_followers"];
 
@@ -148,6 +167,9 @@ for (const t of MUST_BE_PRIVATE) {
 
 console.log("\nMust stay publicly readable (catalogue)");
 for (const t of PUBLIC_READ) {
+  // `sellers` is column-restricted for anon (0034), so select=* is expected to
+  // be refused; its real app queries are checked in the next section.
+  if (t === "sellers") continue;
   const r = await probeRead(t);
   if (r.status === 404) {
     console.log(`  [skip] ${t} — table does not exist`);
@@ -155,6 +177,23 @@ for (const t of PUBLIC_READ) {
   }
   // An empty table is not a failure, only an outright error is.
   record(r.status === 200, `${t} — HTTP ${r.status}, ${r.rows} row(s)`);
+}
+
+console.log("\nsellers: the public app's own queries must keep working");
+for (const cols of SELLERS_APP_SELECTS) {
+  const res = await fetch(`${URL_}/rest/v1/sellers?select=${encodeURIComponent(cols)}&limit=1`, { headers });
+  record(res.status === 200, `select ${cols.split(",").length} cols (${cols.slice(0, 40)}...) — HTTP ${res.status}`);
+}
+
+console.log("\nsellers: private columns must NOT be readable by anonymous visitors");
+for (const col of SELLERS_PRIVATE_COLUMNS) {
+  const res = await fetch(`${URL_}/rest/v1/sellers?select=${col}&limit=1`, { headers });
+  record(
+    !res.ok,
+    res.ok
+      ? `sellers.${col} — anon can still read this column (HTTP ${res.status})`
+      : `sellers.${col} — refused (HTTP ${res.status})`,
+  );
 }
 
 console.log("\nMust NOT be writable by anonymous visitors");
@@ -175,8 +214,8 @@ console.log(
 if (results.failures > 0) {
   console.log(
     "\nLockdown is incomplete.\n" +
-      "Apply supabase/migrations/0030_rls_lockdown_pii.sql and then\n" +
-      "supabase/migrations/0032_rls_lockdown_followup.sql, and re-run.",
+      "Apply, in order: 0030_rls_lockdown_pii.sql, 0032_rls_lockdown_followup.sql,\n" +
+      "0034_sellers_anon_column_lockdown.sql (all in supabase/migrations/), and re-run.",
   );
   process.exit(1);
 }
