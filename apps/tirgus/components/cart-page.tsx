@@ -230,7 +230,7 @@ export function CartPage() {
     if (ids.length === 0) { setSellersById(new Map()); return; }
     (async () => {
       const { data } = await supabase
-        .from("sellers")
+        .from("sellers_public")
         .select("id, name, home_locker_ids, courier_pickup_address")
         .in("id", ids);
       const m = new Map<string, SellerInfo>();

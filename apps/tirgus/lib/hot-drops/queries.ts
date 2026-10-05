@@ -23,7 +23,7 @@ async function enrichWithSellers(drops: HotDrop[]): Promise<HotDropWithSeller[]>
   if (drops.length === 0) return [];
   const sellerIds = [...new Set(drops.map((d) => d.seller_id))];
   const { data: sellers } = await supabase
-    .from("sellers")
+    .from("sellers_public")
     .select("id, name, farm_name, avatar_url")
     .in("id", sellerIds);
   const map = Object.fromEntries((sellers ?? []).map((s) => [s.id, s]));
