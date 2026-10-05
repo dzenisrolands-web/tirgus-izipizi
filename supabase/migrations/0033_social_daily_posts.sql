@@ -23,3 +23,8 @@ create index if not exists social_daily_posts_listing_idx
   on public.social_daily_posts (listing_id, post_date desc);
 
 alter table public.social_daily_posts enable row level security;
+
+-- Aizsardzības slānis zem RLS: ne anon, ne ielogoti lietotāji šai tabulai nepiekļūst vispār.
+-- (RLS bez politikām jau bloķē rindas; REVOKE novērš arī pašu piekļuvi tabulai.)
+-- Serveris lieto service role, kas abus apiet.
+revoke all on public.social_daily_posts from anon, authenticated;
