@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/send-invites",
       "schedule": "*/20 * * * *"
+    },
+    {
+      "path": "/api/cron/daily-product",
+      "schedule": "0 6 * * *"
     }
   ]
 }
