@@ -7,7 +7,13 @@
  *
  *   node scripts/audit-anon-exposure.mjs
  *
- * Read-only: only GET requests, `limit=1`.
+ * Reads use GET with `limit=1`. The write section sends PATCH/DELETE that
+ * target a row id that cannot exist (and set `id` to that same value), so no
+ * row can ever change. It measures whether anon still HOLDS the privilege:
+ * 401/403 = revoked, 2xx = held (RLS may still filter every row).
+ *
+ * INSERT cannot be probed without risking a real row, so it is NOT covered.
+ * Check anon INSERT grants with the SQL in supabase/diagnostics (see PR).
  */
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,7 +26,7 @@ const headers = { apikey: KEY, Authorization: `Bearer ${KEY}` };
 
 // Tables that are intentionally public catalogue data.
 const EXPECTED_PUBLIC = new Set([
-  "pakomati", "compartments", "listings", "sellers", "reviews",
+  "pakomati", "compartments", "listings", "sellers_public", "reviews",
   "weekly_featured", "hot_drops", "categories",
 ]);
 
@@ -113,3 +119,42 @@ console.log(
     ? `\n${unexpected.length} table(s) return rows but are not on the expected-public list. Review each.`
     : "\nNo unexpected tables return rows.",
 );
+
+// ── Write privileges (UPDATE / DELETE) across every discovered table ─────────────────────────────────
+console.log("\nWRITE PRIVILEGES held by anon (UPDATE / DELETE, impossible-id probes):");
+const IMPOSSIBLE_UUID = "00000000-0000-0000-0000-000000000000";
+const writeHeaders = { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" };
+const allowed = [];
+const inconclusive = [];
+let probed = 0;
+
+for (const t of tables) {
+  const sampleRes = await fetch(`${URL_}/rest/v1/${t}?select=*&limit=1`, { headers });
+  if (sampleRes.status === 404) continue;
+  const sample = sampleRes.ok ? (await sampleRes.json().catch(() => []))?.[0] : undefined;
+  const impossible = typeof sample?.id === "number" ? -1 : IMPOSSIBLE_UUID;
+
+  const upd = await fetch(`${URL_}/rest/v1/${t}?id=eq.${impossible}`, {
+    method: "PATCH", headers: writeHeaders, body: JSON.stringify({ id: impossible }),
+  });
+  const del = await fetch(`${URL_}/rest/v1/${t}?id=eq.${impossible}`, {
+    method: "DELETE", headers: writeHeaders,
+  });
+  probed += 1;
+
+  if (upd.ok || del.ok) {
+    allowed.push(`${t} (UPDATE ${upd.ok ? "yes" : "no"}, DELETE ${del.ok ? "yes" : "no"})`);
+  } else if (upd.status === 400 || del.status === 400) {
+    inconclusive.push(t);
+  }
+}
+
+console.log(`  probed ${probed} tables`);
+console.log(`  ALLOWED (anon holds the privilege): ${allowed.length ? "\n    - " + allowed.join("\n    - ") : "none"}`);
+console.log(`  inconclusive (HTTP 400, e.g. no id column) — NOT proof of safety: ${inconclusive.join(", ") || "none"}`);
+
+if (allowed.length > 0) {
+  console.log("\nAnonymous write privileges remain. Revoke them (see migration 0036).");
+  process.exit(1);
+}
+console.log("\nNo UPDATE/DELETE privilege is held by anon on any probed table.");
