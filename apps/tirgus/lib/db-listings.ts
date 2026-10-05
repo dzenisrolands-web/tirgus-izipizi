@@ -77,7 +77,7 @@ export async function fetchActiveListings(): Promise<Listing[]> {
 
   const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
   const { data: sellersData } = await supabase
-    .from("sellers")
+    .from("sellers_public")
     .select("id, name, farm_name, avatar_url, logo_url, status, location")
     .in("id", sellerIds);
 
@@ -171,7 +171,7 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
 
   const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
   const { data: sellersData } = await supabase
-    .from("sellers")
+    .from("sellers_public")
     .select("id, name, farm_name, avatar_url, logo_url, status, location")
     .in("id", sellerIds);
   const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
@@ -192,7 +192,7 @@ export async function fetchListingById(id: string): Promise<Listing | null> {
     .single();
   if (error || !item) return null;
   const { data: s } = await supabase
-    .from("sellers").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
+    .from("sellers_public").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
   return mapRow(item, s);
 }
 
@@ -204,7 +204,7 @@ export async function fetchListingBySlug(slug: string): Promise<Listing | null> 
     .single();
   if (error || !item) return null;
   const { data: s } = await supabase
-    .from("sellers").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
+    .from("sellers_public").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
   return mapRow(item, s);
 }
 
@@ -250,7 +250,7 @@ function mapSellerRecord(s: Record<string, unknown>): Seller {
 
 export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile | null> {
   const { data: s, error } = await supabase
-    .from("sellers")
+    .from("sellers_public")
     .select(SELLER_COLS)
     .eq("id", id)
     .single();
@@ -270,7 +270,7 @@ export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile 
 
 export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   const { data: rows } = await supabase
-    .from("sellers")
+    .from("sellers_public")
     .select(SELLER_COLS)
     .eq("status", "approved")
     .order("created_at", { ascending: false });
