@@ -13,9 +13,14 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "db:types": "supabase gen types typescript --project-id wepyslyqcxpszobfkzzs > packages/db/src/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id wepyslyqcxpszobfkzzs > packages/db/src/database.types.ts",
+    "release:preflight": "node scripts/release/preflight.mjs",
+    "release:migrations": "node scripts/release/migrate.mjs",
+    "release:auth-templates": "node scripts/release/auth-templates.mjs",
+    "release:test": "node --test scripts/release/*.test.mjs"
   },
   "devDependencies": {
+    "pg": "^8.23.1",
     "turbo": "^2.5.0"
   }
 }

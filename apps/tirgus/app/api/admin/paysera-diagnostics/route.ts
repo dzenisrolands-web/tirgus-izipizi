@@ -6,7 +6,7 @@ import { getMode } from "@/lib/paysera";
  * Admin-only: Paysera webhook diagnostics.
  *
  * GET  → reports env config and recent order webhook status
- * POST → simulates a webhook callback for a specific order (marks as paid + triggers flow)
+ * POST → retired: never changes payment or inventory state
  */
 export async function GET(req: Request) {
   const authResult = await assertSuperAdmin(req);
@@ -62,68 +62,20 @@ export async function GET(req: Request) {
     help: {
       check_vercel_logs: "Vercel Dashboard → Project → Logs → filter 'api/webhooks/paysera'",
       check_paysera_dashboard: "Paysera → Projects → tirgus.izipizi.lv → Callbacks/Notifications",
-      manual_fix: "POST to this endpoint with { orderNumber: 'TRG-...' } to manually mark as paid + trigger full flow",
+      manual_fix: "Manual paid overrides are disabled. Verify the provider callback and inspect the finance review queue.",
     },
   });
 }
 
 /**
- * POST — manually trigger the "paid" flow for a specific order.
- * This is the emergency workaround when the webhook isn't working.
+ * POST is intentionally read-only/retired: never bypass verified payment settlement.
  */
 export async function POST(req: Request) {
   const authResult = await assertSuperAdmin(req);
   if ("error" in authResult) return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-
   const { orderNumber } = await req.json().catch(() => ({}));
-  if (!orderNumber) {
-    return NextResponse.json({ error: "Norādi orderNumber" }, { status: 400 });
-  }
-
-  const supabase = authResult.supabase;
-
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, order_number, payment_status, total_cents")
-    .eq("order_number", orderNumber)
-    .single();
-
-  if (!order) {
-    return NextResponse.json({ error: `Pasūtījums ${orderNumber} nav atrasts` }, { status: 404 });
-  }
-
-  if (order.payment_status === "paid") {
-    return NextResponse.json({ ok: true, message: "Jau apmaksāts", order_number: order.order_number });
-  }
-
-  // Mark as paid
-  const { error: updateErr } = await supabase
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    })
-    .eq("id", order.id);
-
-  if (updateErr) {
-    return NextResponse.json({ error: updateErr.message }, { status: 500 });
-  }
-
-  // Trigger notifications + emails (same as webhook)
-  const { notifySellersNewOrder } = await import("@/lib/order-notifications");
-  const { sendAllOrderEmails } = await import("@/lib/email");
-
-  const [pushResult, emailResult] = await Promise.allSettled([
-    notifySellersNewOrder(order.id),
-    sendAllOrderEmails(order.id),
-  ]);
-
+  if (!orderNumber) return NextResponse.json({ error: "Norādi orderNumber" }, { status: 400 });
   return NextResponse.json({
-    ok: true,
-    order_number: order.order_number,
-    status: "paid",
-    push: pushResult.status === "fulfilled" ? pushResult.value : { error: String(pushResult) },
-    emails: emailResult.status === "fulfilled" ? emailResult.value : { error: String(emailResult) },
-  });
+    error: "Manuāla maksājuma apstiprināšana diagnostikā ir atslēgta. Maksājumu un krājumu rezervāciju drīkst pabeigt tikai pārbaudīts Paysera callback.",
+  }, { status: 410 });
 }

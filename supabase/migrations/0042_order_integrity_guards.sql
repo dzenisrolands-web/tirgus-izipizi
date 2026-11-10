@@ -17,7 +17,7 @@ BEGIN
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.sellers s
-    WHERE s.user_id = auth.uid() AND s.id::text = ANY(OLD.seller_ids)
+    WHERE s.user_id = auth.uid() AND s.id::text = ANY(OLD.seller_ids::text[])
   ) THEN
     RAISE EXCEPTION 'Not your seller order' USING ERRCODE = '42501';
   END IF;
