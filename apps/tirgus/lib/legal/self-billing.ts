@@ -8,12 +8,13 @@
  * Version history:
  *   1.0 — 2026-04-29 — operator SIA "Svaigi"
  *   2.0 — operator SIA "IziPizi" (see lib/legal/self-billing-agreement-v2.lv.md)
+ *   3.0 — 2026-11-09 — operator SIA "Svaigi"; fresh consent required
  */
 
-export const SELF_BILLING_VERSION = "2.0";
+export const SELF_BILLING_VERSION = "3.0";
 
 /** ISO date the current version takes effect. */
-export const SELF_BILLING_EFFECTIVE_DATE = "2026-09-01";
+export const SELF_BILLING_EFFECTIVE_DATE = "2026-11-09";
 
 /**
  * True when the seller's stored consent predates the current agreement version

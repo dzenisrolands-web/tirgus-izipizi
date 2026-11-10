@@ -4,6 +4,7 @@ import { fetchActiveListings, fetchWeeklyFeatured } from "@/lib/db-listings";
 import { listings as mockListings, lockers, type Listing } from "@/lib/mock-data";
 import { isPublicReady } from "@/lib/utils";
 import { createServerClient } from "@/lib/supabase";
+import { publicProductImage } from "@/lib/product-image";
 
 export const metadata = {
   title: "Produktu katalogs — tirgus.izipizi.lv",
@@ -31,7 +32,7 @@ function mapRpcToListing(row: Record<string, unknown>): Listing {
     price: row.price as number,
     unit: (row.unit as string) ?? "gab.",
     category: (row.category as string) ?? "",
-    image: (row.image_url as string) ?? "",
+    image: publicProductImage(row.image_url),
     lockerId: locker.id,
     locker,
     sellerId: (row.seller_id as string) ?? "",

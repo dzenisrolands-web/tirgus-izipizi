@@ -3,6 +3,7 @@ import { lockers } from "./mock-data";
 import type { Listing, Seller, Variant } from "./mock-data";
 import type { SellerMeta } from "./sellers-meta";
 import { isPublicReady, normalizeUrl } from "./utils";
+import { publicProductImage } from "./product-image";
 
 function extractYoutubeId(url?: string | null): string | undefined {
   if (!url) return undefined;
@@ -29,7 +30,7 @@ function mapVariants(raw: unknown): Variant[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing & { slug?: string } {
+export function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing & { slug?: string } {
   const locker = lockers.find((l) => l.id === item.locker_id) ?? lockers[0];
   const freshnessDate = new Date(
     new Date(item.created_at as string).getTime() + 60 * 24 * 60 * 60 * 1000
@@ -41,7 +42,7 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
     price: item.price as number,
     unit: item.unit as string,
     category: item.category as string,
-    image: (item.image_url as string) ?? "",
+    image: publicProductImage(item.image_url),
     lockerId: (item.locker_id as string) ?? locker.id,
     locker,
     sellerId: (s?.id as string) ?? (item.seller_id as string) ?? "",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 import { getMode } from "@/lib/paysera";
 
 /**
@@ -9,8 +9,8 @@ import { getMode } from "@/lib/paysera";
  * POST → simulates a webhook callback for a specific order (marks as paid + triggers flow)
  */
 export async function GET(req: Request) {
-  const authResult = await verifyAdmin(req);
-  if (!authResult.ok) return authResult.response!;
+  const authResult = await assertSuperAdmin(req);
+  if ("error" in authResult) return NextResponse.json({ error: authResult.error }, { status: authResult.status });
 
   const mode = getMode();
   const hasProjectId = !!process.env.PAYSERA_PROJECT_ID;
@@ -20,10 +20,7 @@ export async function GET(req: Request) {
   const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://tirgus.izipizi.lv"}/api/webhooks/paysera`;
 
   // Check recent orders — how many are stuck in pending
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
+  const supabase = authResult.supabase;
   const { data: recentOrders } = await supabase
     .from("orders")
     .select("id, order_number, status, payment_status, paid_at, created_at")
@@ -75,18 +72,15 @@ export async function GET(req: Request) {
  * This is the emergency workaround when the webhook isn't working.
  */
 export async function POST(req: Request) {
-  const authResult = await verifyAdmin(req);
-  if (!authResult.ok) return authResult.response!;
+  const authResult = await assertSuperAdmin(req);
+  if ("error" in authResult) return NextResponse.json({ error: authResult.error }, { status: authResult.status });
 
   const { orderNumber } = await req.json().catch(() => ({}));
   if (!orderNumber) {
     return NextResponse.json({ error: "Norādi orderNumber" }, { status: 400 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
+  const supabase = authResult.supabase;
 
   const { data: order } = await supabase
     .from("orders")
@@ -132,21 +126,4 @@ export async function POST(req: Request) {
     push: pushResult.status === "fulfilled" ? pushResult.value : { error: String(pushResult) },
     emails: emailResult.status === "fulfilled" ? emailResult.value : { error: String(emailResult) },
   });
-}
-
-// ── Auth helper ──────────────────────────────────────────────────────────────
-
-async function verifyAdmin(req: Request): Promise<{ ok: boolean; response?: NextResponse }> {
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  if (!token) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
-  return { ok: true };
 }

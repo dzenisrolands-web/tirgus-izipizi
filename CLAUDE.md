@@ -79,7 +79,7 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 
 ## Payment Status (Paysera)
 - **Status**: LIVE. Full checkout flow works end to end.
-- **Provider**: Paysera (Latvian, SEPA + cards), project under SIA IziPizi
+- **Provider**: Paysera (Latvian, SEPA + cards), project under SIA Svaigi; keep existing Paysera settings unchanged
 - **Endpoints**:
   - `/api/checkout/create-session` — builds the Paysera request
   - `/api/webhooks/paysera` — payment confirmation callback
@@ -102,7 +102,7 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 - Seller approval: admin manual approval (`/admin/razotaji`), but new products
   go live immediately without waiting for review
 - Revenue: fixed 15% commission on all products (`lib/commission.ts`)
-- Operator: SIA IziPizi (migrated from SIA Svaigi 2026-08, migration 0023)
+- Operator: SIA Svaigi (restored by owner request 2026-11-09); historical migration 0023 is not reapplied or reversed
 - Delivery: courier 3.50 EUR charged once per seller per address; locker free
 - Brand colors: izipizi green `#53F3A4`, purple `#AD47FF`, dark navy `#192635`
 - MVP: real Supabase DB in use; mock data retained for dev fallback

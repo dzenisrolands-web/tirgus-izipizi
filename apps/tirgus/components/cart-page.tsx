@@ -1233,7 +1233,7 @@ export function CartPage() {
                   <input
                     value={promoCode}
                     onChange={(e) => { setPromoCode(e.target.value); setPromoValid(false); setPromoMsg(""); setPromoDiscount(0); }}
-                    placeholder="PIRMAIS"
+                    placeholder="Ievadi promo kodu"
                     className="input flex-1 text-sm font-mono uppercase"
                     disabled={promoValid}
                   />

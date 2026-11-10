@@ -106,7 +106,7 @@ export default function SelfBillingAgreementPage() {
         <p>4.1. Katrs rēķins satur:</p>
         <ul>
           <li>
-            Rēķina numuru formātā <strong className="font-mono">SV-YYYY-NNNN</strong>{" "}
+            Rēķina numuru formātā <strong className="font-mono">{operatorInfo.invoice.numberPrefix}YYYY-NNNN</strong>{" "}
             (sekvenciāls, nemainīgs)
           </li>
           <li>Rēķina sastādīšanas datumu</li>
@@ -250,8 +250,8 @@ export default function SelfBillingAgreementPage() {
           vienošanos pēc 10.2. punkta, vai (b) skaidri paziņojot par neapstiprināšanu.
         </p>
         <p>
-          11.3. Tirgotāja klusums un Platformas turpmāka izmantošana pēc jaunās versijas
-          spēkā stāšanās tiek uzskatīta par akceptu.
+          11.3. Operatora juridiskās personas maiņai nepieciešama skaidra atkārtota
+          Tirgotāja piekrišana Platformā. Iepriekšējo versiju piekrišanas netiek pārrakstītas.
         </p>
 
         <h2>12. Strīdu risināšana un piemērojamie likumi</h2>

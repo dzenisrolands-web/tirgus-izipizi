@@ -2,8 +2,8 @@
  * Shared super-admin authentication helper.
  *
  * Super admin status lives in `app_metadata.is_super_admin` (set server-side
- * via Auth Admin API). This is NOT readable or writable by the client token,
- * so a compromised browser session can never escalate to admin.
+ * via Auth Admin API). It can be read in a JWT but cannot be edited through
+ * user metadata updates. Verify the user server-side before trusting it.
  *
  * All `/api/admin/*` routes and the admin shell should use this module
  * instead of checking `profiles.role`.
