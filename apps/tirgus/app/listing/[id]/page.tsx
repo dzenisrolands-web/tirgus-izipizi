@@ -90,7 +90,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         name: listing.seller.farmName,
         url: `https://tirgus.izipizi.lv/seller/${listing.sellerId}`,
       },
-      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "LV", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 14, returnMethod: "https://schema.org/ReturnByMail" },
       shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
     },
     brand: {

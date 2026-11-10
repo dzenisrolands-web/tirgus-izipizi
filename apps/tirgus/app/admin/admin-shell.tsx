@@ -141,9 +141,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     async function fetchPending() {
       const [{ count: sellers }, { count: products }] = await Promise.all([
         supabase.from("sellers").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("listings").select("*", { count: "exact", head: true }).eq("status", "pending_review"),
+        supabase.from("listings").select("*", { count: "exact", head: true }).or("status.eq.pending_review,and(status.eq.active,commission_approved_at.is.null)"),
       ]);
-      setPendingCount((sellers ?? 0) + (products ?? 0));
+      setPendingCount(sellers ?? 0);
       setPendingProducts(products ?? 0);
     }
     fetchPending();

@@ -61,12 +61,12 @@ export default function PrivatumsPage() {
 
         <h2>4. Datu glabāšanas vietas un trešās puses</h2>
         <p>
-          Mēs lietojam šādus datu apstrādātājus, ar kuriem ir noslēgti datu apstrādes
-          noteikumi; datu glabāšanas vieta un pārrobežu pārsūtīšana ir atkarīga no konkrētā pakalpojuma konfigurācijas:
+          Mēs lietojam šādus pakalpojumus. Datu glabāšanas vietu un pārrobežu
+          pārsūtīšanu nosaka pakalpojumu konfigurācija un piemērojamie datu apstrādes noteikumi:
         </p>
         <ul>
-          <li><strong>Supabase</strong> (ES reģions) — datubāze un autentifikācija</li>
-          <li><strong>Vercel</strong> (ES reģions) — vietnes hosting</li>
+          <li><strong>Supabase</strong> — datubāze un autentifikācija</li>
+          <li><strong>Vercel</strong> — vietnes hostings</li>
           <li><strong>Vercel Analytics un Speed Insights</strong> — vietnes lietošanas un veiktspējas statistika tikai ar analītikas piekrišanu</li>
           <li><strong>Resend</strong> — darījumu e-pastu piegāde; <strong>Esteria</strong> — pasūtījumu SMS piegāde</li>
           <li><strong>Paysera LT, UAB</strong> (Lietuva) — maksājumu apstrāde</li>

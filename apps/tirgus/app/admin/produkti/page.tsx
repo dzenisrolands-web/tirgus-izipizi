@@ -7,6 +7,8 @@ import { Package, Search, Trash2, Loader2, Eye, EyeOff, X, Check, CheckCircle, X
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { needsListingReview } from "@/lib/listing-review";
+import { COMMISSION_RATE } from "@/lib/commission";
 
 type Listing = {
   id: string;
@@ -23,6 +25,7 @@ type Listing = {
   seller_name: string;
   commission_rate: number | null;
   commission_status: "proposed" | "approved" | "rejected" | null;
+  commission_approved_at?: string | null;
 };
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
@@ -55,7 +58,7 @@ function AdminProduktisInner() {
   const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<Tab>(statusFilter === "pending" ? "pending" : "pending");
+  const [tab, setTab] = useState<Tab>(statusFilter === "all" || sellerFilter ? "all" : "pending");
   const [acting, setActing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -75,13 +78,13 @@ function AdminProduktisInner() {
   async function load() {
     const { data, error } = await supabase
       .from("listings")
-      .select("id,user_id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id,commission_rate,commission_status")
+      .select("id,user_id,title,price,unit,category,image_url,status,storage_type,created_at,seller_id,commission_rate,commission_status,commission_approved_at")
       .order("created_at", { ascending: false });
     if (error) { setLoading(false); return; }
 
     const rows = data ?? [];
     const sellerIds = [...new Set(rows.map((l) => l.seller_id).filter(Boolean))];
-    let sellerMap: Record<string, string> = {};
+    const sellerMap: Record<string, string> = {};
     if (sellerIds.length > 0) {
       const { data: sData } = await supabase.from("sellers").select("id,name").in("id", sellerIds);
       for (const s of sData ?? []) sellerMap[s.id] = s.name;
@@ -96,6 +99,7 @@ function AdminProduktisInner() {
     const { error } = await supabase.from("listings").update({
       status: "active",
       commission_status: "approved",
+      commission_rate: COMMISSION_RATE,
       commission_approved_at: new Date().toISOString(),
       commission_approved_by: user?.id ?? null,
     }).eq("id", item.id);
@@ -107,18 +111,18 @@ function AdminProduktisInner() {
     }
     await supabase.from("notifications").insert({
       user_id: item.user_id,
-      title: "Produkts apstiprināts! ✅",
-      message: `Jūsu produkts "${item.title}" ir apstiprināts (komisija ${item.commission_rate}%) un tagad ir redzams katalogā.`,
+      title: "Produkts pārskatīts",
+      message: `Jūsu produkts "${item.title}" ir pārskatīts (komisija ${COMMISSION_RATE}%) un ir redzams katalogā.`,
       listing_id: item.id,
     });
-    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "active", commission_status: "approved" } : i));
+    setItems((p) => p.map((i) => i.id === item.id ? { ...i, status: "active", commission_status: "approved", commission_rate: COMMISSION_RATE, commission_approved_at: new Date().toISOString() } : i));
     setActing(null);
   }
 
   async function saveCommissionOverride(item: Listing) {
     const newRate = Number(commissionDraft);
-    if (isNaN(newRate) || newRate < 5 || newRate > 20) {
-      alert("Likmei jābūt no 5 līdz 20");
+    if (newRate !== COMMISSION_RATE) {
+      alert("Platformā ir vienota 15% komisija; individuālas likmes pašlaik netiek piemērotas.");
       return;
     }
     const { data: { user } } = await supabase.auth.getUser();
@@ -168,7 +172,7 @@ function AdminProduktisInner() {
   }
 
   const sellerScoped = sellerFilter ? items.filter((i) => i.seller_id === sellerFilter) : items;
-  const pending = sellerScoped.filter((i) => i.status === "pending_review");
+  const pending = sellerScoped.filter(needsListingReview);
   const visible = (tab === "pending" ? pending : sellerScoped).filter((i) => {
     const q = search.toLowerCase();
     return !q || i.title.toLowerCase().includes(q) || i.seller_name.toLowerCase().includes(q);
@@ -213,7 +217,7 @@ function AdminProduktisInner() {
         <button onClick={() => setTab("pending")}
           className={cn("flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition",
             tab === "pending" ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
-          Gaida apstiprinājumu
+          Jāpārskata
           {pending.length > 0 && (
             <span className={cn("flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold",
               tab === "pending" ? "bg-white text-amber-600" : "bg-amber-500 text-white")}>
@@ -240,7 +244,7 @@ function AdminProduktisInner() {
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-12 text-center">
           <Package size={36} className="mx-auto text-gray-300" />
           <p className="mt-3 text-gray-400">
-            {tab === "pending" ? "Nav produktu, kas gaida apstiprinājumu" : "Nav atrasts neviens produkts"}
+            {tab === "pending" ? "Nav nepārskatītu produktu" : "Nav atrasts neviens produkts"}
           </p>
         </div>
       ) : (
@@ -248,7 +252,7 @@ function AdminProduktisInner() {
           <div className="divide-y divide-gray-50">
             {visible.map((item) => {
               const st = statusLabel[item.status] ?? statusLabel.paused;
-              const isPending = item.status === "pending_review";
+              const isPending = needsListingReview(item);
               return (
                 <div key={item.id} className={cn("flex items-center gap-3 px-4 py-3 transition",
                   isPending ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-gray-50")}>
@@ -274,9 +278,9 @@ function AdminProduktisInner() {
                         <span className="flex items-center gap-1">
                           <input
                             type="number"
-                            min="5"
-                            max="20"
-                            step="0.5"
+                            min={COMMISSION_RATE}
+                            max={COMMISSION_RATE}
+                            step="1"
                             value={commissionDraft}
                             onChange={(e) => setCommissionDraft(e.target.value)}
                             className="w-14 rounded border border-gray-200 px-1.5 py-0.5 text-xs"
