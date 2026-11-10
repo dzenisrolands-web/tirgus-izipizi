@@ -23,7 +23,6 @@ type SellerInfo = {
   id: string;
   name: string;
   home_locker_ids: string[];
-  courier_pickup_address: string | null;
 };
 
 type DeliveryMethod = "locker" | "courier" | "express";
@@ -232,7 +231,7 @@ export function CartPage() {
     (async () => {
       const { data } = await supabase
         .from("sellers_public")
-        .select("id, name, home_locker_ids, courier_pickup_address")
+        .select("id, name, home_locker_ids")
         .in("id", ids);
       const m = new Map<string, SellerInfo>();
       for (const s of data ?? []) {
@@ -240,7 +239,6 @@ export function CartPage() {
           id: s.id,
           name: s.name,
           home_locker_ids: s.home_locker_ids ?? [],
-          courier_pickup_address: s.courier_pickup_address ?? null,
         });
       }
       setSellersById(m);

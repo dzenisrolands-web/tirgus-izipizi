@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { hasConsent } from "@/lib/cookie-consent";
 
 // Tracks PWA install lifecycle to /api/pwa/event:
 //   • prompt_shown      — browser fired beforeinstallprompt
@@ -19,6 +20,7 @@ type BeforeInstallPromptEvent = Event & {
 const SESSION_KEY = "tirgus.pwa.standaloneLogged";
 
 function send(type: string) {
+  if (!hasConsent("analytics")) return;
   // Fire-and-forget; never block UX on telemetry
   fetch("/api/pwa/event", {
     method: "POST",

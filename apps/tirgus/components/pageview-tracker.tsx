@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { hasConsent } from "@/lib/cookie-consent";
 
 /**
  * Fires a page view event on every client-side route change.
@@ -12,6 +13,7 @@ export function PageviewTracker() {
   const lastPath = useRef("");
 
   useEffect(() => {
+    if (!hasConsent("analytics")) return;
     // Skip duplicate fires for the same path
     if (pathname === lastPath.current) return;
     lastPath.current = pathname;
