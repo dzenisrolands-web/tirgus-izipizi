@@ -7,6 +7,7 @@ import {
 } from "../../lib/db-listings";
 import { PRODUCT_IMAGE_PLACEHOLDER } from "../../lib/product-image";
 import CatalogPage from "../../app/catalog/page";
+import { catalogSellerOptions, filterCatalogBySeller } from "../../app/catalog/catalog-client";
 import ListingPage from "../../app/listing/[id]/page";
 import sitemap from "../../app/sitemap";
 import type { ReactElement, ReactNode } from "react";
@@ -95,6 +96,26 @@ test("card adds the selected quantity and clamps additions to available stock", 
   added.length = 0;
   for (const stock of [0, -1, NaN]) addCardQuantity(add, item, 3, stock);
   expect(added).toEqual([]);
+});
+
+test("seller sidebar options deduplicate real UUIDs and selecting one finds its products", () => {
+  const firstId = "ab000000-0000-0000-0000-000000000010";
+  const secondId = "ab000000-0000-0000-0000-000000000020";
+  const products = [
+    mapRow({ ...row, seller_id: firstId }, { ...seller, id: firstId, farm_name: "Ābeļu dārzs" }),
+    mapRow({ ...row, id: "second", seller_id: firstId }, { ...seller, id: firstId, farm_name: "Ābeļu dārzs" }),
+    mapRow({ ...row, id: "third", seller_id: secondId }, { ...seller, id: secondId, farm_name: "Zemnieki" }),
+  ];
+  const options = catalogSellerOptions(products);
+  expect(options).toEqual([
+    { id: firstId, name: "Ābeļu dārzs" },
+    { id: secondId, name: "Zemnieki" },
+  ]);
+  expect(filterCatalogBySeller(products, options[0].id).map(listing => listing.id)).toEqual([row.id, "second"]);
+  expect(filterCatalogBySeller(products, options[1].id).map(listing => listing.id)).toEqual(["third"]);
+  expect(filterCatalogBySeller(products, "").length).toBe(3);
+  expect(source("components/filter-sidebar.tsx")).not.toContain("categories, sellers");
+  expect(source("app/catalog/catalog-client.tsx").match(/sellers=\{sellerOptions\}/g)).toHaveLength(2);
 });
 
 test("local search supports Latvian normalization, typos, seller and category without returning unrelated inventory", () => {

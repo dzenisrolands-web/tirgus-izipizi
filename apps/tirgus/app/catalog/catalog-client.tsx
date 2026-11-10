@@ -17,6 +17,17 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Cena: lejup" },
 ];
 
+export function catalogSellerOptions(listings: Listing[]) {
+  return [...new Map(listings.filter((listing) => listing.sellerId).map((listing) => [
+    listing.sellerId,
+    { id: listing.sellerId, name: listing.seller.farmName || listing.seller.name },
+  ])).values()].sort((a, b) => a.name.localeCompare(b.name, "lv"));
+}
+
+export function filterCatalogBySeller(listings: Listing[], sellerId: string): Listing[] {
+  return sellerId ? listings.filter((listing) => listing.sellerId === sellerId) : [...listings];
+}
+
 export function CatalogClient({
   listings,
   weeklyFeatured = [],
@@ -48,11 +59,11 @@ export function CatalogClient({
   const query = initialQuery;
   const [sort, setSort] = useState(initialQuery.trim() ? "relevance" : "newest");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sellerOptions = useMemo(() => catalogSellerOptions(listings), [listings]);
 
   const filtered = useMemo(() => {
-    let result = [...listings];
+    let result = filterCatalogBySeller(listings, filters.seller);
     if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
-    if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
     if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
     if (filters.delivery === "courier") result = result.filter((l) => l.courier_delivery);
     if (filters.delivery === "express") result = result.filter((l) => l.express_delivery);
@@ -176,7 +187,7 @@ export function CatalogClient({
 
       <div className="mt-6 flex gap-8">
         <div className="hidden w-52 shrink-0 lg:block">
-          <FilterSidebar filters={filters} onChange={setFilters} />
+          <FilterSidebar filters={filters} onChange={setFilters} sellers={sellerOptions} />
         </div>
 
         {sidebarOpen && (
@@ -187,7 +198,7 @@ export function CatalogClient({
                 <p className="font-semibold text-gray-900">Filtri</p>
                 <button onClick={() => setSidebarOpen(false)}><X size={20} className="text-gray-500" /></button>
               </div>
-              <FilterSidebar filters={filters} onChange={setFilters} />
+              <FilterSidebar filters={filters} onChange={setFilters} sellers={sellerOptions} />
               <button className="btn-primary mt-4 w-full" onClick={() => setSidebarOpen(false)}>
                 Rādīt {filtered.length} produktus
               </button>
