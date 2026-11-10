@@ -98,6 +98,33 @@ async function mocked<T>(
   try { return await run(); } finally { globalThis.fetch = original; }
 }
 
+test("shipment persistence errors never falsely advance a paid order", async () => {
+  for (const failShipment of [false, true]) {
+    let advanced = false;
+    await mocked((url, init) => {
+      if (url.pathname === "/auth/v1/user") return Response.json({ id: seller.user_id, app_metadata: {} });
+      if (url.pathname === "/rest/v1/sellers") return Response.json(seller);
+      if (url.pathname === "/rest/v1/orders" && init?.method !== "PATCH") {
+        return Response.json({ ...order, status: "processing", payment_status: "paid" });
+      }
+      if (url.pathname === "/rest/v1/sutijumi") {
+        return failShipment
+          ? Response.json({ message: "Unavailable fixture table" }, { status: 503 })
+          : new Response(null, { status: 201 });
+      }
+      if (url.pathname === "/rest/v1/orders" && init?.method === "PATCH") {
+        advanced = true;
+        return new Response(null, { status: 204 });
+      }
+      throw new Error("Unexpected backend operation");
+    }, async () => {
+      const response = await shipment(request("/shipment", { orderId: "order", size: "M", lockerCode: "1234" }, "test"));
+      expect(response.status).toBe(failShipment ? 503 : 200);
+      expect(advanced).toBe(!failShipment);
+    });
+  }
+});
+
 function checkoutBody(deliveryType = "locker", locker = "brivibas") {
   return {
     items: [{ id: listing.id, quantity: 2, price: 0.01, title: "Fake product", sellerId: "intruder", drop_id: "invented" }],

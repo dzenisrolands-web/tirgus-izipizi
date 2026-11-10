@@ -493,7 +493,7 @@ export function CartPage() {
       // Navigate via /pay which does a server-side 302 redirect to Paysera.
       // The 302 preserves Referer in the HTTP redirect chain, fixing Paysera
       // 0x13 error in PWA standalone mode.
-      window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
+      window.location.assign(`/pay?url=${encodeURIComponent(paymentUrl)}`);
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
@@ -1189,7 +1189,7 @@ export function CartPage() {
                         )}
                       </span>
                       {deliveryFee === 0
-                        ? <span className="text-gray-400 text-xs">norādīt zemāk</span>
+                        ? <span className="text-gray-500 text-xs">{deliveryMethod === "locker" ? "Bezmaksas" : "Norādi piegādes adresi"}</span>
                         : <span>{formatPrice(deliveryFee)}</span>
                       }
                     </div>

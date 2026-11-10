@@ -119,9 +119,9 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(),
   };
 
-  // Insert sutijumi record (best effort — table may not exist yet)
+  // Do not pretend a shipment succeeded if logistics persistence failed.
   try {
-    await sb.from("sutijumi").insert({
+    const { error: shipmentError } = await sb.from("sutijumi").insert({
       delivery_type: label.deliveryType,
       from_locker: null,
       from_locker_name: label.senderAddress,
@@ -140,15 +140,17 @@ export async function POST(req: Request) {
       note: `${order.order_number} - ${label.senderName}`,
       status: "confirmed",
     });
+    if (shipmentError) return NextResponse.json({ error: "Sūtījumu neizdevās saglabāt. Pasūtījuma statuss nav mainīts." }, { status: 503 });
   } catch {
-    // sutijumi table may not exist in this Supabase instance — non-blocking
+    return NextResponse.json({ error: "Sūtījumu serviss nav pieejams. Pasūtījuma statuss nav mainīts." }, { status: 503 });
   }
 
   // Mark order as shipped + save locker code
-  await sb
+  const { error: orderError } = await sb
     .from("orders")
     .update({ status: "shipped", locker_code: lockerCode })
     .eq("id", orderId);
+  if (orderError) return NextResponse.json({ error: "Sūtījums saglabāts, bet pasūtījuma statusu neizdevās atjaunināt. Sazinies ar administratoru pirms atkārtota mēģinājuma." }, { status: 503 });
 
   return NextResponse.json({ ok: true, label });
 }
