@@ -12,6 +12,7 @@ import { ReviewsSectionDb } from "@/components/reviews-section-db";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { VariantSelector } from "@/components/variant-selector";
 import { ShareButton } from "@/components/share-button";
+import { BUYER_LOCKER_FEE_CENTS } from "@/lib/delivery-policy";
 
 export const dynamicParams = true;
 export const revalidate = 60;
@@ -90,7 +91,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         name: listing.seller.farmName,
         url: `https://tirgus.izipizi.lv/seller/${listing.sellerId}`,
       },
-      shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
+      shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: BUYER_LOCKER_FEE_CENTS / 100, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
     },
     brand: {
       "@type": "Brand",

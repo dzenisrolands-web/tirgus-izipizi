@@ -96,6 +96,7 @@ export async function POST(req: Request) {
       homeLockerIds: seller.home_locker_ids ?? [],
       items: items.filter(item => item.seller_id === seller.id).map(item => ({
         category: item.category ?? "", storageType: item.storage_type, expressDelivery: item.express_delivery,
+        courierDelivery: item.courier_delivery,
       })),
     })),
   });

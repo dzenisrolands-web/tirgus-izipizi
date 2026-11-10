@@ -85,6 +85,9 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.listings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY sellers_owner ON public.sellers TO authenticated USING (user_id=auth.uid());
 CREATE POLICY orders_owner ON public.orders TO authenticated USING (buyer_id=auth.uid());
+CREATE POLICY orders_seller ON public.orders TO authenticated USING (
+  EXISTS (SELECT 1 FROM public.sellers s WHERE s.user_id=auth.uid() AND s.id=ANY(orders.seller_ids))
+);
 CREATE POLICY listings_public ON public.listings FOR SELECT TO anon,authenticated USING(status='active');
 GRANT SELECT ON public.listings TO anon,authenticated;
 GRANT SELECT,UPDATE ON public.sellers,public.orders TO authenticated;

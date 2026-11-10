@@ -255,6 +255,10 @@ export function CartPage() {
   // Express requires every product to opt in; the shared quote also checks sender zones
   const anyItemAllowsExpress = items.length > 0 && items.every(i =>
     deliveryListingForCartItem(i.id, dbListings)?.express_delivery === true);
+  const allItemsAllowCourier = items.length > 0 && items.every(item => {
+    const listing = deliveryListingForCartItem(item.id, dbListings);
+    return !!listing && listing.courier_delivery !== false;
+  });
 
 
   // Group items by seller and compute per-seller delivery fees
@@ -272,7 +276,7 @@ export function CartPage() {
       const quoteItems = sellerItems.map(item => {
         const listing = deliveryListingForCartItem(item.id, dbListings);
         return { storageType: listing?.storageType, category: listing?.category ?? "",
-          expressDelivery: listing?.express_delivery };
+          expressDelivery: listing?.express_delivery, courierDelivery: listing?.courier_delivery };
       });
       const cabinetCount = new Set(quoteItems.map(deliveryStorageType)).size;
       const isDualTemp = cabinetCount === 2;
@@ -645,7 +649,7 @@ export function CartPage() {
                   hint="3,00 € par ražotāju · ar PVN"
                   highlight
                 />
-                <DeliveryMethodCard
+                {allItemsAllowCourier && <DeliveryMethodCard
                   method="courier"
                   selected={deliveryMethod === "courier"}
                   onSelect={() => setDeliveryMethod("courier")}
@@ -655,7 +659,7 @@ export function CartPage() {
                     ? `${courierFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : "Cena pēc adreses un ražotāja"}
                   hint="Mājas durvīs"
-                />
+                />}
                 {anyItemAllowsExpress && (
                   <DeliveryMethodCard
                     method="express"

@@ -11,6 +11,7 @@ export type DeliveryQuoteItem = {
   storageType?: string | null;
   category: string;
   expressDelivery?: boolean | null;
+  courierDelivery?: boolean | null;
 };
 export type DeliveryQuoteInput = {
   method: DeliveryMethod;
@@ -40,7 +41,7 @@ export type DeliveryQuote =
   | { ok: true; totalCents: number; breakdown: DeliveryFeeSnapshot[] }
   | {
     ok: false; totalCents: null; breakdown: [];
-    error: "invalid_seller" | "invalid_locker" | "unknown_buyer_zone" | "express_unsupported";
+    error: "invalid_seller" | "invalid_locker" | "unknown_buyer_zone" | "express_unsupported" | "courier_unsupported";
     sellerId?: string;
   };
 
@@ -83,6 +84,9 @@ export function calculateDeliveryQuote(input: DeliveryQuoteInput): DeliveryQuote
   if (input.method !== "locker" && !buyer.found) return fail("unknown_buyer_zone");
   const breakdown: DeliveryFeeSnapshot[] = [];
   for (const [sellerId, seller] of grouped) {
+    if (input.method === "courier" && seller.items.some(item => item.courierDelivery === false)) {
+      return fail("courier_unsupported", sellerId);
+    }
     const zones = seller.homeLockerIds
       .filter(id => !!getOpenLocker(id))
       .map(id => LOCKER_ZONES[id])

@@ -85,8 +85,9 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   - `/api/webhooks/paysera` — payment confirmation callback
   - `/api/checkout/retry-payment` — retry for failed attempts
   - `/api/admin/paysera-diagnostics` — config troubleshooting
-- **Webhook fallback**: `/cart/success` self-confirms payment if the callback is
-  delayed, so a slow webhook cannot strand a paid order
+- **Payment integrity**: `/cart/success` only polls; a redirect never confirms payment.
+  Verified callbacks settle stock via a service-only transaction. Late/conflicting
+  payments go to `/admin/finanses` for evidence-based review, never automatic fulfillment.
 - **Env**: `PAYSERA_MODE` (live/test/mock), `PAYSERA_PROJECT_ID`,
   `PAYSERA_SIGN_PASSWORD`. `mock` skips Paysera entirely — used by E2E tests.
 - **Still missing**: automatic refunds on cancellation (handled manually today)
@@ -116,9 +117,9 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 ## Current Priorities
 1. **Repo consolidation** — merge the `izipizi` monorepo and this repo into one
    Turborepo on a single Supabase project
-2. **Commission bug** — `sellerNetWithVat()` in `lib/commission.ts` hardcodes a
-   21% VAT assumption via `commissionForPrice()`, so 5% and 12% VAT products
-   are calculated incorrectly
+2. **Financial reconciliation** — current VAT-aware commission helper is corrected;
+   legacy orders lacking financial snapshots require original accounting evidence,
+   never current-profile backfills.
 3. **izipizi locker API** — replace manual PIN entry
 4. **Automatic refunds** — Paysera webhook does not handle cancellations
 5. **Buyer bonus system** — still only an idea
@@ -139,7 +140,8 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   locker network
 - The site is **live and taking real orders**. Anything touching checkout,
   invoices or the orders table needs care.
-- Migrations live in `scripts/migrations/` (0001–0029). Some earlier schema was
+- Migrations live in `supabase/migrations/`. Reviewed release migrations 0038–0045
+  are planned/applied with the guarded `npm run release:migrations` tooling. Some earlier schema was
   applied straight in the Supabase dashboard, so the directory is not a
   complete history — verify against the live schema before assuming.
 - There is a **second repo**, `izipizi` (Turborepo, github.com/dzenisrolands-web/izipizi),

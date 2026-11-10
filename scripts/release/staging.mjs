@@ -159,6 +159,23 @@ try {
   assert.equal(paid.payment_status, "paid");
   assert.equal(paid.payment_received_cents, 1300);
   assert.equal((await pool.query("SELECT state FROM marketplace_stock_reservations WHERE order_id=$1", [paid.id])).rows[0].state, "consumed");
+  const owner = await pool.connect();
+  try {
+    await owner.query("BEGIN");
+    await owner.query("SET LOCAL ROLE authenticated");
+    await owner.query("SELECT set_config('test.uid',$1,true)", [userId]);
+    const updated = await owner.query("UPDATE orders SET status='processing' WHERE id=$1 RETURNING id", [paid.id]);
+    assert.equal(updated.rowCount, 1, "UUID_array_owner_fulfillment_works");
+    await owner.query("COMMIT");
+    await owner.query("BEGIN");
+    await owner.query("SET LOCAL ROLE authenticated");
+    await owner.query("SELECT set_config('test.uid',$1,true)", [userId]);
+    await assert.rejects(owner.query("UPDATE orders SET total_cents=1 WHERE id=$1", [paid.id]),
+      error => error.code === "42501");
+  } finally {
+    await owner.query("ROLLBACK");
+    owner.release();
+  }
 
   await pool.query("UPDATE listings SET quantity=1 WHERE id=$1", [listingId]);
   const lateResponse = await makeOrder();
@@ -178,6 +195,7 @@ try {
     passed: true, container, database, providerNetwork: false, productionMutations: false,
     checks: ["reviewed_migrations_and_repeat_skip", "real_UUID_array_schema", "database_privileges",
       "actual_checkout_last_item_race", "server_tariff", "signed_test_callback", "duplicate_callback",
+      "authenticated_seller_UUID_fulfillment_and_financial_guard",
       "held_stock_expiry", "late_payment_preserved_and_queued"],
   }, null, 2));
 } catch (error) {

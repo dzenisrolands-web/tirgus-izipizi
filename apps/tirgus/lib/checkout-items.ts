@@ -53,6 +53,7 @@ export function normalizeCheckoutItems(items: RequestedItem[], listings: Checkou
       price: cents / 100, quantity: item.quantity, unit: variant ? "gab." : listing.unit,
       seller_id: listing.seller_id, sellerId: listing.seller_id, commission_rate: COMMISSION_RATE, vat_rate: listing.vat_rate,
       category: listing.category, storage_type: listing.storage_type, express_delivery: listing.express_delivery,
+      courier_delivery: listing.courier_delivery,
     };
   });
 }

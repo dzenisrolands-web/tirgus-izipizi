@@ -117,6 +117,12 @@ test("unknown sender remains null, verified buyer zone still prices; unknown buy
   expect(effectiveCourierZone("brivibas", null)).toBeNull();
 });
 
+test("courier delivery fails closed when an actual product disables it", () => {
+  expect(calculateDeliveryQuote(input({
+    sellers: [{ sellerId: "a", homeLockerIds: ["brivibas"], items: [{ ...chilled, courierDelivery: false }] }],
+  }))).toMatchObject({ ok: false, error: "courier_unsupported", totalCents: null });
+});
+
 test("express requires affirmative real item flags, including legacy carts", () => {
   for (const expressDelivery of [false, null, undefined]) {
     expect(calculateDeliveryQuote(input({
