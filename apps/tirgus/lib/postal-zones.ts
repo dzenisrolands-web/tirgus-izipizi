@@ -1,3 +1,5 @@
+import { isClosedLockerId } from "./locker-policy";
+
 /**
  * Pasta indeksu → piegādes zonu datu mape.
  * Avots: izipizi.lv/zonas-cenas (atjaunināts 2026-04-29)
@@ -297,6 +299,7 @@ const ROAD_FACTOR = 1.4;
 export function nearestLockersForCode(code: number, zone: DeliveryZone, limit = 3): NearestLocker[] {
   const origin = POSTAL_DATA[code] ?? ZONE_FALLBACK_COORDS[zone];
   return Object.entries(LOCKER_COORDS)
+    .filter(([id]) => !isClosedLockerId(id))
     .map(([id, l]) => ({
       id,
       name: l.name,

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { lockers } from "@/lib/mock-data";
+import { publicLockers as lockers } from "@/lib/locker-policy";
 import {
   Package, MapPin, Truck, Thermometer, Snowflake,
   CheckCircle, Zap, ArrowRight, ChevronDown,

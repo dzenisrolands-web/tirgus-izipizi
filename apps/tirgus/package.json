@@ -12,7 +12,8 @@
     "qa:crawl": "node scripts/qa-crawl.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:hotfix": "playwright test --config=playwright.hotfix.config.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

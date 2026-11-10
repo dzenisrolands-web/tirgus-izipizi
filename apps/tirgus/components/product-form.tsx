@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { lockers, categories } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
+import { publicLockers as lockers, isClosedLockerId } from "@/lib/locker-policy";
 import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
 import { toUniqueSlug } from "@/lib/utils";
 
@@ -126,6 +127,7 @@ export function ProductForm({
     setError("");
 
     if (!form.title.trim()) return setError("Nosaukums ir obligāts");
+    if (isClosedLockerId(form.locker_id)) return setError("Tukuma pakomāts ir slēgts. Izvēlies citu nodošanas vietu.");
     const hasVariants = form.variants.length > 0;
     if (!hasVariants && (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0))
       return setError("Ievadi derīgu cenu");

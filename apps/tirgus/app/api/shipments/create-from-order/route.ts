@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateShipmentNumber, type ShipmentSize, type LabelData } from "@/lib/shipping";
+import { isClosedLockerId } from "@/lib/locker-policy";
 
 /**
  * POST /api/shipments/create-from-order
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
 
   const shipmentNumber = generateShipmentNumber();
   const di = order.delivery_info as Record<string, unknown> | null;
+  if (isClosedLockerId(di?.locker_id) || isClosedLockerId((seller.home_locker_ids as string[] | null)?.[0])) {
+    return NextResponse.json({ error: "Tukuma pakomāts ir slēgts. Sazinies ar administratoru par citu nodošanas/saņemšanas vietu." }, { status: 409 });
+  }
   const isLocker = order.delivery_type === "locker" || !!di?.locker_id;
 
   // Determine temp mode from size
