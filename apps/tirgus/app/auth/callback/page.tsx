@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Suspense } from "react";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 
 function CallbackHandler() {
   const router = useRouter();
@@ -76,7 +77,7 @@ function CallbackHandler() {
 
         // Redirect — admin is via direct URL only, never auto-redirect
         const next = searchParams.get("next");
-        if (next) { router.replace(next); return; }
+        if (next) { router.replace(safeInternalRedirect(next)); return; }
         router.replace("/");
 
       } catch (err) {

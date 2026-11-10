@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 import { sendSellerApprovalEmail } from "@/lib/email";
 
 /**
@@ -13,26 +13,15 @@ import { sendSellerApprovalEmail } from "@/lib/email";
  * Also supports: { sellerId, resendOnly: true } — skips status update, just resends email.
  */
 export async function POST(req: Request) {
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
+  const auth = await assertSuperAdmin(req);
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { supabase: sb, user } = auth;
 
-  // Auth check
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
-  const { data: { user } } = await sb.auth.getUser(token);
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
-
-  const body = await req.json();
+  const body = (await req.json().catch(() => null)) ?? {};
   const sellerId = body.sellerId as string;
   const resendOnly = body.resendOnly === true;
 
-  if (!sellerId) {
+  if (typeof sellerId !== "string" || !sellerId.trim()) {
     return NextResponse.json({ ok: false, error: "sellerId ir obligāts" }, { status: 400 });
   }
 
@@ -50,21 +39,23 @@ export async function POST(req: Request) {
   // Approve (unless resend-only)
   if (!resendOnly) {
     const now = new Date().toISOString();
-    const { error: updateErr } = await sb.from("sellers").update({
+    const { data: updated, error: updateErr } = await sb.from("sellers").update({
       status: "approved",
       approved_at: now,
       approved_by: user.id,
       rejected_reason: null,
       rejected_at: null,
-    }).eq("id", sellerId);
+    }).eq("id", sellerId).select("id").maybeSingle();
 
     if (updateErr) {
       return NextResponse.json({ ok: false, error: updateErr.message }, { status: 500 });
     }
+    if (!updated) return NextResponse.json({ ok: false, error: "Seller changed; reload and retry" }, { status: 409 });
 
     // Update profile role
     if (seller.user_id) {
-      await sb.from("profiles").update({ role: "seller" }).eq("id", seller.user_id);
+      const { data: profile, error } = await sb.from("profiles").update({ role: "seller" }).eq("id", seller.user_id).select("id").maybeSingle();
+      if (error || !profile) return NextResponse.json({ ok: false, error: "Profile update failed" }, { status: 500 });
     }
   }
 
