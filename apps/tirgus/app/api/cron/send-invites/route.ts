@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminClient } from "@/lib/admin-auth";
+import { adminClient, assertSuperAdmin } from "@/lib/admin-auth";
 import { sendInvitationEmail } from "@/lib/email";
 
 /**
@@ -8,27 +8,14 @@ import { sendInvitationEmail } from "@/lib/email";
  * Called by Vercel Cron every 20 minutes, or manually.
  *
  * Security: CRON_SECRET header check (Vercel cron sends this automatically).
- * Also works without secret for manual admin testing.
+ * Manual runs require verified super-admin authentication.
  */
 export async function GET(req: Request) {
-  // Optional cron secret check
   const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get("authorization");
-  const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
-  const isManual = !cronSecret; // allow if no secret configured
-
-  if (!isCron && !isManual) {
-    // Also allow super admin
-    const token = authHeader?.replace("Bearer ", "");
-    if (token) {
-      const sb = adminClient();
-      const { data: { user } } = await sb.auth.getUser(token);
-      if (!user || user.app_metadata?.is_super_admin !== true) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    } else {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const isCron = !!cronSecret && req.headers.get("authorization") === `Bearer ${cronSecret}`;
+  if (!isCron) {
+    const auth = await assertSuperAdmin(req);
+    if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const supabase = adminClient();
@@ -42,7 +29,8 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: true })
     .limit(BATCH_SIZE);
 
-  if (fetchErr || !queue || queue.length === 0) {
+  if (fetchErr) return NextResponse.json({ ok: false, error: "Invitation query failed" }, { status: 500 });
+  if (!queue || queue.length === 0) {
     return NextResponse.json({
       ok: true,
       sent: 0,
@@ -61,16 +49,18 @@ export async function GET(req: Request) {
     });
 
     if (!result.ok) {
-      await supabase
+      const { data: changed, error } = await supabase
         .from("invitations")
         .update({ status: "sent", notes: `Email failed: ${result.error}` })
-        .eq("id", inv.id);
+        .eq("id", inv.id).select("id").maybeSingle();
+      if (error || !changed) return NextResponse.json({ ok: false, error: "Invitation update failed" }, { status: 500 });
       results.push({ email: inv.email, ok: false, error: result.error });
     } else {
-      await supabase
+      const { data: changed, error } = await supabase
         .from("invitations")
         .update({ status: "sent", sent_at: new Date().toISOString(), resend_id: result.id })
-        .eq("id", inv.id);
+        .eq("id", inv.id).select("id").maybeSingle();
+      if (error || !changed) return NextResponse.json({ ok: false, error: "Invitation update failed" }, { status: 500 });
       results.push({ email: inv.email, ok: true });
     }
 

@@ -18,6 +18,21 @@ export type PushSub = {
 
 let vapidConfigured = false;
 
+/** Web Push providers only; never send to a client-selected arbitrary host. */
+export function isAllowedPushEndpoint(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 4096) return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) return false;
+    const host = url.hostname.toLowerCase();
+    return host === 'fcm.googleapis.com' || host === 'updates.push.services.mozilla.com' ||
+      host === 'push.services.mozilla.com' || host === 'web.push.apple.com' ||
+      host === 'notify.windows.com' || host.endsWith('.notify.windows.com');
+  } catch {
+    return false;
+  }
+}
+
 function ensureVapidConfigured(): boolean {
   if (vapidConfigured) return true;
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -39,7 +54,7 @@ export async function sendPushToSubscriptions(subs: PushSub[], payload: PushPayl
   }
   const results = await Promise.allSettled(
     subs.map((sub) =>
-      webpush.sendNotification(
+      !isAllowedPushEndpoint(sub.endpoint) ? Promise.reject(new Error('Untrusted push endpoint')) : webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
       )

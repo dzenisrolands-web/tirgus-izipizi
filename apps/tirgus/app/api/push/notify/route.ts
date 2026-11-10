@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import { sendPushToSubscriptions } from '@/lib/push';
 import { lockers } from '@/lib/mock-data';
+import { bearerToken, isCronRequest } from '@/lib/security-api';
 
 /**
  * Called server-side when a new drop (Sludinājumu dēlis post) is created.
@@ -20,31 +21,37 @@ export async function POST(req: Request) {
   );
 
   // Accept either CRON_SECRET or a valid user session token
-  const auth = req.headers.get('authorization') ?? '';
-  const token = auth.replace('Bearer ', '');
-  const cronSecret = process.env.CRON_SECRET;
-  const isCron = cronSecret && token === cronSecret;
+  const token = bearerToken(req);
+  const isCron = isCronRequest(req);
+  let caller: User | null = null;
   if (!isCron) {
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    caller = user;
   }
 
-  const body = await req.json();
+  const body = (await req.json().catch(() => null)) ?? {};
   const dropId = body.dropId;
-  if (!dropId) return NextResponse.json({ error: 'Missing dropId' }, { status: 400 });
+  if (typeof dropId !== 'string' || !dropId) return NextResponse.json({ error: 'Missing dropId' }, { status: 400 });
 
-  const { data: drop } = await supabase
+  const { data: drop, error: dropError } = await supabase
     .from('hot_drops')
     .select('id, title, seller_id, pickup_locker_id')
     .eq('id', dropId)
     .single();
+  if (dropError) return NextResponse.json({ error: 'Drop query failed' }, { status: 500 });
   if (!drop) return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
 
-  const { data: seller } = await supabase
+  const { data: seller, error: sellerError } = await supabase
     .from('sellers')
-    .select('name, farm_name')
+    .select('name, farm_name, user_id')
     .eq('id', drop.seller_id)
     .single();
+  if (sellerError || !seller) return NextResponse.json({ error: 'Seller query failed' }, { status: 500 });
+  if (!isCron && caller?.app_metadata?.is_super_admin !== true && seller.user_id !== caller?.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const sellerName = seller?.farm_name ?? seller?.name ?? 'Ražotājs';
   const lockerName = lockers.find((l) => l.id === drop.pickup_locker_id)?.name ?? '';
 
@@ -54,6 +61,7 @@ export async function POST(req: Request) {
     supabase.from('locker_subscriptions').select('user_id').eq('locker_id', drop.pickup_locker_id).eq('push_enabled', true),
   ]);
 
+  if (followersRes.error || subsRes.error) return NextResponse.json({ error: 'Audience query failed' }, { status: 500 });
   const userIds = [
     ...new Set([
       ...(followersRes.data ?? []).map((f: { user_id: string }) => f.user_id),
@@ -65,11 +73,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, sent: 0, reason: 'no audience' });
   }
 
-  const { data: pushSubs } = await supabase
+  const { data: pushSubs, error: pushError } = await supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .in('user_id', userIds);
 
+  if (pushError) return NextResponse.json({ error: 'Subscription query failed' }, { status: 500 });
   if (!pushSubs || pushSubs.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, reason: 'no subscriptions' });
   }
