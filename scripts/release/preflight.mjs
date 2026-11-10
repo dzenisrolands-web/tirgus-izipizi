@@ -13,7 +13,7 @@ try {
 }
 try { results.push(...await authTemplates(process.env)); }
 catch { results.push(outcome("hosted_auth", "blocked", "auth_preflight_failed")); }
-for (const key of ["CRON_SECRET", "PAYSERA_PROJECT_ID", "PAYSERA_SIGN_PASSWORD", "RESEND_API_KEY"]) {
+for (const key of ["CRON_SECRET", "PAYSERA_PROJECT_ID", "PAYSERA_SIGN_PASSWORD", "RESEND_API_KEY", "EMAIL_FROM"]) {
   results.push(outcome(`configuration:${key}`, process.env[key] ? "pass" : "blocked", process.env[key] ? undefined : "not_available_in_this_environment"));
 }
 console.log(JSON.stringify({ ready: results.every(r => r.status === "pass"), results }, null, 2));

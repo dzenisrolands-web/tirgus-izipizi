@@ -170,6 +170,14 @@ for (const method of ["locker", "courier", "express"]) {
   });
 }
 
+test("a seller with only the closed Tukums dispatch locker cannot accept a new payment", async () => {
+  await mocked(url => {
+    if (url.pathname === "/rest/v1/listings") return Response.json([listing]);
+    if (url.pathname === "/rest/v1/sellers") return Response.json([{ ...seller, home_locker_ids: ["tukums"] }]);
+    throw new Error("No reservation or order write permitted");
+  }, async () => expect((await checkout(request("/checkout", checkoutBody()))).status).toBe(400));
+});
+
 for (const locker of ["tukums", "saga", "unknown", "dundaga"]) {
   test(`checkout rejects unavailable locker ${locker} before order write`, async () => {
     await mocked(url => {

@@ -47,7 +47,8 @@ export async function POST(req: Request) {
   const { data: sellers, error: sellerError } = await sb.from("sellers")
     .select("id, name, status, home_locker_ids, delivery_mode, is_vat_registered").in("id", sellerIds);
   if (sellerError || sellers?.length !== sellerIds.length ||
-      sellers.some(s => s.status !== "approved" || !["locker", "courier"].includes(s.delivery_mode))) {
+      sellers.some(s => s.status !== "approved" || !["locker", "courier"].includes(s.delivery_mode) ||
+        (s.delivery_mode === "locker" && !(s.home_locker_ids ?? []).some((id: string) => !!getOpenLocker(id))))) {
     return NextResponse.json({ error: "Ražotājs nav pieejams" }, { status: 400 });
   }
   const sellerNames = new Map(sellers.map(s => [s.id, s.name]));

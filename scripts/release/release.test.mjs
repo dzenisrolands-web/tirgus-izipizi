@@ -1,11 +1,26 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assertApplyTarget, authTemplates, localTemplates, applyMigrations } from "./lib.mjs";
+import { assertApplyTarget, authTemplates, localTemplates, applyMigrations, controlledTestEvidence } from "./lib.mjs";
 
 test("release writes require an explicit reviewed target", () => {
   assert.throws(() => assertApplyTarget({}));
   assert.throws(() => assertApplyTarget({ RELEASE_TARGET: "production" }));
   assert.doesNotThrow(() => assertApplyTarget({ RELEASE_TARGET: "staging", RELEASE_APPLY_CONFIRM: "APPLY_REVIEWED_TIRGUS_RELEASE" }));
+});
+
+test("no payment/email evidence is invented when a controlled test has not been performed", async () => {
+  const result = await controlledTestEvidence({ query: () => { throw new Error("no query permitted"); } }, {});
+  assert.equal(result.status, "blocked");
+});
+
+test("provider references alone never override a failed stored payment/reservation check", async () => {
+  const env = {
+    RELEASE_TEST_ORDER_ID: "10000000-0000-4000-8000-000000000001",
+    RELEASE_PAYMENT_TEST_REFERENCE: "synthetic-provider-reference",
+    RELEASE_EMAIL_DELIVERY_REFERENCE: "synthetic-delivery-reference",
+  };
+  const result = await controlledTestEvidence({ query: async () => ({ rows: [{ verified: false }] }) }, env);
+  assert.equal(result.status, "fail");
 });
 
 test("missing hosted credentials never perform HTTP or claim template publication", async () => {

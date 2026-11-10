@@ -23,7 +23,11 @@ try {
     "-v", `${root}:/repo:ro`, "postgres:17-alpine");
   let ready = false;
   for (let i = 0; i < 100; i++) {
-    try { docker("exec", "--user", "postgres", container, "pg_isready", "-U", "postgres"); ready = true; break; }
+    try {
+      docker("exec", "--user", "postgres", container, "sh", "-c",
+        '[ "$(cat /proc/1/comm)" = "postgres" ] && pg_isready -U postgres');
+      ready = true; break;
+    }
     catch { await new Promise(resolve => setTimeout(resolve, 200)); }
   }
   assert.ok(ready, "isolated_database_startup");

@@ -46,8 +46,9 @@ export async function connectDatabase(env = process.env) {
   if (env.PGSSLMODE === "disable" && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
     throw new Error("unencrypted_remote_database_rejected");
   }
+  for (const name of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) url.searchParams.delete(name);
   const client = new pg.Client({
-    connectionString: env.DATABASE_URL,
+    connectionString: url.toString(),
     connectionTimeoutMillis: 10000,
     statement_timeout: 30000,
     ssl: env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: true },
@@ -65,6 +66,7 @@ export async function databasePreflight(client) {
       "invoice_generation_ready", "create_invoice_with_lines",
       "create_reserved_marketplace_order", "settle_reserved_marketplace_order",
       "cancel_reserved_order", "expire_marketplace_reservations", "finance_issues",
+      "cancel_order_with_review", "record_finance_review", "enqueue_manual_refund", "complete_manual_refund",
     ];
     const { rows } = await client.query(`
       SELECT p.proname, has_function_privilege('anon',p.oid,'EXECUTE') AS anon,
@@ -191,7 +193,7 @@ export async function authTemplates(env, apply = false, request = fetch) {
   return [
     outcome("auth_email_confirmation", config.mailer_autoconfirm === false &&
       config.mailer_allow_unverified_email_sign_ins !== true ? "pass" : "fail"),
-    outcome("auth_site_url", config.site_url === "https://tirgus.izipizi.lv" ? "pass" : "fail"),
+    outcome("auth_site_url", config.site_url === (env.RELEASE_EXPECTED_SITE_URL ?? "https://tirgus.izipizi.lv") ? "pass" : "fail"),
     ...Object.keys(payload).map(key => outcome(key, config[key] === payload[key] ? "pass" : "fail")),
   ];
 }
