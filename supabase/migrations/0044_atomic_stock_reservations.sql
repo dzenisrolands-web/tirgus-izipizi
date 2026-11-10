@@ -261,7 +261,7 @@ BEGIN
     -- Preserve previous receipt evidence on duplicate callbacks. Conflicting
     -- verified evidence and legacy unreserved paid orders need human review.
     IF p_amount_cents IS DISTINCT FROM coalesce(ord.payment_received_cents,ord.total_cents) THEN
-      UPDATE public.orders SET payment_review_reason = coalesce(payment_review_reason,'conflicting_payment_amount'),
+      UPDATE public.orders SET payment_review_reason = 'conflicting_payment_amount',
         payment_received_cents = coalesce(payment_received_cents,p_amount_cents)
         WHERE id = ord.id;
     ELSIF ord.reservation_expires_at IS NULL AND ord.payment_review_reason IS NULL THEN

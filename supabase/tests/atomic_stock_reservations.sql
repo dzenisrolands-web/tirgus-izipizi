@@ -201,6 +201,17 @@ BEGIN
     OR (SELECT quantity FROM listings WHERE id='20000000-0000-0000-0000-000000000001') <> 49 THEN
     RAISE EXCEPTION 'Wrong amount lost received evidence or inventory';
   END IF;
+  result := settle_reserved_marketplace_order('wrong-amount',2);
+  IF result->>'review_reason' <> 'conflicting_payment_amount'
+      OR (SELECT payment_received_cents FROM orders WHERE id=oid) <> 1
+      OR (SELECT payment_review_reason FROM orders WHERE id=oid) <> 'conflicting_payment_amount' THEN
+    RAISE EXCEPTION 'Earlier review hid conflicting payment evidence or overwrote first receipt';
+  END IF;
+  result := settle_reserved_marketplace_order('wrong-amount',1);
+  IF result->>'review_reason' <> 'conflicting_payment_amount'
+      OR (SELECT payment_review_reason FROM orders WHERE id=oid) <> 'conflicting_payment_amount' THEN
+    RAISE EXCEPTION 'Exact-first-amount repeat cleared conflicting payment evidence';
+  END IF;
   BEGIN
     UPDATE orders SET status='processing' WHERE id=oid;
     RAISE EXCEPTION 'Reviewed order advanced fulfillment';
