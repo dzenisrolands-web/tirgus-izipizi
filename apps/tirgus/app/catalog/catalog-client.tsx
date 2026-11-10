@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { SlidersHorizontal, X, Star } from "lucide-react";
-import { sellers, type Listing } from "@/lib/mock-data";
+import { type Listing } from "@/lib/mock-data";
 import { ListingCard } from "@/components/listing-card";
-import { FilterSidebar, DEFAULT_FILTERS, type Filters } from "@/components/filter-sidebar";
-import { cn, getStorageType } from "@/lib/utils";
+import { FilterSidebar, type Filters } from "@/components/filter-sidebar";
+import { cn } from "@/lib/utils";
 import { useStorageTypes } from "@/lib/storage-types-context";
+import {
+  catalogFilters, catalogFilterParams, clearedCatalogParams, catalogSort, catalogQuery,
+  catalogSellerOptions, catalogPriceCeiling, activeCatalogFilterCount, filterAndSortCatalog,
+  type CatalogSeller,
+} from "./catalog-state";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Jaunākie" },
@@ -20,90 +25,50 @@ const SORT_OPTIONS = [
 export function CatalogClient({
   listings,
   weeklyFeatured = [],
-  initialQuery = "",
+  sellers,
 }: {
   listings: Listing[];
   weeklyFeatured?: Listing[];
-  initialQuery?: string;
+  sellers?: CatalogSeller[];
 }) {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const storageTypes = useStorageTypes();
 
-  function clearQuery() {
-    const next = new URLSearchParams(params.toString());
-    next.delete("q");
+  function navigate(next: URLSearchParams) {
     const qs = next.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
-  const [filters, setFilters] = useState<Filters>(() => ({
-    ...DEFAULT_FILTERS,
-    seller: params.get("seller") ?? "",
-    category: params.get("category") ?? "Visi",
-  }));
-  // Query state mirrors the URL — server already filtered `listings` by `q`,
-  // so this is for the active-search chip + clear button only.
-  const [query, setQuery] = useState(initialQuery);
-  const [sort, setSort] = useState("newest");
+  function clearQuery() {
+    const next = new URLSearchParams(params.toString());
+    next.delete("q");
+    navigate(next);
+  }
+
+  const filters = useMemo(() => catalogFilters(params), [params]);
+  const query = catalogQuery(params.get("q"));
+  const sort = catalogSort(params.get("sort"));
+  const sellerOptions = useMemo(() => sellers ?? catalogSellerOptions(listings), [listings, sellers]);
+  const priceCeiling = useMemo(() => catalogPriceCeiling(listings), [listings]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const s = params.get("seller") ?? "";
-    const c = params.get("category") ?? "Visi";
-    const q = params.get("q") ?? "";
-    setFilters((prev) => ({ ...prev, seller: s, category: c }));
-    setQuery(q);
-  }, [params]);
+  function setFilters(next: Filters | ((current: Filters) => Filters)) {
+    navigate(catalogFilterParams(new URLSearchParams(params.toString()), typeof next === "function" ? next(filters) : next));
+  }
 
-  const filtered = useMemo(() => {
-    let result = [...listings];
-    if (filters.category !== "Visi") result = result.filter((l) => l.category === filters.category);
-    if (filters.seller) result = result.filter((l) => l.sellerId === filters.seller);
-    if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
-    if (filters.delivery === "courier") result = result.filter((l) => l.courier_delivery);
-    if (filters.delivery === "express") result = result.filter((l) => l.express_delivery);
-    if (filters.delivery === "locker") result = result.filter((l) => !l.courier_delivery && !l.express_delivery);
-    // Day filter: show only products that explicitly list the selected day.
-    // Products with no dispatch_days set are hidden when a specific day is selected
-    // (they haven't configured their availability).
-    if (filters.day) result = result.filter((l) => l.dispatch_days?.length && l.dispatch_days.includes(filters.day));
-    result = result.filter((l) => l.price <= filters.maxPrice);
-    // Stable sort: use id as tie-breaker so order never shuffles between loads
-    if (sort === "price_asc") result.sort((a, b) => a.price - b.price || a.id.localeCompare(b.id));
-    else if (sort === "price_desc") result.sort((a, b) => b.price - a.price || a.id.localeCompare(b.id));
-    else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv") || a.id.localeCompare(b.id));
-    else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv") || a.id.localeCompare(b.id));
-    else {
-      // "newest" — strikti hronoloģiski, jaunākais vispirms. Lietotājs, kas šo
-      // kārtošanu izvēlas skaidri no izvēlnes, sagaida reālu datumu secību, nevis
-      // sadaļītu izklaidi starp pārdevējiem — tāpēc šeit vairs NAV
-      // interleaveBySeller (tas ir noderīgs tikai sākumlapas "atklāj jaunu
-      // pārdevēju" sadaļām, nevis šim tiešajam kārtošanas kontrolem).
-      result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
-    }
-    return result;
-  }, [filters, query, sort, storageTypes]);
+  function clearFilters() {
+    navigate(clearedCatalogParams(new URLSearchParams(params.toString())));
+  }
 
-  // Show weekly featured at top only when no filters are active (clean catalog browse)
-  const showFeatured = weeklyFeatured.length > 0
-    && !query.trim()
-    && filters.category === "Visi"
-    && !filters.seller
-    && filters.storageType === "all";
+  const filtered = useMemo(() => filterAndSortCatalog(listings, filters, sort, storageTypes),
+    [listings, filters, sort, storageTypes]);
 
-  const activeFilterCount = [
-    filters.category !== "Visi",
-    filters.maxPrice < 100,
-    filters.seller !== "",
-    filters.storageType !== "all",
-    filters.delivery !== "all",
-    filters.day !== "",
-    query.trim() !== "",
-  ].filter(Boolean).length;
+  const activeFilterCount = activeCatalogFilterCount(filters, query);
+  const showFeatured = weeklyFeatured.length > 0 && activeFilterCount === 0;
 
-  const activeSeller = filters.seller ? sellers.find((s) => s.id === filters.seller) : null;
+  const activeSeller = filters.seller ? sellerOptions.find((s) => s.id === filters.seller) : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -137,7 +102,11 @@ export function CatalogClient({
         </div>
 
         <div className="flex items-center gap-3">
-          <select value={sort} onChange={(e) => setSort(e.target.value)}
+          <select aria-label="Kārtot produktus" value={sort} onChange={(e) => {
+            const next = new URLSearchParams(params.toString());
+            next.set("sort", catalogSort(e.target.value));
+            navigate(next);
+          }}
             className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-500 focus:outline-none">
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -179,7 +148,7 @@ export function CatalogClient({
 
       <div className="mt-6 flex gap-8">
         <div className="hidden w-52 shrink-0 lg:block">
-          <FilterSidebar filters={filters} onChange={setFilters} />
+          <FilterSidebar filters={filters} onChange={setFilters} sellers={sellerOptions} priceCeiling={priceCeiling} onClear={clearFilters} />
         </div>
 
         {sidebarOpen && (
@@ -190,7 +159,7 @@ export function CatalogClient({
                 <p className="font-semibold text-gray-900">Filtri</p>
                 <button onClick={() => setSidebarOpen(false)}><X size={20} className="text-gray-500" /></button>
               </div>
-              <FilterSidebar filters={filters} onChange={setFilters} />
+              <FilterSidebar filters={filters} onChange={setFilters} sellers={sellerOptions} priceCeiling={priceCeiling} onClear={clearFilters} />
               <button className="btn-primary mt-4 w-full" onClick={() => setSidebarOpen(false)}>
                 Rādīt {filtered.length} produktus
               </button>
@@ -224,7 +193,7 @@ export function CatalogClient({
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-lg font-semibold text-gray-500">Nav atrasts neviens produkts</p>
               <p className="mt-1 text-sm text-gray-400">Mēģini mainīt filtrus</p>
-              <button className="btn-outline mt-4" onClick={() => { setFilters(DEFAULT_FILTERS); clearQuery(); }}>Notīrīt filtrus</button>
+              <button className="btn-outline mt-4" onClick={clearFilters}>Notīrīt filtrus</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

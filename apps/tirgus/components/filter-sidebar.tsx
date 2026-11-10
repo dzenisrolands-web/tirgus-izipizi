@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { categories, sellers } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
+import type { CatalogSeller } from "@/app/catalog/catalog-state";
 import { cn } from "@/lib/utils";
 
 export type Filters = {
   category: string;
-  maxPrice: number;
+  maxPrice: number | null;
   seller: string;
   storageType: "all" | "frozen" | "chilled";
   delivery: "all" | "courier" | "express" | "locker";
@@ -17,6 +18,9 @@ export type Filters = {
 type Props = {
   filters: Filters;
   onChange: (filters: Filters) => void;
+  sellers?: CatalogSeller[];
+  priceCeiling?: number;
+  onClear?: () => void;
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -35,7 +39,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export const DEFAULT_FILTERS: Filters = { category: "Visi", maxPrice: 100, seller: "", storageType: "all", delivery: "all", day: "" };
+export const DEFAULT_FILTERS: Filters = { category: "Visi", maxPrice: null, seller: "", storageType: "all", delivery: "all", day: "" };
 
 const DAY_OPTS = [
   { k: "mon", l: "Pirmdiena" },
@@ -52,14 +56,15 @@ function todayKey(): string {
   return ["sun","mon","tue","wed","thu","fri","sat"][d];
 }
 
-export function FilterSidebar({ filters, onChange }: Props) {
+export function FilterSidebar({ filters, onChange, sellers = [], priceCeiling = 100, onClear }: Props) {
+  const sliderMax = Math.max(priceCeiling, filters.maxPrice ?? 0);
   return (
     <aside className="w-full">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-gray-900">Filtri</p>
         <button
           className="text-xs text-brand-600 hover:underline"
-          onClick={() => onChange(DEFAULT_FILTERS)}
+          onClick={() => onClear ? onClear() : onChange(DEFAULT_FILTERS)}
         >
           Notīrīt
         </button>
@@ -185,15 +190,18 @@ export function FilterSidebar({ filters, onChange }: Props) {
           <input
             type="range"
             min={0}
-            max={100}
+            max={sliderMax}
             step={1}
-            value={filters.maxPrice}
-            onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
+            value={filters.maxPrice ?? sliderMax}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              onChange({ ...filters, maxPrice: value >= sliderMax ? null : value });
+            }}
             className="h-1.5 w-full cursor-pointer accent-brand-600"
           />
-          <span className="text-xs text-gray-400">{filters.maxPrice}€</span>
+          <span className="text-xs text-gray-400">{filters.maxPrice === null ? "Visas" : `${filters.maxPrice}€`}</span>
         </div>
-        <p className="mt-1 text-center text-xs text-gray-500">Līdz {filters.maxPrice}€</p>
+        <p className="mt-1 text-center text-xs text-gray-500">{filters.maxPrice === null ? "Bez cenas ierobežojuma" : `Līdz ${filters.maxPrice}€`}</p>
       </Section>
     </aside>
   );

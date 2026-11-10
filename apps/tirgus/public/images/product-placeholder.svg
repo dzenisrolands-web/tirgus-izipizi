@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Produkta attēls nav pieejams</title>
+  <desc id="desc">Neitrāla viettura ilustrācija</desc>
+  <rect width="600" height="600" fill="#f3f4f6"/>
+  <g fill="none" stroke="#9ca3af" stroke-width="10" stroke-linejoin="round">
+    <rect x="180" y="185" width="240" height="190" rx="18"/>
+    <circle cx="245" cy="245" r="20"/>
+    <path d="m190 350 75-75 50 45 40-35 55 65"/>
+  </g>
+  <text x="300" y="435" text-anchor="middle" fill="#6b7280" font-family="sans-serif" font-size="22">Attēls nav pieejams</text>
+</svg>
