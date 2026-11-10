@@ -8,6 +8,7 @@ import { grantOrderAccess } from "@/lib/order-access";
 import { getOpenLocker, deliveryLockersForSellers } from "@/lib/locker-policy";
 import { lookupPostalCode } from "@/lib/postal-zones";
 import { BUYER_LOCKER_FEE_CENTS, BUYER_COURIER_FEE_CENTS } from "@/lib/delivery-policy";
+import { createReservedOrder } from "@/lib/stock-reservations";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     buyerId = user.id;
   }
   const { data: listings, error: listingsError } = await sb.from("listings")
-    .select("id, title, price, quantity, unit, seller_id, status, variants, vat_rate, courier_delivery, express_delivery")
+    .select("id, title, price, quantity, unit, seller_id, status, variants, vat_rate, courier_delivery, express_delivery, category, storage_type")
     .in("id", checkoutListingIds(body.items));
   if (listingsError) return NextResponse.json({ error: "Neizdevās pārbaudīt preces" }, { status: 503 });
   let items;
@@ -117,14 +118,17 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Paysera konfigurācijas kļūda" }, { status: 503 });
   }
-  const { error } = await sb.from("orders").insert({
-    order_number: orderNumber, status: "pending", payment_status: "awaiting",
-    payment_provider: "paysera", payment_session_id: orderNumber, buyer_id: buyerId,
-    buyer_name: contact.name.trim(), buyer_email: contact.email.trim().toLowerCase(), buyer_phone: contact.phone.trim(),
-    delivery_type: deliveryType, delivery_info: deliveryInfo, items: orderItems,
-    total_cents: totalCents, total_amount: totalCents / 100, seller_ids: sellerIds,
-    promo_code: promoCode, promo_discount_cents: discountCents,
-  });
-  if (error) return NextResponse.json({ error: "Kļūda saglabājot pasūtījumu" }, { status: 500 });
+  try {
+    await createReservedOrder(sb, {
+      order_number: orderNumber, status: "pending", payment_status: "awaiting",
+      payment_provider: "paysera", payment_session_id: orderNumber, buyer_id: buyerId,
+      buyer_name: contact.name.trim(), buyer_email: contact.email.trim().toLowerCase(), buyer_phone: contact.phone.trim(),
+      delivery_type: deliveryType, delivery_info: deliveryInfo, items: orderItems,
+      total_cents: totalCents, total_amount: totalCents / 100, seller_ids: sellerIds,
+      promo_code: promoCode, promo_discount_cents: discountCents,
+    });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Rezervācija neizdevās" }, { status: 503 });
+  }
   return grantOrderAccess(NextResponse.json({ paymentUrl, orderId: orderNumber, totalCents }), orderNumber);
 }

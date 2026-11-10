@@ -4,6 +4,7 @@ import { verifyPayseraCallback, getMode } from "@/lib/paysera";
 import { notifySellersNewOrder } from "@/lib/order-notifications";
 import { redeemPromoCode } from "@/lib/promo";
 import { sendAllOrderEmails } from "@/lib/email";
+import { settleReservedOrder } from "@/lib/stock-reservations";
 
 /**
  * Paysera callback endpoint.
@@ -76,8 +77,9 @@ async function handle(req: Request) {
     process.env.SUPABASE_SECRET_KEY!,
   );
 
-  // Find order; ignore if already paid (idempotency)
-  const { data: order } = await supabase
+  // Order lookup supplies notification metadata only. The RPC owns the payment
+  // state, amount check, reservation consumption and duplicate-callback claim.
+  const { data: order, error: orderError } = await supabase
     .from("orders")
     .select("id, status, payment_status, total_cents, seller_ids, items, buyer_name, buyer_id, order_number, promo_code, promo_discount_cents")
     .eq("order_number", result.orderNumber)
@@ -96,66 +98,15 @@ async function handle(req: Request) {
     }>();
 
   if (!order) {
-    console.error("[paysera] order not found:", result.orderNumber);
-    return new NextResponse("OK", { status: 200 }); // still respond OK to stop retries
+    return new NextResponse(orderError ? "ORDER_LOOKUP_FAILED" : "ORDER_NOT_FOUND", { status: 503 });
   }
 
-  if (order.payment_status === "paid") {
-    return new NextResponse("OK", { status: 200 });
-  }
-
-  // Validate amount matches (defense against tampering — although signature already covers this)
-  if (result.amountCents !== order.total_cents) {
-    console.error("[paysera] amount mismatch:", { expected: order.total_cents, got: result.amountCents });
-    return new NextResponse("AMOUNT_MISMATCH", { status: 400 });
-  }
-
-  if (order.payment_status !== "awaiting" || order.status !== "pending") {
-    return new NextResponse("UNEXPECTED_STATE", { status: 409 });
-  }
-  // Compare-and-set: duplicate/concurrent callbacks may never repeat stock or notifications.
-  const { data: claimed, error: claimError } = await supabase
-    .from("orders")
-    .update({
-      payment_status: "paid",
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    })
-    .eq("id", order.id)
-    .eq("payment_status", "awaiting")
-    .eq("status", "pending")
-    .select("id");
-  if (claimError) return new NextResponse("UPDATE_FAILED", { status: 500 });
-  if (!claimed?.length) return new NextResponse("OK", { status: 200 });
-
-  // If this order contains drop items, transition reserved → sold
-  const dropItems = (order.items ?? []).filter((it) => it.drop_id);
-  for (const item of dropItems) {
-    const qty = item.quantity ?? 1;
-    // Atomic via RPC if available, else manual: decrement reserved, increment sold
-    const { error } = await supabase.rpc("confirm_hot_drop_payment", {
-      p_drop_id: item.drop_id,
-      p_quantity: qty,
-    });
-    if (error) {
-      // Fallback: manual UPDATE if RPC doesn't exist yet
-      console.warn("[paysera] confirm_hot_drop_payment RPC failed, falling back to direct UPDATE:", error.message);
-      const { data: drop } = await supabase
-        .from("hot_drops")
-        .select("reserved_quantity, sold_quantity")
-        .eq("id", item.drop_id)
-        .single();
-      if (drop) {
-        await supabase
-          .from("hot_drops")
-          .update({
-            reserved_quantity: Math.max(0, drop.reserved_quantity - qty),
-            sold_quantity: drop.sold_quantity + qty,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", item.drop_id);
-      }
-    }
+  try {
+    const settlement = await settleReservedOrder(supabase, result.orderNumber, result.amountCents);
+    if (settlement.outcome !== "paid") return new NextResponse("OK", { status: 200 });
+  } catch {
+    // Do not acknowledge a crash-critical stock failure; Paysera must retry.
+    return new NextResponse("SETTLEMENT_FAILED", { status: 503 });
   }
 
   // Record promo code redemption (only after confirmed payment)

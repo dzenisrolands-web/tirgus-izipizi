@@ -16,13 +16,14 @@ import { verifyPayseraCallback } from "../../lib/paysera";
 
 const listing: CheckoutListing = {
   id: "ab000000-0000-4000-8000-000000000001", title: "Real product", price: 12.50, quantity: 10, unit: "gab.",
-  seller_id: "seller", status: "active", variants: [], vat_rate: 21,
+  seller_id: "cd000000-0000-4000-8000-000000000001", status: "active", variants: [], vat_rate: 21,
 };
-const seller = { id: "seller", user_id: "owner", name: "Real seller", status: "approved", delivery_mode: "locker", home_locker_ids: ["brivibas"] };
+const seller = { id: listing.seller_id!, user_id: "owner", name: "Real seller", status: "approved", delivery_mode: "locker", home_locker_ids: ["brivibas"] };
 const order = {
   id: "order", order_number: "TRG-test", buyer_id: "buyer", buyer_email: "buyer@example.invalid",
   buyer_name: "Buyer", status: "pending", payment_status: "awaiting", total_cents: 1250,
-  seller_ids: ["seller"], items: [], delivery_info: { locker_id: "brivibas" }, delivery_type: "locker",
+  seller_ids: [seller.id], items: [], delivery_info: { locker_id: "brivibas" }, delivery_type: "locker",
+  reservation_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
 };
 const request = (path: string, body: unknown, token?: string) => new Request(`https://example.invalid${path}`, {
   method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
@@ -51,6 +52,9 @@ test("documented Paysera ss1 works for GET and form POST without any payment fal
   try {
     await mocked(url => {
       if (url.pathname === "/rest/v1/orders") return Response.json({ ...order, payment_status: "paid", status: "paid" });
+      if (url.pathname === "/rest/v1/rpc/settle_reserved_marketplace_order") {
+        return Response.json({ outcome: "already_paid", order_id: order.id });
+      }
       throw new Error("Already-paid callback must not mutate or notify");
     }, async () => {
       expect((await getCallback(new Request(`https://example.invalid/callback?${new URLSearchParams({ data, ss1 })}`))).status).toBe(200);
@@ -75,7 +79,9 @@ test("plain and composite UUID cart IDs produce only valid UUID database candida
         return Response.json([{ ...listing, variants: composite ? [{ id: variantId, title: "Large", price: 20, quantity: 2 }] : [] }]);
       }
       if (url.pathname === "/rest/v1/sellers") return Response.json([seller]);
-      if (url.pathname === "/rest/v1/orders" && init?.method === "POST") return new Response(null, { status: 201 });
+      if (url.pathname === "/rest/v1/rpc/create_reserved_marketplace_order" && init?.method === "POST") {
+        return Response.json({ order_id: order.id, reserved_until: order.reservation_expires_at });
+      }
       throw new Error("Unexpected backend operation");
     }, async () => {
       const body = checkoutBody();
@@ -147,17 +153,17 @@ for (const method of ["locker", "courier", "express"]) {
     await mocked((url, init) => {
       if (url.pathname === "/rest/v1/listings") return Response.json([{ ...listing, express_delivery: true }]);
       if (url.pathname === "/rest/v1/sellers") return Response.json([seller]);
-      if (url.pathname === "/rest/v1/orders" && init?.method === "POST") {
-        saved = JSON.parse(String(init.body));
-        return new Response(null, { status: 201 });
+      if (url.pathname === "/rest/v1/rpc/create_reserved_marketplace_order" && init?.method === "POST") {
+        saved = JSON.parse(String(init.body)).p_order;
+        return Response.json({ order_id: order.id, reserved_until: order.reservation_expires_at });
       }
       throw new Error(`Unexpected backend ${url.pathname}`);
     }, async () => {
       const response = await checkout(request("/api/checkout/create-session", checkoutBody(method)));
       expect(response.status).toBe(200);
       expect(saved?.total_cents).toBe(method === "locker" ? 2500 : 2850);
-      expect(saved?.seller_ids).toEqual(["seller"]);
-      expect(saved?.items).toEqual([expect.objectContaining({ price: 12.5, title: "Real product", seller_id: "seller" })]);
+      expect(saved?.seller_ids).toEqual([seller.id]);
+      expect(saved?.items).toEqual([expect.objectContaining({ price: 12.5, title: "Real product", seller_id: seller.id })]);
       expect((saved?.items as Record<string, unknown>[])[0]).not.toHaveProperty("drop_id");
       expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     });
@@ -264,8 +270,11 @@ test("callback accepts only matching project/currency/live payment mode and inte
   };
   try {
     expect(encode({}).valid).toBe(true);
+    const underpayment = encode({ payamount: "1", paycurrency: "EUR" });
+    expect(underpayment.valid && underpayment.amountCents).toBe(1);
     const invalidParams: Record<string, string>[] = [{ projectid: "other" }, { currency: "USD" }, { test: "1" }, { amount: "1250junk" }, { amount: "-1" },
-      { payamount: "1", paycurrency: "EUR" }, { payamount: "1250", paycurrency: "USD" }];
+      { payamount: "-1", paycurrency: "EUR" }, { payamount: "0", paycurrency: "EUR" },
+      { payamount: "1.5", paycurrency: "EUR" }, { payamount: "1250", paycurrency: "USD" }];
     for (const extra of invalidParams) {
       expect(encode(extra).valid).toBe(false);
     }
@@ -275,17 +284,17 @@ test("callback accepts only matching project/currency/live payment mode and inte
 test("failed/concurrent callback claims never proceed to stock or notifications", async () => {
   for (const failed of [false, true]) {
     await mocked((url, init) => {
-      if (url.pathname === "/rest/v1/orders" && init?.method === "PATCH") {
-        expect(url.searchParams.get("payment_status")).toBe("eq.awaiting");
-        expect(url.searchParams.get("status")).toBe("eq.pending");
-        return failed ? Response.json({ message: "failed" }, { status: 500 }) : Response.json([]);
+      if (url.pathname === "/rest/v1/rpc/settle_reserved_marketplace_order") {
+        expect(JSON.parse(String(init?.body))).toEqual({ p_order_number: order.order_number, p_amount_cents: 1250 });
+        return failed ? Response.json({ message: "failed" }, { status: 500 }) :
+          Response.json({ outcome: "already_paid", order_id: order.id });
       }
       if (url.pathname === "/rest/v1/orders") return Response.json(order);
       throw new Error("Stock and notifications forbidden");
     }, async () => {
       const data = Buffer.from("orderid=TRG-test&amount=1250&status=1").toString("base64url");
       const response = await callback(new Request(`https://example.invalid/callback?data=${data}`, { method: "POST" }));
-      expect(response.status).toBe(failed ? 500 : 200);
+      expect(response.status).toBe(failed ? 503 : 200);
     });
   }
 });

@@ -4,6 +4,7 @@ export type CheckoutListing = {
   id: string; title: string; price: number; quantity: number; unit: string;
   seller_id: string | null; status: string; variants: unknown;
   vat_rate: number | null;
+  category?: string | null; storage_type?: string | null;
   courier_delivery?: boolean; express_delivery?: boolean;
 };
 
@@ -51,6 +52,7 @@ export function normalizeCheckoutItems(items: RequestedItem[], listings: Checkou
       id: item.id, listing_id: listing.id, title: variant ? `${listing.title} — ${variant.title}` : listing.title,
       price: cents / 100, quantity: item.quantity, unit: variant ? "gab." : listing.unit,
       seller_id: listing.seller_id, sellerId: listing.seller_id, commission_rate: COMMISSION_RATE, vat_rate: listing.vat_rate,
+      category: listing.category, storage_type: listing.storage_type, express_delivery: listing.express_delivery,
     };
   });
 }

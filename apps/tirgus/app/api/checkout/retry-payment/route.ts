@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { canReadOrder, hasGuestOrderAccess } from "@/lib/order-access";
+import { hasLiveReservation } from "@/lib/stock-reservations";
 
 export async function POST(req: Request) {
   const supabase = createClient(
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   // Fetch the order
   const { data: order } = await supabase
     .from("orders")
-    .select("order_number, buyer_id, total_cents, buyer_email, buyer_name, buyer_phone, status, payment_status")
+    .select("order_number, buyer_id, total_cents, buyer_email, buyer_name, buyer_phone, status, payment_status, reservation_expires_at")
     .eq("order_number", body.orderNumber)
     .single();
 
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
 
   if (order.status !== "pending" || order.payment_status !== "awaiting") {
     return NextResponse.json({ error: "Pasūtījums jau apmaksāts" }, { status: 400 });
+  }
+  if (!hasLiveReservation(order)) {
+    return NextResponse.json({ error: "Rezervācija beigusies. Izveidojiet jaunu pasūtījumu." }, { status: 409 });
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tirgus.izipizi.lv";

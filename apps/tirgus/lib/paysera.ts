@@ -114,7 +114,8 @@ export function verifyPayseraCallback(data: string, sign: string): PayseraCallba
     if (params.projectid !== process.env.PAYSERA_PROJECT_ID) return { valid: false, reason: "project mismatch" };
     if (params.currency !== "EUR") return { valid: false, reason: "currency mismatch" };
     if (params.payamount !== undefined && (params.paycurrency !== "EUR" ||
-        !/^\d+$/.test(params.payamount) || params.payamount !== params.amount)) {
+        !/^\d+$/.test(params.payamount) || !Number.isSafeInteger(Number(params.payamount)) ||
+        Number(params.payamount) <= 0)) {
       return { valid: false, reason: "received payment amount/currency mismatch" };
     }
     if (mode === "live" && params.test !== "0") return { valid: false, reason: "test payment in live mode" };
@@ -128,7 +129,7 @@ export function verifyPayseraCallback(data: string, sign: string): PayseraCallba
     params,
     orderNumber: params.orderid ?? "",
     status: params.status ?? "",
-    amountCents: Number(params.amount),
+    amountCents: Number(params.payamount ?? params.amount),
   };
 }
 
