@@ -135,6 +135,9 @@ BEGIN
   EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
   PERFORM cancel_reserved_order(oid,'buyer_cancelled');
   PERFORM cancel_reserved_order(oid,'duplicate');
+  IF (SELECT cancellation_reason FROM orders WHERE id=oid) <> 'buyer_cancelled' THEN
+    RAISE EXCEPTION 'Cancellation reason missing or overwritten by repeat';
+  END IF;
   IF (SELECT (variants->0->>'quantity')::integer FROM listings WHERE id='20000000-0000-0000-0000-000000000003') <> 2 THEN
     RAISE EXCEPTION 'Variant release was not exactly once';
   END IF;
@@ -190,6 +193,12 @@ BEGIN
       OR (SELECT status FROM orders WHERE order_number='legacy-shipped') <> 'shipped' THEN
     RAISE EXCEPTION 'Legacy fulfilled callback failed or rewrote fulfillment';
   END IF;
+  INSERT INTO orders(order_number,status,payment_status,total_cents,items)
+    VALUES ('legacy-paid-unverified','paid','paid',500,'[]');
+  BEGIN
+    UPDATE orders SET status='processing' WHERE order_number='legacy-paid-unverified';
+    RAISE EXCEPTION 'Legacy paid order advanced without consumed evidence';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
   result := create_reserved_marketplace_order(stock_test_order('admin-cancel'));
   oid := (result->>'order_id')::uuid;
   PERFORM settle_reserved_marketplace_order('admin-cancel',500);
@@ -202,6 +211,7 @@ BEGIN
   IF (SELECT payment_status FROM orders WHERE id=oid) <> 'paid'
       OR (SELECT paid_at FROM orders WHERE id=oid) IS NULL
       OR (SELECT payment_review_reason FROM orders WHERE id=oid) <> 'refund_required'
+      OR (SELECT cancellation_reason FROM orders WHERE id=oid) <> 'admin_cancel: customer request'
       OR (SELECT state FROM marketplace_stock_reservations WHERE order_id=oid) <> 'consumed' THEN
     RAISE EXCEPTION 'Admin cancellation erased facts or restocked consumed stock';
   END IF;

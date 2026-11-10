@@ -3,6 +3,7 @@ BEGIN;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS reservation_expires_at timestamptz;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_review_reason text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_received_cents integer;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cancellation_reason text;
 
 CREATE TABLE public.marketplace_stock_reservations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,6 +43,12 @@ FOR EACH ROW EXECUTE FUNCTION public.guard_reserved_listing_variants();
 CREATE OR REPLACE FUNCTION public.guard_reserved_order_state()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('paid','processing','shipped','delivered')
+    AND NOT EXISTS (
+      SELECT 1 FROM public.marketplace_stock_reservations WHERE order_id = OLD.id AND state = 'consumed'
+    ) THEN
+    RAISE EXCEPTION 'Consumed reservation evidence required for fulfillment' USING ERRCODE = '22023';
+  END IF;
   IF NEW.payment_review_reason IS NOT NULL AND NEW.status IS DISTINCT FROM OLD.status
       AND NEW.status IN ('paid','processing','shipped','delivered') THEN
     RAISE EXCEPTION 'Payment review blocks fulfillment' USING ERRCODE = '22023';
@@ -198,7 +205,8 @@ BEGIN
        OR (p_reason LIKE 'admin_cancel:%' AND length(trim(substr(p_reason,14))) > 0
           AND ord.status IN ('paid','processing')) THEN
       UPDATE public.orders SET status = 'cancelled',
-        payment_review_reason = coalesce(payment_review_reason,'refund_required') WHERE id = p_order_id;
+        payment_review_reason = coalesce(payment_review_reason,'refund_required'),
+        cancellation_reason = left(p_reason,2000) WHERE id = p_order_id;
       RETURN true;
     END IF;
     RETURN false;
@@ -220,7 +228,8 @@ BEGIN
     END IF;
     UPDATE public.marketplace_stock_reservations SET state = 'released', release_reason = left(p_reason, 200) WHERE id = hold.id;
   END LOOP;
-  UPDATE public.orders SET status = 'cancelled' WHERE id = p_order_id;
+  UPDATE public.orders SET status = 'cancelled',
+    cancellation_reason = coalesce(cancellation_reason,left(p_reason,2000)) WHERE id = p_order_id;
   RETURN true;
 END;
 $$;

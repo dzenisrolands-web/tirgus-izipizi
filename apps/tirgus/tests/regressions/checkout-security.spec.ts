@@ -252,12 +252,11 @@ test("ordinary user cannot broadcast another seller's drop", async () => {
   }, async () => expect((await dropNotify(request("/push", { dropId: "drop" }, "test"))).status).toBe(403));
 });
 
-test("drop checkout rejects closed locker without reserving", async () => {
+test("unsupported drop checkout is held before any inventory reads or payment writes", async () => {
   await mocked(url => {
     if (url.pathname === "/auth/v1/user") return Response.json({ id: "buyer", app_metadata: {} });
-    if (url.pathname === "/rest/v1/hot_drops") return Response.json({ id: "drop", pickup_locker_id: "tukums" });
-    throw new Error("No writes allowed");
-  }, async () => expect((await dropCheckout(request("/drop", { dropId: "drop", quantity: 1 }, "test"))).status).toBe(400));
+    throw new Error("Only authentication is allowed");
+  }, async () => expect((await dropCheckout(request("/drop", { dropId: "drop", quantity: 1 }, "test"))).status).toBe(410));
 });
 
 test("callback accepts only matching project/currency/live payment mode and integer amount", () => {
