@@ -12,6 +12,7 @@ import { AddToCartButton } from "@/components/add-to-cart-button";
 import { VariantSelector } from "@/components/variant-selector";
 import { ShareButton } from "@/components/share-button";
 import { ProductPhoto } from "./product-photo";
+import { PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/product-image";
 
 function productUrl(listing: { id: string; slug?: string }): string {
   return `/listing/${encodeURIComponent(listing.slug || listing.id)}`;
@@ -42,6 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { listing } = await resolveListing(id);
   if (!listing) return {};
   const canonicalUrl = productUrl(listing);
+  const shareImage = listing.image === PRODUCT_IMAGE_PLACEHOLDER ? "/opengraph-image" : listing.image;
   const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
   const description = listing.description
     ? `${listing.description.slice(0, 140)}…`
@@ -54,11 +56,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title,
       description,
       url: `https://tirgus.izipizi.lv${canonicalUrl}`,
-      images: [{ url: listing.image, alt: listing.title }],
+      images: [{ url: shareImage, alt: listing.title }],
       type: "website",
       siteName: "tirgus.izipizi.lv",
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", title, description, images: [{ url: shareImage, alt: listing.title }] },
   };
 }
 
