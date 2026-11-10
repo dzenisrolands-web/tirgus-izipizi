@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildPayseraRedirectUrl } from "@/lib/paysera";
+import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
+import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
 import { COMMISSION_RATE } from "@/lib/commission";
 import { validatePromoCode } from "@/lib/promo";
 import { isClosedLockerId } from "@/lib/locker-policy";
@@ -87,8 +88,7 @@ export async function POST(req: Request) {
   });
 
   // Generate order number
-  const d = new Date();
-  const orderNumber = `TRG-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const orderNumber = newOrderNumber("TRG");
 
   // Build delivery info — accepts both old (body.locker) and new (body.deliveryInfo) formats
   const finalDeliveryInfo: Record<string, unknown> =
@@ -160,11 +160,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: insertErr?.message ?? "Kļūda saglabājot pasūtījumu" }, { status: 500 });
   }
 
-  // Compute base URL
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("host") ?? "tirgus.izipizi.lv";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
-
   // Build Paysera redirect URL
   let paymentUrl: string;
   try {
@@ -174,7 +169,7 @@ export async function POST(req: Request) {
       buyerEmail: body.contact.email,
       buyerName: body.contact.name,
       buyerPhone: body.contact.phone,
-      baseUrl,
+      baseUrl: trustedPaymentBaseUrl(),
     });
   } catch (e) {
     return NextResponse.json(
@@ -186,5 +181,5 @@ export async function POST(req: Request) {
   // Promo redemption is recorded in the Paysera webhook after successful payment,
   // not here — so if the user abandons payment, the code remains available.
 
-  return NextResponse.json({ paymentUrl, orderId: order.order_number });
+  return attachOrderCookie(NextResponse.json({ paymentUrl, orderId: order.order_number }), order.order_number);
 }

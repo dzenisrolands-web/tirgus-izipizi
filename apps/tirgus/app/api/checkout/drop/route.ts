@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildPayseraRedirectUrl } from "@/lib/paysera";
+import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
+import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
 import { lockers } from "@/lib/mock-data";
 import { isClosedLockerId } from "@/lib/locker-policy";
 
@@ -82,8 +83,7 @@ export async function POST(req: Request) {
   const locker = lockers.find((l) => l.id === drop.pickup_locker_id);
 
   // Generate order number
-  const d = new Date();
-  const orderNumber = `KER-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const orderNumber = newOrderNumber("KER");
 
   // Insert order
   const { data: order, error: insertErr } = await supabase
@@ -132,10 +132,6 @@ export async function POST(req: Request) {
   }
 
   // Build Paysera URL
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("host") ?? "tirgus.izipizi.lv";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
-
   let paymentUrl: string;
   try {
     paymentUrl = buildPayseraRedirectUrl({
@@ -144,7 +140,7 @@ export async function POST(req: Request) {
       buyerEmail,
       buyerName,
       buyerPhone,
-      baseUrl,
+      baseUrl: trustedPaymentBaseUrl(),
     });
   } catch (e) {
     return NextResponse.json(
@@ -153,5 +149,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ paymentUrl, orderId: order.order_number });
+  return attachOrderCookie(NextResponse.json({ paymentUrl, orderId: order.order_number }), order.order_number);
 }

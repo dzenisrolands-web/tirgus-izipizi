@@ -31,8 +31,19 @@ export type PayseraCallbackResult =
 export function getMode(): PayseraMode {
   const m = (process.env.PAYSERA_MODE ?? "test").toLowerCase();
   if (m === "live") return "live";
-  if (m === "mock") return "mock";
-  return "test";
+  if (m === "mock" && process.env.NODE_ENV !== "production") return "mock";
+  if (m === "test") return "test";
+  throw new Error("Invalid or production-disabled Paysera mode");
+}
+
+/** Never derive payment return URLs from untrusted Host/forwarding headers. */
+export function trustedPaymentBaseUrl(): string {
+  const url = new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://tirgus.izipizi.lv");
+  if (url.username || url.password || url.search || url.hash || url.pathname !== "/"
+    || (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost"))) {
+    throw new Error("Invalid payment site origin");
+  }
+  return url.origin;
 }
 
 /**
@@ -41,6 +52,9 @@ export function getMode(): PayseraMode {
  */
 export function buildPayseraRedirectUrl(p: PayseraParams): string {
   const mode = getMode();
+  if (!Number.isSafeInteger(p.amountCents) || p.amountCents < 0 || !/^[A-Za-z0-9-]{1,40}$/.test(p.orderNumber)) {
+    throw new Error("Invalid payment order or amount");
+  }
 
   if (mode === "mock") {
     return `${p.baseUrl}/cart/success?order=${encodeURIComponent(p.orderNumber)}&mock=1`;
@@ -85,31 +99,51 @@ export function buildPayseraRedirectUrl(p: PayseraParams): string {
  * Returns parsed params on success.
  */
 export function verifyPayseraCallback(data: string, sign: string): PayseraCallbackResult {
-  const mode = getMode();
+  let mode: PayseraMode;
+  try { mode = getMode(); } catch { return { valid: false, reason: "payment mode unavailable" }; }
+  if (!data || data.length > 16384) return { valid: false, reason: "missing or oversized data" };
+  const password = process.env.PAYSERA_SIGN_PASSWORD;
+  if (!password) return { valid: false, reason: "signing not configured" };
+  // ss1 and legacy sign both use MD5(data + password); never accept unsigned mock callbacks.
+  if (!/^[a-fA-F0-9]{32}$/.test(sign)
+    || !crypto.timingSafeEqual(Buffer.from(sign, "hex"), Buffer.from(md5(data + password), "hex"))) {
+    return { valid: false, reason: "signature mismatch" };
+  }
 
-  if (!data) return { valid: false, reason: "missing data" };
-
-  let decoded: string;
+  let params: Record<string, string>;
   try {
-    decoded = urlSafeBase64Decode(data);
+    params = parseQueryString(urlSafeBase64Decode(data));
   } catch {
-    return { valid: false, reason: "invalid base64" };
+    return { valid: false, reason: "malformed callback data" };
   }
 
-  if (mode !== "mock") {
-    const password = process.env.PAYSERA_SIGN_PASSWORD;
-    if (!password) return { valid: false, reason: "PAYSERA_SIGN_PASSWORD not set" };
-    const expected = md5(data + password);
-    if (sign !== expected) return { valid: false, reason: "signature mismatch" };
+  if (!process.env.PAYSERA_PROJECT_ID || params.projectid !== process.env.PAYSERA_PROJECT_ID) {
+    return { valid: false, reason: "project mismatch" };
   }
-
-  const params = parseQueryString(decoded);
+  if (params.currency !== "EUR") {
+    return { valid: false, reason: "currency mismatch" };
+  }
+  if ((params.payamount === undefined) !== (params.paycurrency === undefined)
+    || (params.paycurrency !== undefined && !/^[A-Z]{3}$/.test(params.paycurrency))) {
+    return { valid: false, reason: "invalid actual payment fields" };
+  }
+  if (params.test !== (mode === "live" ? "0" : "1")) {
+    return { valid: false, reason: "test mode mismatch" };
+  }
+  if (!/^[A-Za-z0-9-]{1,40}$/.test(params.orderid ?? "") || !/^[01234]$/.test(params.status ?? "")) {
+    return { valid: false, reason: "invalid order or status" };
+  }
+  for (const key of ["amount", ...(params.payamount !== undefined ? ["payamount"] : [])]) {
+    if (!/^(0|[1-9][0-9]*)$/.test(params[key] ?? "") || !Number.isSafeInteger(Number(params[key]))) {
+      return { valid: false, reason: "invalid amount" };
+    }
+  }
   return {
     valid: true,
     params,
     orderNumber: params.orderid ?? "",
     status: params.status ?? "",
-    amountCents: parseInt(params.amount ?? "0", 10),
+    amountCents: Number(params.amount),
   };
 }
 
@@ -123,9 +157,13 @@ function urlSafeBase64Encode(str: string): string {
 }
 
 function urlSafeBase64Decode(str: string): string {
-  // Restore padding
-  const padded = str + "=".repeat((4 - (str.length % 4)) % 4);
-  return Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+  if (!/^[A-Za-z0-9_-]+={0,2}$/.test(str) || str.length % 4 === 1) throw new Error("Invalid base64");
+  const buffer = Buffer.from(str.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  if (buffer.toString("base64url") !== str.replace(/=+$/, "")
+    || (str.includes("=") && buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_") !== str)) {
+    throw new Error("Non-canonical base64");
+  }
+  return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
 }
 
 function md5(s: string): string {
@@ -135,11 +173,14 @@ function md5(s: string): string {
 function parseQueryString(qs: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const part of qs.split("&")) {
-    if (!part) continue;
+    if (!part) throw new Error("Empty parameter");
     const eq = part.indexOf("=");
-    const k = eq === -1 ? part : part.slice(0, eq);
+    if (eq < 1) throw new Error("Malformed parameter");
+    const k = part.slice(0, eq);
     const v = eq === -1 ? "" : part.slice(eq + 1);
-    out[decodeURIComponent(k.replace(/\+/g, " "))] = decodeURIComponent((v ?? "").replace(/\+/g, " "));
+    const key = decodeURIComponent(k.replace(/\+/g, " "));
+    if (Object.hasOwn(out, key) || ["__proto__", "constructor", "prototype"].includes(key)) throw new Error("Duplicate or unsafe parameter");
+    out[key] = decodeURIComponent(v.replace(/\+/g, " "));
   }
   return out;
 }
