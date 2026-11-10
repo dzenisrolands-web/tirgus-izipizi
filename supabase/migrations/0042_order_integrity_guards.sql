@@ -21,6 +21,11 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Not your seller order' USING ERRCODE = '42501';
   END IF;
+  -- The current row has only one aggregate fulfillment status/PIN.
+  -- Until per-seller shipments exist, only admins can advance a multi-seller order.
+  IF cardinality(OLD.seller_ids) > 1 THEN
+    RAISE EXCEPTION 'Multi-seller fulfillment requires administrator coordination' USING ERRCODE = '42501';
+  END IF;
   IF (to_jsonb(NEW) - ARRAY['status', 'locker_code', 'updated_at'])
        IS DISTINCT FROM
      (to_jsonb(OLD) - ARRAY['status', 'locker_code', 'updated_at']) THEN

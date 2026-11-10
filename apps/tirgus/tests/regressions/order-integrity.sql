@@ -29,7 +29,8 @@ INSERT INTO sellers(id,user_id,status,name) VALUES
 INSERT INTO orders(id,seller_ids,status,payment_status,total_cents,delivery_info) VALUES
   ('paid',ARRAY['seller'],'paid','paid',1250,'{"locker_id":"brivibas"}'),
   ('awaiting',ARRAY['seller'],'pending','awaiting',1250,'{}'),
-  ('closed',ARRAY['seller'],'processing','paid',1250,'{"locker_id":"tukums"}');
+  ('closed',ARRAY['seller'],'processing','paid',1250,'{"locker_id":"tukums"}'),
+  ('multi',ARRAY['seller','other'],'processing','paid',1250,'{"locker_id":"brivibas"}');
 \ir ../../../../supabase/migrations/0042_order_integrity_guards.sql
 
 SET ROLE authenticated;
@@ -59,6 +60,10 @@ BEGIN
   BEGIN
     UPDATE orders SET status='shipped' WHERE id='closed';
     RAISE EXCEPTION 'FAIL: seller shipped to closed locker';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
+    UPDATE orders SET status='shipped' WHERE id='multi';
+    RAISE EXCEPTION 'FAIL: seller advanced entire multi-seller order';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN
     UPDATE sellers SET verified=true WHERE id='seller';

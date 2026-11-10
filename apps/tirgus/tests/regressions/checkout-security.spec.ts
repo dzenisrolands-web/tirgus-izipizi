@@ -29,6 +29,17 @@ const request = (path: string, body: unknown, token?: string) => new Request(`ht
   body: JSON.stringify(body),
 });
 
+test("one seller cannot ship an entire multi-seller order", async () => {
+  await mocked(url => {
+    if (url.pathname === "/auth/v1/user") return Response.json({ id: seller.user_id, app_metadata: {} });
+    if (url.pathname === "/rest/v1/orders") return Response.json({
+      ...order, seller_ids: [seller.id, "other"], status: "processing", payment_status: "paid",
+    });
+    if (url.pathname === "/rest/v1/sellers") return Response.json(seller);
+    throw new Error("No writes or notifications allowed");
+  }, async () => expect((await shipment(request("/shipment", { orderId: "order", size: "M", lockerCode: "1234" }, "test"))).status).toBe(409));
+});
+
 test("documented Paysera ss1 works for GET and form POST without any payment fallback", async () => {
   process.env.PAYSERA_MODE = "live";
   process.env.PAYSERA_SIGN_PASSWORD = "nonfunctional-test-password";

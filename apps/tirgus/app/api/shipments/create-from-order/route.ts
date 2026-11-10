@@ -61,6 +61,9 @@ export async function POST(req: Request) {
   if (!order.seller_ids?.includes(seller.id)) {
     return NextResponse.json({ error: "Nav tavs pasūtījums" }, { status: 403 });
   }
+  if (order.seller_ids.length > 1 && user.app_metadata?.is_super_admin !== true) {
+    return NextResponse.json({ error: "Vairāku ražotāju pasūtījuma nosūtīšanu koordinē administrators" }, { status: 409 });
+  }
   if (order.payment_status !== "paid" || !["paid", "processing"].includes(order.status)) {
     return NextResponse.json({ error: "Pasūtījums nav gatavs nosūtīšanai" }, { status: 409 });
   }
