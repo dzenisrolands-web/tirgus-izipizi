@@ -323,6 +323,19 @@ test("UUID requests permanently redirect to encoded canonical slug; canonical me
     openGraph: { url: "https://tirgus.izipizi.lv/listing/%C4%B7irbju%20maize" },
   });
 });
+test("photo-less product sharing uses the existing raster OG image without changing UI placeholders or real photos", async () => {
+  for (const image of [null, "https://business.izipizi.lv/", "https://business.izipizi.lv/images/real.jpg"]) {
+    route = dummyDb({ rows: [row({ image_url: image })] });
+    const expected = image?.endsWith("real.jpg") ? image : "/opengraph-image";
+    expect(await generateMetadata({ params: Promise.resolve({ id: "l164" }) })).toMatchObject({
+      openGraph: { images: [{ url: expected, alt: "Ķirbju maize" }] },
+      twitter: { card: "summary_large_image", images: [{ url: expected, alt: "Ķirbju maize" }] },
+    });
+    const tree = await ListingPage({ params: Promise.resolve({ id: "l164" }) });
+    expect(elements(tree).find(node => node.type === ProductPhoto)?.props.src)
+      .toBe(expected === "/opengraph-image" ? PRODUCT_IMAGE_PLACEHOLDER : image);
+  }
+});
 test("UUID products with no slug render their real DB record without a redirect", async () => {
   route = dummyDb({ rows: [row({ slug: null })] });
   const tree = await ListingPage({ params: Promise.resolve({ id: uuid }) });

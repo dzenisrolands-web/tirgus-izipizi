@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: "Atgriešanas politika",
   description:
     "Kā atgriezt produktu tirgus.izipizi.lv un saņemt atmaksu — 14 dienu atteikuma tiesības saskaņā ar Latvijas Patērētāju tiesību aizsardzības likumu.",
+  alternates: { canonical: "/atgriesana" },
+  openGraph: { url: "https://tirgus.izipizi.lv/atgriesana" },
 };
 
 export default function AtgriesanaPage() {
