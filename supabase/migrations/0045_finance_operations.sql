@@ -137,6 +137,10 @@ BEGIN
   -- Same lock order as cancellation and invoice eligibility: order, then queue.
   PERFORM 1 FROM public.orders WHERE id = p_order_id AND status = 'cancelled' FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Cancel the order through reservation reconciliation before completing its refund'; END IF;
+  IF EXISTS (SELECT 1 FROM public.orders WHERE id = p_order_id
+    AND payment_review_reason = 'conflicting_payment_amount') THEN
+    RAISE EXCEPTION 'Conflicting verified payment receipts require manual provider reconciliation';
+  END IF;
   SELECT * INTO q FROM public.finance_refund_queue WHERE order_id = p_order_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Refund queue item not found'; END IF;
   IF q.status <> 'completed' AND EXISTS (

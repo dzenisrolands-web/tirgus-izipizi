@@ -133,6 +133,22 @@ BEGIN
   IF (SELECT count(*) FROM public.finance_issues() WHERE issue = 'unknown_financial_snapshots') <> 3 THEN
     RAISE EXCEPTION 'Unknown snapshots scan failed';
   END IF;
+  -- A second conflicting verified receipt makes the complete liability unknown.
+  -- Matching the first recorded amount is NOT enough to certify a full refund.
+  UPDATE public.orders SET payment_review_reason = 'conflicting_payment_amount'
+    WHERE id = '00000000-0000-0000-0000-000000000023';
+  BEGIN
+    PERFORM public.complete_manual_refund('00000000-0000-0000-0000-000000000023',
+      '00000000-0000-0000-0000-000000000090',1200,'PAYSERA-CONFLICT',true,'2026-11-02','External first receipt refunded','First amount exactly refunded');
+    RAISE EXCEPTION 'Conflicting receipts completed against first amount' USING ERRCODE = 'check_violation';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'Conflicting verified payment receipts require manual provider reconciliation' THEN RAISE; END IF;
+  END;
+  IF (SELECT payment_status FROM public.orders WHERE id = '00000000-0000-0000-0000-000000000023') IS DISTINCT FROM 'paid'
+    OR (SELECT status FROM public.finance_refund_queue WHERE order_id = '00000000-0000-0000-0000-000000000023') IS DISTINCT FROM 'needs_review'
+    OR EXISTS (SELECT 1 FROM public.finance_review_events WHERE reference = 'PAYSERA-CONFLICT') THEN
+    RAISE EXCEPTION 'Conflicting receipt completion changed payment, queue or audit';
+  END IF;
   BEGIN
     PERFORM public.complete_manual_refund('00000000-0000-0000-0000-000000000021',
       '00000000-0000-0000-0000-000000000090',1210,'PAYSERA-UNKNOWN',true,'2026-11-02','External statement fixture','Cancellation test reason');
