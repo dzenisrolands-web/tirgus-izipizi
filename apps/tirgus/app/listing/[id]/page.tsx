@@ -2,10 +2,10 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
-import { listings, sellerHomeLockers } from "@/lib/mock-data";
-import { fetchListingById, fetchListingBySlug } from "@/lib/db-listings";
-import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig, hasValidImage, listingUrl } from "@/lib/utils";
+import { Star, CheckCircle, ArrowLeft } from "lucide-react";
+import { sellerHomeLockers } from "@/lib/mock-data";
+import { fetchListingById, fetchListingBySlug, fetchDbSellerProfile } from "@/lib/db-listings";
+import { formatPrice, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSectionDb } from "@/components/reviews-section-db";
@@ -17,15 +17,12 @@ export const dynamicParams = true;
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  return listings.map((l) => ({ id: l.id }));
+  return [];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function resolveListing(idOrSlug: string) {
-  // Mock data first (by id)
-  const mock = listings.find((l) => l.id === idOrSlug);
-  if (mock) return { listing: mock, isUuid: false };
   // UUID → fetch by ID, then redirect to slug URL
   if (UUID_RE.test(idOrSlug)) {
     const l = await fetchListingById(idOrSlug);
@@ -65,18 +62,14 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const { listing, isUuid } = await resolveListing(id);
   if (!listing) notFound();
-  // Hide products without a valid image — they should not be public
-  if (!hasValidImage(listing)) notFound();
-  // Hide expired products — redirect to 404
-  if (daysUntil(listing.freshnessDate) < 0) notFound();
   // UUID accessed directly — 301 redirect to SEO-friendly slug URL
   if (isUuid && listing.slug) redirect(`/listing/${listing.slug}`);
 
-  const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
   const isHomeLocker = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
-  const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
+  const sellerProfile = await fetchDbSellerProfile(listing.sellerId);
+  const otherListings = (sellerProfile?.listings ?? []).filter((l) => l.id !== listing.id).slice(0, 3);
 
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -97,8 +90,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         name: listing.seller.farmName,
         url: `https://tirgus.izipizi.lv/seller/${listing.sellerId}`,
       },
-      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "LV", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 14, returnMethod: "https://schema.org/ReturnByMail" },
-      shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 3, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
+      shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
     },
     brand: {
       "@type": "Brand",
@@ -120,8 +112,8 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link href="/catalog" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
@@ -155,13 +147,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-amber-50 px-4 py-3">
-              <Clock size={16} className="shrink-0 text-amber-600" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Derīgs līdz: {formatDate(listing.freshnessDate)}</p>
-                <p className="text-xs text-amber-600">{days <= 0 ? "Beidzies!" : `Vēl ${days} diena${days === 1 ? "" : "s"}`}</p>
-              </div>
-            </div>
             <div className={`flex items-center gap-2 rounded-xl px-4 py-3 ${storage.cls}`}>
               <div>
                 <p className="text-sm font-semibold">{storage.label}</p>
@@ -194,7 +179,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               express_delivery={listing.express_delivery ?? false}
             />
           ) : (
-          <AddToCartButton
+          listing.quantity > 0 ? <AddToCartButton
               id={listing.id}
               title={listing.title}
               price={listing.price}
@@ -204,7 +189,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
               sellerId={listing.sellerId}
               storageType={getStorageType(listing)}
               express_delivery={listing.express_delivery ?? false}
-            />
+            /> : <p className="rounded-xl bg-gray-100 p-3 text-center text-sm text-gray-500">Izpārdots</p>
           )}
 
           <div className="rounded-xl border border-gray-100 p-4">
@@ -230,7 +215,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <section className="mt-14"><ReviewsSectionDb listingId={id} /></section>
+      <section className="mt-14"><ReviewsSectionDb listingId={listing.id} /></section>
 
       {otherListings.length > 0 && (
         <section className="mt-16">

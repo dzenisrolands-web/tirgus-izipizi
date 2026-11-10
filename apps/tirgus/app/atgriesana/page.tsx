@@ -4,6 +4,7 @@ import { ArrowLeft, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { operatorInfo } from "@/lib/operator-info";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/atgriesana" },
   title: "Atgriešanas politika",
   description:
     "Kā atgriezt produktu tirgus.izipizi.lv un saņemt atmaksu — 14 dienu atteikuma tiesības saskaņā ar Latvijas Patērētāju tiesību aizsardzības likumu.",

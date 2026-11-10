@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { operatorInfo, formattedAddress } from "@/lib/operator-info";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/privatums" },
   title: "Privātuma politika",
   description: `Kā ${operatorInfo.shortName} vāc, izmanto un aizsargā tavus personas datus tirgus.izipizi.lv platformā saskaņā ar GDPR.`,
 };
@@ -60,12 +61,14 @@ export default function PrivatumsPage() {
 
         <h2>4. Datu glabāšanas vietas un trešās puses</h2>
         <p>
-          Mēs lietojam šādus datu apstrādātājus, ar kuriem ir noslēgti datu apstrādes
-          līgumi (DPA), un dati glabājas Eiropas Savienības teritorijā:
+          Mēs lietojam šādus pakalpojumus. Datu glabāšanas vietu un pārrobežu
+          pārsūtīšanu nosaka pakalpojumu konfigurācija un piemērojamie datu apstrādes noteikumi:
         </p>
         <ul>
-          <li><strong>Supabase</strong> (ES reģions) — datubāze un autentifikācija</li>
-          <li><strong>Vercel</strong> (ES reģions) — vietnes hosting</li>
+          <li><strong>Supabase</strong> — datubāze un autentifikācija</li>
+          <li><strong>Vercel</strong> — vietnes hostings</li>
+          <li><strong>Vercel Analytics un Speed Insights</strong> — vietnes lietošanas un veiktspējas statistika tikai ar analītikas piekrišanu</li>
+          <li><strong>Resend</strong> — darījumu e-pastu piegāde; <strong>Esteria</strong> — pasūtījumu SMS piegāde</li>
           <li><strong>Paysera LT, UAB</strong> (Lietuva) — maksājumu apstrāde</li>
           <li><strong>SIA IziPizi</strong> — pārtikas pakomātu tīkla operators (saņem tikai pārtikas pakomāta nr. un saņēmēja vārdu/tālruni)</li>
           <li><strong>Web Push API</strong> (Apple, Google, Mozilla) — push paziņojumu piegāde</li>
@@ -102,7 +105,7 @@ export default function PrivatumsPage() {
         <h2>7. Datu drošība</h2>
         <p>
           Mēs lietojam šādus pasākumus: HTTPS šifrēšana, paroles glabājas hash formātā
-          (Supabase Auth), bankas dati netiek glabāti mūsu serveros (apstrādā Paysera),
+          (Supabase Auth), maksājumu karšu datus apstrādā Paysera; tirgotāju IBAN un juridiskie rekvizīti glabājas piekļuves kontrolētā datubāzē,
           ierobežota piekļuve administratoriem, regulāra dublēšana, ievainojamību
           uzraudzība.
         </p>

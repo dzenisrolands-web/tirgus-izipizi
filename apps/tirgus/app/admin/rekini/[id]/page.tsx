@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, FileText, CheckCircle, Send, XCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { resolveInvoiceOperator, UNRESOLVED_INVOICE_OPERATOR } from "@/lib/invoice/operator-snapshot";
+import { invoiceCommissionVat } from "@/lib/invoice/vat";
 
 type Invoice = {
   id: string;
@@ -17,6 +18,10 @@ type Invoice = {
   total_net_cents: number;
   vat_rate: number | null;
   vat_amount_cents: number | null;
+  commission_vat_rate?: number | null;
+  commission_vat_cents?: number | null;
+  operator_version?: string | null;
+  operator_snapshot?: unknown;
   courier_fee_cents: number | null;
   courier_order_count: number | null;
   status: string;
@@ -76,7 +81,6 @@ function eur(cents: number) {
 
 export default function AdminInvoiceDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +131,8 @@ export default function AdminInvoiceDetailPage() {
 
   const st = statusMap[invoice.status] ?? statusMap.draft;
   const transitions = TRANSITIONS[invoice.status] ?? [];
+  const operator = resolveInvoiceOperator(invoice);
+  const commissionVat = invoiceCommissionVat(invoice);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
@@ -138,7 +144,7 @@ export default function AdminInvoiceDetailPage() {
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <span className={`rounded-full px-3 py-1 text-xs font-bold ${st.cls}`}>{st.label}</span>
           {transitions.map((t) => (
-            <button key={t.to} onClick={() => updateStatus(t.to)} disabled={updating}
+            <button key={t.to} onClick={() => updateStatus(t.to)} disabled={updating || !operator}
               className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${t.cls}`}>
               {updating ? <Loader2 size={12} className="animate-spin" /> : t.icon}
               {t.label}
@@ -179,15 +185,15 @@ export default function AdminInvoiceDetailPage() {
 
         {/* Parties */}
         <div className="grid grid-cols-1 gap-6 border-b border-gray-200 px-8 py-6 sm:grid-cols-2">
-          <div>
+          {operator ? <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Operators (sastādītājs)</p>
-            <p className="mt-1.5 font-bold text-gray-900">{operatorInfo.legalName}</p>
-            <p className="text-xs text-gray-600">Reģ. Nr.: {operatorInfo.registrationNumber}</p>
-            <p className="text-xs text-gray-600">PVN: {operatorInfo.vatNumber}</p>
-            <p className="mt-1 text-xs text-gray-500">{formattedAddress()}</p>
-            <p className="mt-1 text-xs text-gray-500">{operatorInfo.bank.name}</p>
-            <p className="text-xs font-mono text-gray-500">{operatorInfo.bank.iban}</p>
-          </div>
+            <p className="mt-1.5 font-bold text-gray-900">{operator.name}</p>
+            <p className="text-xs text-gray-600">Reģ. Nr.: {operator.regNr}</p>
+            <p className="text-xs text-gray-600">PVN: {operator.vatNr}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator.address}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator.bankName}</p>
+            <p className="text-xs font-mono text-gray-500">{operator.iban}</p>
+          </div> : <p role="alert" className="text-sm text-amber-800">{UNRESOLVED_INVOICE_OPERATOR}</p>}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Tirgotājs (saņēmējs)</p>
             <p className="mt-1.5 font-bold text-gray-900">{invoice.seller_legal_name ?? "—"}</p>
@@ -244,13 +250,13 @@ export default function AdminInvoiceDetailPage() {
               <span className="font-mono">{eur(invoice.total_gross_cents)}</span>
             </div>
             <div className="flex justify-between text-amber-700">
-              <span>Komisija 15% (no cenas bez PVN):</span>
+              <span>Komisija (bez pakalpojuma PVN):</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
+            {commissionVat.cents > 0 && (
               <div className="flex justify-between text-orange-700 text-xs">
-                <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
-                <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+                <span>PVN {commissionVat.rate}% par komisijas pakalpojumu:</span>
+                <span className="font-mono">−{eur(commissionVat.cents)}</span>
               </div>
             )}
             {!!invoice.courier_fee_cents && invoice.courier_fee_cents > 0 && (

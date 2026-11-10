@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { lockers } from "@/lib/mock-data";
+import { isOpenLockerId } from "@/lib/locker-policy";
 import type {
   HotDrop, HotDropWithSeller, HotDropReservation, DropFormData,
 } from "./types";
@@ -74,6 +75,7 @@ export async function createDrop(
   userId: string,
   form: DropFormData,
 ): Promise<HotDrop | null> {
+  if (!isOpenLockerId(form.pickup_locker_id)) return null;
   const { data, error } = await supabase
     .from("hot_drops")
     .insert({ ...form, seller_id: sellerId, user_id: userId })
@@ -87,6 +89,7 @@ export async function updateDrop(
   id: string,
   fields: Partial<DropFormData>,
 ): Promise<boolean> {
+  if (fields.pickup_locker_id !== undefined && !isOpenLockerId(fields.pickup_locker_id)) return false;
   const { error } = await supabase
     .from("hot_drops")
     .update({ ...fields, updated_at: new Date().toISOString() })
@@ -110,6 +113,7 @@ export async function reserveDrop(
   quantity: number,
   deliveryLockerId: string,
 ): Promise<HotDropReservation | null> {
+  if (!isOpenLockerId(deliveryLockerId)) return null;
   const { data, error } = await supabase.rpc("reserve_hot_drop", {
     p_drop_id: dropId,
     p_buyer_id: buyerId,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slugify";
 
 /**
@@ -9,19 +9,9 @@ import { slugify } from "@/lib/slugify";
  * Requires admin auth (Bearer token).
  */
 export async function POST(req: Request) {
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
-
-  // Auth check — only admins
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (token) {
-    const { data: { user } } = await sb.auth.getUser(token);
-    if (!user) return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  } else {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
+  const ctx = await assertSuperAdmin(req);
+  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+  const sb = ctx.supabase;
 
   // Ensure referral_clicks table exists (best-effort — exec_sql may not exist)
   try {
@@ -62,7 +52,7 @@ export async function POST(req: Request) {
   for (const seller of sellers ?? []) {
     if (seller.slug) continue; // Already has slug
 
-    let base = slugify(seller.name || "seller");
+    const base = slugify(seller.name || "seller");
     let candidate = base;
     let counter = 2;
     while (existingSlugs.has(candidate)) {

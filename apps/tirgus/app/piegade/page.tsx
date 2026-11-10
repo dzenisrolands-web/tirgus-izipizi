@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { lockers } from "@/lib/mock-data";
+import { publicLockers as lockers } from "@/lib/locker-policy";
 import {
   Package, MapPin, Truck, Thermometer, Snowflake,
   CheckCircle, Zap, ArrowRight, ChevronDown,
   Trophy, Home, Timer, Leaf, Route,
 } from "lucide-react";
+import { operatorInfo } from "@/lib/operator-info";
 import { PostalZoneLookup } from "@/components/postal-zone-lookup";
 
 export const metadata: Metadata = {
@@ -43,7 +44,7 @@ const FAQ = [
   },
   {
     q: "Vai pieejama piegāde uz nelieliem novadiem ārpus zonām?",
-    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko pārtikas pakomātu (3€) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
+    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko pieejamo pārtikas pakomātu (bez maksas) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
   },
 ];
 
@@ -110,10 +111,10 @@ export default function PiegadePage() {
                 </span>
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Pārtikas pakomāts</h3>
-              <p className="mt-0.5 text-xs text-gray-500">Saņem kad ērti — 24/7</p>
-              <p className="mt-3 text-xl font-extrabold text-brand-700">no 3 €</p>
+              <p className="mt-0.5 text-xs text-gray-500">Saņem izvēlētās vietas darba laikā</p>
+              <p className="mt-3 text-xl font-extrabold text-brand-700">Bezmaksas</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
-                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Pieejams 24/7</li>
+                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Darba laiks pie katras vietas</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Temp. kontrole +2°C – −18°C</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Uzglabāšana līdz 48h</li>
               </ul>
@@ -131,9 +132,9 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Kurjers</h3>
               <p className="mt-0.5 text-xs text-gray-500">Rīga, Pierīga, reģionālie centri</p>
-              <p className="mt-3 text-xl font-extrabold text-gray-800">no 5.45€</p>
+              <p className="mt-3 text-xl font-extrabold text-gray-800">3.50 € par ražotāju</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
-                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> Piegāde uz jebkuru adresi</li>
+                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> Piegāde uz adresi pieejamajās zonās</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> 4 zonas (Rīga + reģioni)</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> Laika logs pēc izvēles</li>
               </ul>
@@ -151,7 +152,7 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Eksprespiegāde</h3>
               <p className="mt-0.5 text-xs text-gray-500">2–5h Rīgā un Pierīgā</p>
-              <p className="mt-3 text-xl font-extrabold text-yellow-700">no 6.66€</p>
+              <p className="mt-3 text-xl font-extrabold text-yellow-700">3.50 € par ražotāju</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-yellow-500" /> Piegāde 2–5h pēc pasūtīšanas</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-yellow-500" /> Vakara logs līdz 22:00</li>
@@ -170,7 +171,7 @@ export default function PiegadePage() {
         <section id="pakomati" className="scroll-mt-20">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Atrašanās vietas</p>
           <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">
-            {lockers.filter(l => !l.pickup_only).length} pārtikas pakomātu vietas
+            {lockers.filter(l => !l.pickup_only && !l.coming_soon).length} atvērtas pārtikas pakomātu vietas
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lockers.filter(l => !l.pickup_only).map((locker) => (
@@ -238,7 +239,7 @@ export default function PiegadePage() {
             </div>
           )}
           <p className="mt-5 text-center text-xs text-gray-400">
-            Visi pārtikas pakomāti ir atvērti 24/7 ar temperatūras kontroli +2°C līdz −18°C.
+            Pakomātu darba laiks norādīts pie katras vietas. Temperatūras kontrole: +2°C līdz −18°C.
           </p>
         </section>
 
@@ -260,7 +261,7 @@ export default function PiegadePage() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                No 3 € — neatkarīgi no pārtikas pakomāta atrašanās vai attāluma. Ja pasūtījumā ir gan dzesēti, gan saldēti produkti — 2 temperaturas zonas × 3 €.
+                Pakomāta saņemšana ir bez maksas. Kurjera piegāde — 3,50 € vienreiz par katru ražotāju uz vienu adresi, neatkarīgi no produktu skaita un temperatūras zonu skaita.
               </p>
             </div>
 
@@ -342,7 +343,7 @@ export default function PiegadePage() {
               Izvēlies produktus — piegādes veidu izvēlēsies pasūtīšanas solī, atkarībā no tā, kas šodien ērtāk.
             </p>
             <div className="mt-4 space-y-2 text-sm text-gray-300">
-              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts 24/7 · lētākais</p>
+              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts · bezmaksas saņemšana</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Kurjers · mājas durvīs</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Ekspres · tajā pašā dienā Rīgā</p>
             </div>
@@ -356,15 +357,15 @@ export default function PiegadePage() {
             <p className="font-bold text-gray-900">Jautājumi par piegādi?</p>
             <p className="mt-2 text-sm text-gray-500">Darba dienās 9:00–18:00</p>
             <div className="mt-4 space-y-2">
-              <a href="tel:+37128807456" className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:underline">
-                📞 +371 28807456
+              <a href="tel:+37120031552" className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:underline">
+                📞 {operatorInfo.contact.phone}
               </a>
               <a href="mailto:birojs@izipizi.lv" className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:underline">
                 ✉️ birojs@izipizi.lv
               </a>
             </div>
             <p className="mt-4 text-xs text-gray-400">
-              Cenas ar PVN 21% ·{" "}
+              Pircēja piegādes cena ar PVN: pakomāts 0 €, kurjers 3,50 € par ražotāju/adresi. Zonu pieejamība:{" "}
               <a href="https://www.izipizi.lv/zonas-cenas" target="_blank" rel="noopener" className="text-brand-600 hover:underline">
                 avots: izipizi.lv/zonas-cenas
               </a>

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, Upload, X, Zap, Percent, Truck, Warehouse, Package, CheckCircle2, Clock, Mail, Phone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { lockers, categories } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
+import { publicLockers as lockers, openLockers, getOpenLocker } from "@/lib/locker-policy";
 import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, commissionForPrice, netForPrice, vatAmountFromInclusive, exVatPrice, VAT_RATES, type VatRate } from "@/lib/commission";
 import { toUniqueSlug } from "@/lib/utils";
 
@@ -86,7 +87,7 @@ export function ProductForm({
   const vatAmt = vatAmountFromInclusive(priceNum, form.vat_rate);
 
   // Active (open) lockers — exclude pickup_only and coming_soon
-  const activeLockers = lockers.filter(l => !l.pickup_only && !l.coming_soon);
+  const activeLockers = openLockers.filter(l => !l.pickup_only);
   const comingSoonCount = lockers.filter(l => l.coming_soon && !l.pickup_only).length;
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -126,6 +127,7 @@ export function ProductForm({
     setError("");
 
     if (!form.title.trim()) return setError("Nosaukums ir obligāts");
+    if (!getOpenLocker(form.locker_id)) return setError("Izvēlies pieejamu nodošanas pakomātu — iepriekš izvēlētā vieta ir slēgta vai vēl nav atvērta.");
     const hasVariants = form.variants.length > 0;
     if (!hasVariants && (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0))
       return setError("Ievadi derīgu cenu");

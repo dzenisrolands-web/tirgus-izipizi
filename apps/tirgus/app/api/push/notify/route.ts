@@ -24,9 +24,13 @@ export async function POST(req: Request) {
   const token = auth.replace('Bearer ', '');
   const cronSecret = process.env.CRON_SECRET;
   const isCron = cronSecret && token === cronSecret;
+  let callerId: string | null = null;
+  let isAdmin = false;
   if (!isCron) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    callerId = user.id;
+    isAdmin = user.app_metadata?.is_super_admin === true;
   }
 
   const body = await req.json();
@@ -42,9 +46,12 @@ export async function POST(req: Request) {
 
   const { data: seller } = await supabase
     .from('sellers')
-    .select('name, farm_name')
+    .select('name, farm_name, user_id')
     .eq('id', drop.seller_id)
     .single();
+  if (!isCron && !isAdmin && seller?.user_id !== callerId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   const sellerName = seller?.farm_name ?? seller?.name ?? 'Ražotājs';
   const lockerName = lockers.find((l) => l.id === drop.pickup_locker_id)?.name ?? '';
 

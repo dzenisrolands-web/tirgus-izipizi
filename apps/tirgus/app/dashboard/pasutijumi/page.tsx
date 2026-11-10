@@ -44,19 +44,13 @@ export default function DashboardPasutijumiPage() {
   const [shipSize, setShipSize] = useState<ShipmentSize>("M");
   const [labelData, setLabelData] = useState<LabelData | null>(null);
   const [sellerId, setSellerId] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const NEXT_STATUS: Record<string, { label: string; next: string }> = {
     paid:       { label: "Apstiprināt pasūtījumu", next: "processing" },
     processing: { label: "Atzīmēt kā nosūtītu",   next: "shipped" },
     shipped:    { label: "Atzīmēt kā saņemtu",     next: "delivered" },
   };
-
-  async function restoreOrder(orderId: string) {
-    setUpdating(orderId);
-    await supabase.from("orders").update({ status: "paid" }).eq("id", orderId);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid" } : o));
-    setUpdating(null);
-  }
 
   async function notifyBuyer(orderId: string, status: string) {
     try {
@@ -84,7 +78,9 @@ export default function DashboardPasutijumiPage() {
       }
     }
     setUpdating(orderId);
-    await supabase.from("orders").update({ status: nextStatus }).eq("id", orderId);
+    setActionError("");
+    const { error } = await supabase.from("orders").update({ status: nextStatus }).eq("id", orderId);
+    if (error) { setActionError(error.message); setUpdating(null); return; }
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
     notifyBuyer(orderId, nextStatus); // fire and forget
     setUpdating(null);
@@ -111,16 +107,12 @@ export default function DashboardPasutijumiPage() {
         );
         // NB: pircejs sanem SMS tikai kad sutijums tiek ielikts pakomata (sistema apstiprina)
       } else {
-        await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
-        setOrders((prev) =>
-          prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-        );
+        throw new Error(data.error ?? "Neizdevās izveidot sūtījumu. Pasūtījuma statuss nav mainīts.");
       }
-    } catch {
-      await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
-      setOrders((prev) =>
-        prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-      );
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Sūtījuma izveide neizdevās.");
+      setUpdating(null);
+      return;
     }
     setShipDialog(null);
     setLockerCodeDraft("");
@@ -154,7 +146,7 @@ export default function DashboardPasutijumiPage() {
   );
 
   // Orders waiting for the seller to flip paid → processing.
-  // Auto-cancel kicks in 24 h after paid_at (see /api/cron/order-reminders).
+  // Auto-cancel kicks in 72 h after paid_at (see /api/cron/order-reminders).
   const pendingConfirm = orders.filter((o) => o.status === "paid");
 
   return (
@@ -163,6 +155,8 @@ export default function DashboardPasutijumiPage() {
         <h1 className="text-2xl font-extrabold text-gray-900">Pasūtījumi</h1>
         <p className="mt-0.5 text-sm text-gray-500">{orders.length} kopā</p>
       </div>
+
+      {actionError && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
 
       {pendingConfirm.length > 0 && (
         <div className="mb-5 rounded-2xl border-2 border-red-300 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
@@ -175,14 +169,14 @@ export default function DashboardPasutijumiPage() {
                 {pendingConfirm.length} {pendingConfirm.length === 1 ? "pasūtījums gaida" : "pasūtījumi gaida"} apstiprinājumu
               </p>
               <p className="mt-0.5 text-sm text-red-800">
-                Apstiprini katru pasūtījumu pēc iespējas ātrāk. <strong>Ja netiek apstiprināts 24h laikā, pasūtījums tiks automātiski atcelts</strong> un nauda atgriezta pircējam.
+                Apstiprini katru pasūtījumu pēc iespējas ātrāk. <strong>Ja netiek apstiprināts 72h laikā, pasūtījums var tikt automātiski atcelts.</strong> Atmaksu pārbauda un organizē administrators.
               </p>
             </div>
           </div>
           <ul className="mt-3 space-y-1.5">
             {pendingConfirm.map((o) => {
               const paidAt = o.paid_at ? new Date(o.paid_at).getTime() : Date.now();
-              const hoursLeft = Math.max(0, 24 - (Date.now() - paidAt) / 3_600_000);
+              const hoursLeft = Math.max(0, 72 - (Date.now() - paidAt) / 3_600_000);
               const isUrgent = hoursLeft < 6;
               return (
                 <li key={o.id}>
@@ -329,16 +323,8 @@ export default function DashboardPasutijumiPage() {
                     {order.status === "cancelled" && (
                       <div className="mt-2 space-y-2">
                         <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                          ⚠ Pasūtījums tika automātiski atcelts (24h apstiprināšanas laiks). Ja pasūtījums ir apmaksāts — atjauno to.
+                          Pasūtījums ir atcelts. Ja ir jautājumi par apmaksu vai atjaunošanu, sazinies ar administratoru; atcelts pasūtījums nav automātiski atjaunojams.
                         </div>
-                        <button
-                          onClick={() => restoreOrder(order.id)}
-                          disabled={updating === order.id}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition disabled:opacity-60"
-                        >
-                          {updating === order.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                          Atjaunot pasūtījumu (apstiprināt)
-                        </button>
                       </div>
                     )}
                   </div>

@@ -4,6 +4,7 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isDisabledFirstOrderPromo } from "./promo-policy";
 
 function svc(): SupabaseClient {
   return createClient(
@@ -32,10 +33,10 @@ export async function validatePromoCode(
   deliveryFeeCents: number,
   deliveryType: string = "locker",
 ): Promise<PromoResult> {
-  const supabase = svc();
   const normalized = code.trim().toUpperCase();
-
   if (!normalized) return { valid: false, reason: "Ievadi promo kodu" };
+  if (isDisabledFirstOrderPromo(normalized)) return { valid: false, reason: "Pirmā pasūtījuma piedāvājums pašlaik nav pieejams" };
+  const supabase = svc();
 
   // 1. Look up code
   const { data: promo } = await supabase

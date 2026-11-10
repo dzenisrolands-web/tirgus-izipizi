@@ -43,6 +43,7 @@ export function buildPayseraRedirectUrl(p: PayseraParams): string {
   const mode = getMode();
 
   if (mode === "mock") {
+    if (process.env.NODE_ENV === "production") throw new Error("Mock payments are disabled in production");
     return `${p.baseUrl}/cart/success?order=${encodeURIComponent(p.orderNumber)}&mock=1`;
   }
 
@@ -103,13 +104,31 @@ export function verifyPayseraCallback(data: string, sign: string): PayseraCallba
     if (sign !== expected) return { valid: false, reason: "signature mismatch" };
   }
 
-  const params = parseQueryString(decoded);
+  let params: Record<string, string>;
+  try { params = parseQueryString(decoded); }
+  catch { return { valid: false, reason: "invalid encoded parameters" }; }
+  if (mode === "mock" && process.env.NODE_ENV === "production") {
+    return { valid: false, reason: "mock payments disabled in production" };
+  }
+  if (mode !== "mock") {
+    if (params.projectid !== process.env.PAYSERA_PROJECT_ID) return { valid: false, reason: "project mismatch" };
+    if (params.currency !== "EUR") return { valid: false, reason: "currency mismatch" };
+    if (params.payamount !== undefined && (params.paycurrency !== "EUR" ||
+        !/^\d+$/.test(params.payamount) || params.payamount !== params.amount)) {
+      return { valid: false, reason: "received payment amount/currency mismatch" };
+    }
+    if (mode === "live" && params.test !== "0") return { valid: false, reason: "test payment in live mode" };
+  }
+  if (!params.orderid || !/^\d+$/.test(params.amount ?? "") ||
+      !Number.isSafeInteger(Number(params.amount)) || Number(params.amount) <= 0) {
+    return { valid: false, reason: "invalid order or amount" };
+  }
   return {
     valid: true,
     params,
     orderNumber: params.orderid ?? "",
     status: params.status ?? "",
-    amountCents: parseInt(params.amount ?? "0", 10),
+    amountCents: Number(params.amount),
   };
 }
 

@@ -1,186 +1,130 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { randomBytes } from "node:crypto";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
-import { COMMISSION_RATE } from "@/lib/commission";
 import { validatePromoCode } from "@/lib/promo";
-
-type CheckoutItem = {
-  id: string;
-  title: string;
-  price: number;
-  quantity: number;
-  unit: string;
-  sellerName: string;
-  sellerId?: string;
-  commission_rate?: number;
-};
+import { checkoutListingIds, normalizeCheckoutItems, type CheckoutListing } from "@/lib/checkout-items";
+import { grantOrderAccess } from "@/lib/order-access";
+import { getOpenLocker, deliveryLockersForSellers } from "@/lib/locker-policy";
+import { lookupPostalCode } from "@/lib/postal-zones";
+import { BUYER_LOCKER_FEE_CENTS, BUYER_COURIER_FEE_CENTS } from "@/lib/delivery-policy";
 
 export async function POST(req: Request) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-
-  let body: {
-    items: CheckoutItem[];
-    deliveryType?: "locker" | "courier" | "express";
-    deliveryInfo?: Record<string, unknown>;
-    locker?: { id: string; name: string; address: string; city: string }; // backwards compat
-    contact: { name: string; email: string; phone: string };
-    sellerIds: string[];
-    totalCents: number;
-    deliveryFeeCents?: number;
-    deliveryFeesBySeller?: { sellerId: string | null; sellerName: string; feeCents: number; method: string }[];
-    promoCode?: string;
-  };
-
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Nederīgs request body" }, { status: 400 });
+  const body = await req.json().catch(() => null);
+  if (!body || !Array.isArray(body.items) || !body.items.length || body.items.length > 100 ||
+      body.items.some((i: { id?: unknown; quantity?: unknown } | null) => !i || typeof i.id !== "string" ||
+        i.id.length > 200 || !Number.isSafeInteger(i.quantity) || Number(i.quantity) < 1 || Number(i.quantity) > 999)) {
+    return NextResponse.json({ error: "Nederīgs grozs" }, { status: 400 });
   }
-
-  // Default to "locker" for backwards compat with old clients
   const deliveryType = body.deliveryType ?? "locker";
-
-  if (!body.items?.length) return NextResponse.json({ error: "Tukšs grozs" }, { status: 400 });
-  if (!body.contact?.email) return NextResponse.json({ error: "Trūkst kontaktinfo" }, { status: 400 });
-  if (!body.totalCents || body.totalCents <= 0) return NextResponse.json({ error: "Nederīga summa" }, { status: 400 });
-
-  if (deliveryType === "locker" && !body.locker?.id && !body.deliveryInfo?.locker_id) {
-    return NextResponse.json({ error: "Nav izvēlēts pārtikas pakomāts" }, { status: 400 });
+  if (!["locker", "courier", "express"].includes(deliveryType)) {
+    return NextResponse.json({ error: "Nederīgs piegādes veids" }, { status: 400 });
   }
-  if ((deliveryType === "courier" || deliveryType === "express") &&
-      (!body.deliveryInfo?.address || !body.deliveryInfo?.city)) {
-    return NextResponse.json({ error: "Nav norādīta piegādes adrese" }, { status: 400 });
+  const contact = body.contact;
+  if (!contact || typeof contact.email !== "string" || contact.email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email) ||
+      typeof contact.name !== "string" || !contact.name.trim() || contact.name.length > 200 ||
+      typeof contact.phone !== "string" || !contact.phone.trim() || contact.phone.length > 40) {
+    return NextResponse.json({ error: "Trūkst kontaktinfo" }, { status: 400 });
   }
-
-  // Optionally identify buyer if logged in (via Authorization header)
+  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
   let buyerId: string | null = null;
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
+  const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
   if (token) {
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (user) buyerId = user.id;
+    const { data: { user }, error } = await sb.auth.getUser(token);
+    if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    buyerId = user.id;
   }
-
-  // Enrich items with commission_rate snapshot from listings
-  const listingIds = body.items.map((i) => i.id);
-  const { data: listings } = await supabase
-    .from("listings")
-    .select("id, seller_id, commission_rate")
-    .in("id", listingIds);
-  const lookup = new Map<string, { seller_id: string; commission_rate: number | null }>();
-  for (const l of listings ?? []) lookup.set(l.id, { seller_id: l.seller_id, commission_rate: l.commission_rate });
-
-  const enrichedItems = body.items.map((i) => {
-    const ref = lookup.get(i.id);
-    return {
-      ...i,
-      seller_id: ref?.seller_id ?? i.sellerId ?? null,
-      commission_rate: COMMISSION_RATE, // fixed platform commission
-    };
-  });
-
-  // Generate order number
-  const d = new Date();
-  const orderNumber = `TRG-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-  // Build delivery info — accepts both old (body.locker) and new (body.deliveryInfo) formats
-  const finalDeliveryInfo: Record<string, unknown> =
-    body.deliveryInfo
-    ?? (body.locker
-        ? {
-            locker_id: body.locker.id,
-            locker_name: body.locker.name,
-            locker_address: body.locker.address,
-            locker_city: body.locker.city,
-          }
-        : {});
-
-  // Merge delivery fee breakdown into delivery info
-  if (body.deliveryFeeCents !== undefined) {
-    finalDeliveryInfo.delivery_fee_cents = body.deliveryFeeCents;
+  const { data: listings, error: listingsError } = await sb.from("listings")
+    .select("id, title, price, quantity, unit, seller_id, status, variants, vat_rate, courier_delivery, express_delivery")
+    .in("id", checkoutListingIds(body.items));
+  if (listingsError) return NextResponse.json({ error: "Neizdevās pārbaudīt preces" }, { status: 503 });
+  let items;
+  try { items = normalizeCheckoutItems(body.items, (listings ?? []) as CheckoutListing[], deliveryType); }
+  catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Nederīgs grozs" }, { status: 400 }); }
+  const sellerIds = [...new Set(items.map(i => i.seller_id))];
+  const { data: sellers, error: sellerError } = await sb.from("sellers")
+    .select("id, name, status, home_locker_ids, delivery_mode, is_vat_registered").in("id", sellerIds);
+  if (sellerError || sellers?.length !== sellerIds.length ||
+      sellers.some(s => s.status !== "approved" || !["locker", "courier"].includes(s.delivery_mode))) {
+    return NextResponse.json({ error: "Ražotājs nav pieejams" }, { status: 400 });
   }
-  if (body.deliveryFeesBySeller) {
-    finalDeliveryInfo.delivery_fees_by_seller = body.deliveryFeesBySeller;
+  const sellerNames = new Map(sellers.map(s => [s.id, s.name]));
+  const sellerModes = new Map(sellers.map(s => [s.id, s.delivery_mode]));
+  const sellerVatRegistered = new Map(sellers.map(s => [s.id, s.is_vat_registered]));
+  const orderItems = items.map(i => ({
+    ...i, sellerName: sellerNames.get(i.seller_id) ?? "",
+    vat_rate: sellerVatRegistered.get(i.seller_id) === false ? 0 : i.vat_rate,
+    seller_delivery_mode: sellerModes.get(i.seller_id),
+    seller_courier_fee_cents: sellerModes.get(i.seller_id) === "courier" ? 350 : 0,
+  }));
+  if (orderItems.some(i => i.vat_rate === null)) {
+    return NextResponse.json({ error: "Precei nav norādīta PVN likme" }, { status: 400 });
   }
-
-  // Validate and apply promo code
-  let promoDiscountCents = 0;
-  let promoCodeApplied: string | null = null;
-  if (body.promoCode) {
-    const promoResult = await validatePromoCode(
-      body.promoCode,
-      buyerId,
-      body.deliveryFeeCents ?? 0,
-      deliveryType,
-    );
-    if (promoResult.valid && promoResult.discountCents) {
-      promoDiscountCents = promoResult.discountCents;
-      promoCodeApplied = promoResult.code ?? null;
-      finalDeliveryInfo.promo_code = promoCodeApplied;
-      finalDeliveryInfo.promo_discount_cents = promoDiscountCents;
+  const deliveryInfo: Record<string, unknown> = {};
+  if (deliveryType === "locker") {
+    const locker = getOpenLocker(body.deliveryInfo?.locker_id ?? body.locker?.id);
+    if (!locker || !deliveryLockersForSellers(sellers.map(s => s.home_locker_ids ?? [])).some(l => l.id === locker.id)) {
+      return NextResponse.json({ error: "Pakomāts nav pieejams" }, { status: 400 });
+    }
+    Object.assign(deliveryInfo, {
+      locker_id: locker.id, locker_name: locker.name, locker_address: locker.address, locker_city: locker.city,
+    });
+  } else {
+    for (const key of ["postal_code", "address", "city", "apartment", "floor", "entry_code", "delivery_date", "time_slot", "note"]) {
+      const value = body.deliveryInfo?.[key];
+      if (typeof value === "string") deliveryInfo[key] = value.trim().slice(0, 1000);
+    }
+    const zone = lookupPostalCode(String(deliveryInfo.postal_code ?? ""));
+    if (!deliveryInfo.address || !deliveryInfo.city || !zone.found ||
+        (deliveryType === "express" && zone.pricing.expressSingle === null)) {
+      return NextResponse.json({ error: "Piegāde uz norādīto adresi nav pieejama" }, { status: 400 });
+    }
+    deliveryInfo.zone = zone.zone;
+    deliveryInfo.method = deliveryType;
+  }
+  const feeCents = deliveryType === "locker" ? BUYER_LOCKER_FEE_CENTS : BUYER_COURIER_FEE_CENTS;
+  const deliveryFeeCents = feeCents * sellerIds.length;
+  deliveryInfo.delivery_fee_cents = deliveryFeeCents;
+  deliveryInfo.delivery_fees_by_seller = sellerIds.map(sellerId => ({
+    sellerId, sellerName: sellerNames.get(sellerId), feeCents, method: deliveryType,
+  }));
+  const subtotalCents = items.reduce((sum, i) => sum + Math.round(i.price * 100) * i.quantity, 0);
+  let discountCents = 0;
+  let promoCode: string | null = null;
+  if (typeof body.promoCode === "string" && body.promoCode.length <= 100) {
+    const promo = await validatePromoCode(body.promoCode, buyerId, deliveryFeeCents, deliveryType);
+    if (promo.valid && Number.isSafeInteger(promo.discountCents) && promo.discountCents! > 0) {
+      discountCents = Math.min(deliveryFeeCents, promo.discountCents!);
+      promoCode = promo.code ?? null;
+      deliveryInfo.promo_code = promoCode;
+      deliveryInfo.promo_discount_cents = discountCents;
     }
   }
-
-  // Adjust total with promo discount
-  const finalTotalCents = Math.max(0, body.totalCents - promoDiscountCents);
-
-  // Insert order
-  const { data: order, error: insertErr } = await supabase
-    .from("orders")
-    .insert({
-      order_number: orderNumber,
-      status: "pending",
-      payment_status: "awaiting",
-      payment_provider: "paysera",
-      payment_session_id: orderNumber, // we use order_number as session id
-      buyer_id: buyerId,
-      buyer_name: body.contact.name,
-      buyer_email: body.contact.email,
-      buyer_phone: body.contact.phone,
-      delivery_type: deliveryType,
-      delivery_info: finalDeliveryInfo,
-      items: enrichedItems,
-      total_cents: finalTotalCents,
-      total_amount: finalTotalCents / 100, // legacy decimal column
-      promo_code: promoCodeApplied,
-      promo_discount_cents: promoDiscountCents,
-      seller_ids: body.sellerIds,
-    })
-    .select("id, order_number")
-    .single();
-
-  if (insertErr || !order) {
-    return NextResponse.json({ error: insertErr?.message ?? "Kļūda saglabājot pasūtījumu" }, { status: 500 });
+  const totalCents = subtotalCents + deliveryFeeCents - discountCents;
+  if (!Number.isSafeInteger(totalCents) || totalCents <= 0) {
+    return NextResponse.json({ error: "Nederīga summa" }, { status: 400 });
   }
-
-  // Compute base URL
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("host") ?? "tirgus.izipizi.lv";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
-
-  // Build Paysera redirect URL
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const orderNumber = `TRG-${date}-${randomBytes(12).toString("hex")}`;
   let paymentUrl: string;
   try {
     paymentUrl = buildPayseraRedirectUrl({
-      orderNumber: order.order_number,
-      amountCents: finalTotalCents,
-      buyerEmail: body.contact.email,
-      buyerName: body.contact.name,
-      buyerPhone: body.contact.phone,
-      baseUrl,
+      orderNumber, amountCents: totalCents, buyerEmail: contact.email,
+      buyerName: contact.name, buyerPhone: contact.phone,
+      baseUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://tirgus.izipizi.lv",
     });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Paysera konfigurācijas kļūda" },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Paysera konfigurācijas kļūda" }, { status: 503 });
   }
-
-  // Promo redemption is recorded in the Paysera webhook after successful payment,
-  // not here — so if the user abandons payment, the code remains available.
-
-  return NextResponse.json({ paymentUrl, orderId: order.order_number });
+  const { error } = await sb.from("orders").insert({
+    order_number: orderNumber, status: "pending", payment_status: "awaiting",
+    payment_provider: "paysera", payment_session_id: orderNumber, buyer_id: buyerId,
+    buyer_name: contact.name.trim(), buyer_email: contact.email.trim().toLowerCase(), buyer_phone: contact.phone.trim(),
+    delivery_type: deliveryType, delivery_info: deliveryInfo, items: orderItems,
+    total_cents: totalCents, total_amount: totalCents / 100, seller_ids: sellerIds,
+    promo_code: promoCode, promo_discount_cents: discountCents,
+  });
+  if (error) return NextResponse.json({ error: "Kļūda saglabājot pasūtījumu" }, { status: 500 });
+  return grantOrderAccess(NextResponse.json({ paymentUrl, orderId: orderNumber, totalCents }), orderNumber);
 }

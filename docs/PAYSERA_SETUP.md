@@ -7,7 +7,7 @@ Soli pa solim, kas jākonfigurē Paysera merchant panelī, lai checkout strādā
 ## 1. Reģistrēt projektu Paysera
 
 1. Atver: https://bank.paysera.com
-2. Pieslēdzies ar **SIA IziPizi** kontu — to pašu, ar kuru jau tiek pieņemti
+2. Pieslēdzies ar **SIA Svaigi** kontu — to pašu, ar kuru jau tiek pieņemti
    maksājumi par piegādēm
 3. Kreisajā izvēlnē: **Projekti un darbības** → **Mani projekti** → **Jauns projekts**
 4. Aizpildi:

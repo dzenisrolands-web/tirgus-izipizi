@@ -5,10 +5,21 @@ import Image from "next/image";
 import { Minus, Plus, MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
-import { formatPrice, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
+import { formatPrice, getStorageType, listingUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { useCart } from "@/lib/cart-context";
+import { useCart, type CartItem } from "@/lib/cart-context";
 import { useStorageTypes } from "@/lib/storage-types-context";
+
+export function addCardQuantity(
+  addItem: (item: Omit<CartItem, "quantity">) => void,
+  item: Omit<CartItem, "quantity">,
+  qty: number,
+  availableQty: number,
+) {
+  const count = Math.max(0, Math.floor(Math.min(qty, availableQty)));
+  if (!Number.isFinite(count)) return;
+  for (let i = 0; i < count; i++) addItem(item);
+}
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
@@ -23,16 +34,19 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const hasVariants = (listing.variants?.length ?? 0) > 0;
   const variants = listing.variants ?? [];
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const activeVariant = hasVariants ? variants[selectedVariantIdx] : null;
+  const activeVariant = hasVariants ? (variants[selectedVariantIdx] ?? variants[0]) : null;
   const activePrice = activeVariant?.price ?? listing.price;
   const activeTitle = activeVariant ? `${listing.title} — ${activeVariant.title}` : listing.title;
-  const activeUnit = hasVariants ? (activeVariant?.title ?? listing.unit) : listing.unit;
+  const activeUnit = hasVariants ? "gab." : listing.unit;
+  const availableQty = Math.max(0, Math.floor(activeVariant?.quantity ?? listing.quantity));
+  const outOfStock = availableQty === 0;
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    addItem({
-      id: activeVariant?.id ?? listing.id,
+    if (outOfStock) return;
+    addCardQuantity(addItem, {
+      id: activeVariant ? `${listing.id}-${activeVariant.id}` : listing.id,
       title: activeTitle,
       price: activePrice,
       unit: activeUnit,
@@ -41,8 +55,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       sellerId: listing.sellerId,
       storageType,
       express_delivery: listing.express_delivery ?? false,
-    });
-    // If qty > 1, add remaining via updateQty after first add
+    }, qty, availableQty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
@@ -99,7 +112,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
               {variants.map((v, i) => (
                 <button
                   key={v.id}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariantIdx(i); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariantIdx(i); setQty(1); }}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10px] font-semibold transition border",
                     i === selectedVariantIdx
@@ -126,26 +139,31 @@ export function ListingCard({ listing }: { listing: Listing }) {
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center rounded-full border border-gray-200">
             <button
+              aria-label="Samazināt daudzumu"
+              disabled={outOfStock || qty <= 1}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.max(1, qty - 1)); }}
               className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-l-full transition">
               <Minus size={14} />
             </button>
             <span className="w-7 text-center text-sm font-bold text-gray-900">{qty}</span>
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(qty + 1); }}
+              aria-label="Palielināt daudzumu"
+              disabled={outOfStock || qty >= availableQty}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.min(availableQty, qty + 1)); }}
               className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-r-full transition">
               <Plus size={14} />
             </button>
           </div>
           <button
             onClick={handleAddToCart}
+            disabled={outOfStock}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-bold transition-all",
               added
                 ? "bg-green-500 text-white"
-                : "bg-brand-500 text-white hover:bg-brand-600"
+                : "bg-brand-500 text-white hover:bg-brand-600 disabled:bg-gray-100 disabled:text-gray-400"
             )}>
-            {added ? <><Check size={14} /> Pievienots!</> : <><ShoppingCart size={14} /> Grozā</>}
+            {outOfStock ? "Izpārdots" : added ? <><Check size={14} /> Pievienots!</> : <><ShoppingCart size={14} /> Grozā</>}
           </button>
         </div>
       </div>

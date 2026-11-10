@@ -1,4 +1,5 @@
 "use client";
+import { FIRST_ORDER_PROMO_ENABLED } from "@/lib/promo-policy";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -274,7 +275,7 @@ export function BuyerProfile() {
             desc="Saņem paziņojumus par jauniem produktiem"
             badge={stats.followingCount > 0 ? stats.followingCount : undefined}
           />
-          <NavCard
+          {FIRST_ORDER_PROMO_ENABLED && <NavCard
             href="/cart"
             icon={<Gift size={18} className="text-purple-600" />}
             title={stats.freeDeliveryCredits > 0 ? `Bezmaksas pakomāts (${stats.freeDeliveryCredits}×)` : "Mani bonusi"}
@@ -282,7 +283,7 @@ export function BuyerProfile() {
               ? "Izmanto kodu PIRMAIS checkout laikā — pirmais pakomāts par brīvu!"
               : "Nav neizmantotu bonusu"}
             badge={stats.freeDeliveryCredits > 0 ? stats.freeDeliveryCredits : undefined}
-          />
+          />}
           <NavCard
             href="/cart"
             icon={<ShoppingBag size={18} className="text-amber-600" />}

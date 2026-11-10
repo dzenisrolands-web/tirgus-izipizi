@@ -1,5 +1,6 @@
 import { MapPin, Clock, Thermometer } from "lucide-react";
-import { lockers, listings } from "@/lib/mock-data";
+import { listings } from "@/lib/mock-data";
+import { openLockers as lockers } from "@/lib/locker-policy";
 
 export const metadata = {
   title: "Pārtikas pakomātu vietas — tirgus.izipizi.lv",

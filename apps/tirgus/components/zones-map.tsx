@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getOpenLocker } from "@/lib/locker-policy";
 
 const RIGA: [number, number] = [56.9496, 24.1052];
 
@@ -50,16 +51,15 @@ const LOCKERS: { id: string; name: string; lat: number; lng: number; address: st
   { id: "agenskalna", name: "Āgenskalna tirgus", lat: 56.9377, lng: 24.0859, address: "Nometņu iela 64 / Tirgus",    hours: "24/7" },
   { id: "salaspils",  name: "Salaspils",         lat: 56.8651, lng: 24.3526, address: "Zviedru iela 1C / NESTE",     hours: "24/7" },
   { id: "ikskile",    name: "Ikšķile",           lat: 56.8359, lng: 24.5026, address: "Daugavas iela 63 / Labumu bode", hours: "10:00–20:00" },
-  { id: "tukums",     name: "Tukuma tirgus",     lat: 56.9692, lng: 23.1611, address: "J. Raiņa iela 30 / Tirgus",   hours: "24/7" },
   { id: "dundaga",    name: "Dundagas tirgus",   lat: 57.5074, lng: 22.3506, address: "Pils 3B / Tirgus",            hours: "24/7" },
   { id: "sigulda",    name: "Sigulda",           lat: 57.1536, lng: 24.8577, address: "Rūdolfa Blaumaņa iela 2",     hours: "24/7" },
 ];
 
 const ZONE_STYLES = {
-  0: { stroke: "#10b981", fill: "#34d399", fillOpacity: 0.55, name: "Rīgas centrs",          price: "5.45€" },
-  1: { stroke: "#3b82f6", fill: "#60a5fa", fillOpacity: 0.40, name: "Mikrorajoni + Pierīga", price: "6.66€" },
-  2: { stroke: "#a855f7", fill: "#c084fc", fillOpacity: 0.30, name: "Tālākā Pierīga",        price: "9.08€" },
-  3: { stroke: "#ec4899", fill: "#f472b6", fillOpacity: 0.55, name: "Reģionālā Latvija",     price: "10.77€" },
+  0: { stroke: "#10b981", fill: "#34d399", fillOpacity: 0.55, name: "Rīgas centrs",          price: "3.50€" },
+  1: { stroke: "#3b82f6", fill: "#60a5fa", fillOpacity: 0.40, name: "Mikrorajoni + Pierīga", price: "3.50€" },
+  2: { stroke: "#a855f7", fill: "#c084fc", fillOpacity: 0.30, name: "Tālākā Pierīga",        price: "3.50€" },
+  3: { stroke: "#ec4899", fill: "#f472b6", fillOpacity: 0.55, name: "Reģionālā Latvija",     price: "3.50€" },
   4: { stroke: "#94a3b8", fill: "#cbd5e1", fillOpacity: 0.20, name: "Pārējā Latvija",        price: "tikai pārtikas pakomāts" },
 };
 
@@ -125,7 +125,7 @@ export function ZonesMap() {
         `<div style="${popupStyle}">
           <div style="font-weight:800;color:#475569;margin-bottom:4px">Pārējā Latvija</div>
           <div style="color:#64748b;font-size:11px;margin-bottom:6px">Vietas ārpus 4 zonām</div>
-          <div style="font-size:12px"><b>Tikai pārtikas pakomāts</b> · 3€ / skapītis<br/>Kurjers/ekspres šeit nav pieejams</div>
+          <div style="font-size:12px"><b>Tikai pārtikas pakomāts</b> · bezmaksas saņemšana<br/>Kurjers/ekspres šeit nav pieejams</div>
         </div>`
       );
 
@@ -140,8 +140,8 @@ export function ZonesMap() {
           <div style="font-weight:800;color:${ZONE_STYLES[2].stroke};margin-bottom:4px">Zona 2 · ${ZONE_STYLES[2].name}</div>
           <div style="color:#666;font-size:11px;margin-bottom:6px">Mārupe · Olaine · Ādaži · Saulkrasti · Babīte · Carnikava</div>
           <div style="display:flex;gap:8px;font-size:12px">
-            <span><span style="color:#0891b2">1 temp</span> <b>9.08 €</b></span>
-            <span><span style="color:#1d4ed8">2 temp</span> <b>11.25 €</b></span>
+            <span><span style="color:#0891b2">1 temp</span> <b>3.50 €</b></span>
+            <span><span style="color:#1d4ed8">2 temp</span> <b>3.50 €</b></span>
           </div>
         </div>`
       );
@@ -156,8 +156,8 @@ export function ZonesMap() {
           <div style="font-weight:800;color:${ZONE_STYLES[1].stroke};margin-bottom:4px">Zona 1 · ${ZONE_STYLES[1].name}</div>
           <div style="color:#666;font-size:11px;margin-bottom:6px">Imanta · Pļavnieki · Mežaparks · Salaspils · Jugla</div>
           <div style="display:flex;gap:8px;font-size:12px">
-            <span><span style="color:#0891b2">1 temp</span> <b>6.66 €</b></span>
-            <span><span style="color:#1d4ed8">2 temp</span> <b>8.83 €</b></span>
+            <span><span style="color:#0891b2">1 temp</span> <b>3.50 €</b></span>
+            <span><span style="color:#1d4ed8">2 temp</span> <b>3.50 €</b></span>
           </div>
         </div>`
       );
@@ -172,8 +172,8 @@ export function ZonesMap() {
           <div style="font-weight:800;color:${ZONE_STYLES[0].stroke};margin-bottom:4px">Zona 0 · ${ZONE_STYLES[0].name}</div>
           <div style="color:#666;font-size:11px;margin-bottom:6px">1001–1050 · Vecrīga, Centrs</div>
           <div style="display:flex;gap:8px;font-size:12px">
-            <span><span style="color:#0891b2">1 temp</span> <b>5.45 €</b></span>
-            <span><span style="color:#1d4ed8">2 temp</span> <b>8.83 €</b></span>
+            <span><span style="color:#0891b2">1 temp</span> <b>3.50 €</b></span>
+            <span><span style="color:#1d4ed8">2 temp</span> <b>3.50 €</b></span>
           </div>
         </div>`
       );
@@ -191,8 +191,8 @@ export function ZonesMap() {
             <div style="font-weight:800;color:${ZONE_STYLES[3].stroke};margin-bottom:4px">${c.name} · Zona 3</div>
             <div style="color:#666;font-size:11px;margin-bottom:6px">${c.codes}</div>
             <div style="display:flex;gap:8px;font-size:12px">
-              <span><span style="color:#0891b2">1 temp</span> <b>10.77 €</b></span>
-              <span><span style="color:#1d4ed8">2 temp</span> <b>13.19 €</b></span>
+              <span><span style="color:#0891b2">1 temp</span> <b>3.50 €</b></span>
+              <span><span style="color:#1d4ed8">2 temp</span> <b>3.50 €</b></span>
             </div>
           </div>`
         );
@@ -208,13 +208,13 @@ export function ZonesMap() {
         iconSize: [30, 30],
         iconAnchor: [15, 15],
       });
-      for (const l of LOCKERS) {
+      for (const l of LOCKERS.filter((locker) => getOpenLocker(locker.id))) {
         L.marker([l.lat, l.lng], { icon: lockerIcon, zIndexOffset: 1000 }).addTo(map).bindPopup(
           `<div style="${popupStyle}">
             <div style="font-weight:800;color:#192635;margin-bottom:2px">📦 ${l.name}</div>
             <div style="color:#666;font-size:11px;margin-bottom:4px">${l.address}</div>
             <div><span style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:9999px;font-size:10px;font-weight:600">⏱ ${l.hours}</span></div>
-            <div style="margin-top:6px;font-size:11px;color:#192635;font-weight:600">3 € / skapītis · vienmēr</div>
+            <div style="margin-top:6px;font-size:11px;color:#192635;font-weight:600">Bezmaksas saņemšana</div>
           </div>`
         );
       }
@@ -295,7 +295,7 @@ export function ZonesMap() {
               }}
             />
             <span className="font-semibold text-gray-700">pārtikas pakomāts</span>
-            <span className="ml-auto pl-2 font-mono text-[10px] text-gray-400">3€</span>
+            <span className="ml-auto pl-2 font-mono text-[10px] text-gray-400">Bezmaksas</span>
           </div>
         </div>
       </div>

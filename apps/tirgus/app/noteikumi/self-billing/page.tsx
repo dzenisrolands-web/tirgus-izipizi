@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Self-billing vienošanās — tirgus.izipizi.lv",
   description: `Vienošanās par klienta sastādītiem rēķiniem (self-billing) starp ${operatorInfo.shortName} un tirgotājiem.`,
   robots: { index: false, follow: false },
+  alternates: { canonical: "/noteikumi/self-billing" },
 };
 
 export default function SelfBillingAgreementPage() {
@@ -106,7 +107,7 @@ export default function SelfBillingAgreementPage() {
         <p>4.1. Katrs rēķins satur:</p>
         <ul>
           <li>
-            Rēķina numuru formātā <strong className="font-mono">SV-YYYY-NNNN</strong>{" "}
+            Rēķina numuru formātā <strong className="font-mono">{operatorInfo.invoice.numberPrefix}YYYY-NNNN</strong>{" "}
             (sekvenciāls, nemainīgs)
           </li>
           <li>Rēķina sastādīšanas datumu</li>
@@ -132,29 +133,21 @@ export default function SelfBillingAgreementPage() {
 
         <h2>5. Komisija</h2>
         <p>
-          5.1. Operatora komisija ir <strong>5 % līdz 20 %</strong> no katra pasūtījuma
-          bruto summas. Komisija sedz: maksājumu apstrādi (Paysera), pārtikas pakomātu tīklu un
+          5.1. Operatora komisija ir <strong>15 % no preču cenas bez preču PVN</strong>.
+          Komisijai papildus piemēro <strong>21 % PVN par komisijas pakalpojumu</strong>.
+          Komisija sedz: maksājumu apstrādi (Paysera), pārtikas pakomātu tīklu un
           piegādes infrastruktūru, klientu atbalstu un atgriešanu apstrādi, platformas
           mārketingu un uzturēšanu.
         </p>
-        <p>5.2. Komisijas likme tiek noteikta <strong>katram produktam atsevišķi</strong>:</p>
-        <ul>
-          <li>Tirgotājs piedāvā likmi 5–20 % robežās, izveidojot vai rediģējot produktu</li>
-          <li>
-            Operators apstiprina, modificē vai noraida likmi 1–2 darba dienu laikā
-          </li>
-          <li>
-            Apstiprinātā likme tiek <strong>piesaistīta produktam</strong> un attiecas uz
-            visiem turpmākajiem pasūtījumiem
-          </li>
-          <li>
-            Pasūtījuma izveides brīdī komisijas likme tiek <strong>fiksēta uz pasūtījumu</strong>{" "}
-            (snapshot) un nemainās, ja Tirgotājs vēlāk maina likmi citiem nolūkiem
-          </li>
-        </ul>
         <p>
-          5.3. Operators publicē indikatīvus komisijas lielumus pa kategorijām, lai
-          palīdzētu Tirgotājam pieņemt informētu lēmumu.
+          5.2. Fiksētā 15 % likme attiecas uz visiem produktiem; Tirgotājs to
+          nepiedāvā un Operators to neapstiprina katram produktam atsevišķi.
+        </p>
+        <p>
+          5.3. No bruto pārdošanas summas atskaita komisiju un PVN par komisijas
+          pakalpojumu. Piemēram, precei par 12,10 € ar 21 % preču PVN cena bez
+          PVN ir 10,00 €, komisija 1,50 € un komisijas PVN 0,32 €; Tirgotājam
+          pirms citām piemērojamām izmaksām izmaksā 10,28 €.
         </p>
 
         <h2>6. PVN apstrāde</h2>
@@ -250,8 +243,8 @@ export default function SelfBillingAgreementPage() {
           vienošanos pēc 10.2. punkta, vai (b) skaidri paziņojot par neapstiprināšanu.
         </p>
         <p>
-          11.3. Tirgotāja klusums un Platformas turpmāka izmantošana pēc jaunās versijas
-          spēkā stāšanās tiek uzskatīta par akceptu.
+          11.3. Operatora juridiskās personas maiņai nepieciešama skaidra atkārtota
+          Tirgotāja piekrišana Platformā. Iepriekšējo versiju piekrišanas netiek pārrakstītas.
         </p>
 
         <h2>12. Strīdu risināšana un piemērojamie likumi</h2>

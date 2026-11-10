@@ -1,4 +1,5 @@
 import webpush from 'web-push';
+import { isTrustedPushEndpoint } from './push-endpoint';
 
 export type PushPayload = {
   title: string;
@@ -38,12 +39,15 @@ export async function sendPushToSubscriptions(subs: PushSub[], payload: PushPayl
     return { sent: 0, failed: subs.length };
   }
   const results = await Promise.allSettled(
-    subs.map((sub) =>
-      webpush.sendNotification(
+    subs.map(async (sub) => {
+      // Guard existing database rows too, not just newly registered endpoints.
+      if (!isTrustedPushEndpoint(sub.endpoint)) throw new Error('Untrusted push service');
+      return webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload),
-      )
-    )
+        { timeout: 10000 },
+      );
+    })
   );
   const failed = results.filter((r) => r.status === 'rejected').length;
   return { sent: results.length - failed, failed };

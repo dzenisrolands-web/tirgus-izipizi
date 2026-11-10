@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { operatorInfo, formattedAddress } from "@/lib/operator-info";
 import { Mail, Phone, Clock, MapPin, MessageSquare } from "lucide-react";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
   title: "Sazināties | tirgus.izipizi.lv",
   description: "Sazinies ar tirgus.izipizi.lv komandu — jautājumi, ieteikumi, kļūdas ziņojumi.",
 };
@@ -24,9 +26,9 @@ const contacts = [
   {
     icon: <MapPin size={20} />,
     label: "Adrese",
-    value: "Rīga, Latvija",
+    value: formattedAddress(),
     href: null,
-    desc: "IziPizi SIA, LV-1000",
+    desc: operatorInfo.shortName,
   },
 ];
 
@@ -130,7 +132,7 @@ export default function ContactPage() {
           </div>
 
           <button type="submit" className="btn-primary">
-            Nosūtīt ziņu
+            Atvērt e-pasta lietotni
           </button>
         </form>
       </div>

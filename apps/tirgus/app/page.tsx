@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight, Package, Zap,
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
   TrendingUp, Sparkles, Leaf, Snowflake, Users, Banknote,
 } from "lucide-react";
-import { listings, sellers, lockers } from "@/lib/mock-data";
-import { sellersMeta } from "@/lib/sellers-meta";
+import { openLockers as lockers } from "@/lib/locker-policy";
 import { ListingCard } from "@/components/listing-card";
-import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
 import { HeroProductRotator } from "@/components/hero-product-rotator";
 import {
   fetchActiveListings,
@@ -19,7 +16,7 @@ import {
   fetchWeeklyFeatured,
 } from "@/lib/db-listings";
 import { fetchSalesCountsServer } from "@/lib/best-sellers-server";
-import { hasValidImage, isPublicReady } from "@/lib/utils";
+import { isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Pērc no vietējā, saņem ērti — pārtikas pakomātā vai ar piegādi",
@@ -76,29 +73,11 @@ export default async function HomePage() {
     fetchWeeklyFeatured(7),
     fetchApprovedSellers(),
   ]);
-  const allListings = [...dbListings, ...listings].filter(isPublicReady);
-
   // Hero stats — real data, not hardcoded
-  const liveSellerCount = dbApproved.length || sellers.length;
-  const liveSellerNames = (dbApproved.length ? dbApproved.map((s) => s.seller.name) : sellers.map((s) => s.name))
-    .filter(Boolean)
-    .slice(0, 4);
+  const liveSellerCount = dbApproved.length;
   // Tirgotāju sadaļas (hero logo josla + "Mūsu saimnieki" kartes) — jārāda
   // VISI reālie apstiprinātie tirgotāji no DB, nevis fiksēta mock apakškopa.
-  // Mock saraksts paliek tikai kā fallback, ja DB vēl nav nācis neviena tirgotāja.
-  const spotlightSellers = dbApproved.length > 0
-    ? dbApproved
-    : sellers.map((s) => ({
-        seller: s,
-        meta: sellersMeta[s.id],
-        listings: listings.filter((l) => l.sellerId === s.id),
-      }));
-  // "Šonedēļ pievienoti" — last 7 days, active listings only
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const freshThisWeekCount = dbListings.filter((l) => {
-    const t = new Date(l.createdAt).getTime();
-    return Number.isFinite(t) && Date.now() - t < SEVEN_DAYS_MS;
-  }).length;
+  const spotlightSellers = dbApproved;
 
   // Hero product rotator — round-robin per seller so every group of 4
   // shows 4 *different* sellers, and within the first ~2 groups every
@@ -148,15 +127,15 @@ export default async function HomePage() {
   // raw dbBestSellers / dbNewest signal directly.
   function padToDiverseSellers(
     target: number,
-    primary: typeof allListings,
-    pool: typeof allListings,
+    primary: typeof realListings,
+    pool: typeof realListings,
   ) {
-    const sellerKeyOf = (l: (typeof allListings)[number]) =>
+    const sellerKeyOf = (l: (typeof realListings)[number]) =>
       l.sellerId || l.seller?.name || "unknown";
     // Dedupe primary by seller — a single seller's run shouldn't fill the row
     const seenIds = new Set<string>();
     const seenSellers = new Set<string>();
-    const out: typeof allListings = [];
+    const out: typeof realListings = [];
     for (const l of primary) {
       const sk = sellerKeyOf(l);
       if (seenIds.has(l.id) || seenSellers.has(sk)) continue;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle, ArrowRight, Clock, Percent, Shield, CreditCard } from "lucide-react";
 
 export const metadata = {
+  alternates: { canonical: "/sell" },
   title: "Sākt pārdot — pievienojies kā ražotājs",
   description:
     "Pārdod savus produktus caur IziPizi pārtikas pakomātu tīklu. Bezmaksas reģistrācija. Komisija tikai no pārdošanas. Apstiprināšana 24h laikā.",

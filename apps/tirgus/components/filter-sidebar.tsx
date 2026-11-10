@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { categories, sellers } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 export type Filters = {
@@ -17,6 +17,7 @@ export type Filters = {
 type Props = {
   filters: Filters;
   onChange: (filters: Filters) => void;
+  sellers?: { id: string; name: string }[];
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -52,7 +53,7 @@ function todayKey(): string {
   return ["sun","mon","tue","wed","thu","fri","sat"][d];
 }
 
-export function FilterSidebar({ filters, onChange }: Props) {
+export function FilterSidebar({ filters, onChange, sellers = [] }: Props) {
   return (
     <aside className="w-full">
       <div className="flex items-center justify-between">

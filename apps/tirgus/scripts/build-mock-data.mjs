@@ -61,9 +61,9 @@ function qty(cat, idx) {
 }
 
 // ── Locker round-robin ────────────────────────────────────────────────────────
-const LOCKER_IDS = ["brivibas", "salaspils", "agenskalna", "tukums", "dundaga", "ikskile"];
+const LOCKER_IDS = ["brivibas", "salaspils", "agenskalna", "dundaga", "ikskile"];
 function lockerId(idx) { return LOCKER_IDS[idx % LOCKER_IDS.length]; }
-function lockerIdx(id) { return LOCKER_IDS.indexOf(id); }
+function lockerIdx(id) { return ["brivibas", "salaspils", "agenskalna", "tukums", "dundaga", "ikskile"].indexOf(id); }
 
 // ── createdAt spread ──────────────────────────────────────────────────────────
 function createdAt(idx) {

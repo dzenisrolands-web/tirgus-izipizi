@@ -1,6 +1,9 @@
+import { BUYER_COURIER_FEE_CENTS } from "./delivery-policy";
+import { getOpenLocker } from "./locker-policy";
+
 /**
  * Pasta indeksu → piegādes zonu datu mape.
- * Avots: izipizi.lv/zonas-cenas (atjaunināts 2026-04-29)
+ * Zonu pieejamības avots: izipizi.lv/zonas-cenas (2026-04-29); pircēja cenas no delivery-policy.ts.
  *
  * Cenas ar PVN 21%. Atjaunināt manuāli, ja izipizi maina cenas vai zonu sastāvu.
  */
@@ -22,35 +25,35 @@ export const ZONE_PRICING: Record<DeliveryZone, ZonePricing> = {
     zone: 0,
     area: "Rīgas centrs",
     cities: "Rīga (centrs)",
-    singleTemp: 5.45,
-    dualTemp: 8.83,
-    expressSingle: 9.08,
-    expressDual: 10.29,
+    singleTemp: BUYER_COURIER_FEE_CENTS / 100,
+    dualTemp: BUYER_COURIER_FEE_CENTS / 100,
+    expressSingle: BUYER_COURIER_FEE_CENTS / 100,
+    expressDual: BUYER_COURIER_FEE_CENTS / 100,
   },
   1: {
     zone: 1,
     area: "Rīgas mikrorajoni + tuvākā Pierīga",
     cities: "Imanta, Pļavnieki, Mežaparks, Jugla, Salaspils, Stopiņi",
-    singleTemp: 6.66,
-    dualTemp: 8.83,
-    expressSingle: 10.89,
-    expressDual: 12.10,
+    singleTemp: BUYER_COURIER_FEE_CENTS / 100,
+    dualTemp: BUYER_COURIER_FEE_CENTS / 100,
+    expressSingle: BUYER_COURIER_FEE_CENTS / 100,
+    expressDual: BUYER_COURIER_FEE_CENTS / 100,
   },
   2: {
     zone: 2,
     area: "Tālākā Pierīga",
     cities: "Mārupe, Olaine, Babīte, Saulkrasti, Ādaži, Carnikava",
-    singleTemp: 9.08,
-    dualTemp: 11.25,
-    expressSingle: 15.13,
-    expressDual: 16.34,
+    singleTemp: BUYER_COURIER_FEE_CENTS / 100,
+    dualTemp: BUYER_COURIER_FEE_CENTS / 100,
+    expressSingle: BUYER_COURIER_FEE_CENTS / 100,
+    expressDual: BUYER_COURIER_FEE_CENTS / 100,
   },
   3: {
     zone: 3,
     area: "Reģionālā Latvija",
     cities: "Jelgava, Tukums, Ogre, Sigulda, Cēsis, Daugavpils, Valmiera",
-    singleTemp: 10.77,
-    dualTemp: 13.19,
+    singleTemp: BUYER_COURIER_FEE_CENTS / 100,
+    dualTemp: BUYER_COURIER_FEE_CENTS / 100,
     expressSingle: null,
     expressDual: null,
   },
@@ -120,7 +123,6 @@ export const LOCKER_ZONES: Record<string, DeliveryZone> = {
   agenskalna: 1, // Rīga, Āgenskalns
   salaspils:  1, // Salaspils
   ikskile:    3, // Ikšķile (reģionālā)
-  tukums:     3, // Tukums (reģionālā, kurjēra vajadzībām)
   dundaga:    3, // Dundaga (reģionālā, kurjēra vajadzībām)
   iukstes:    1, // Rīga, Ilūkstes iela (Vidzemes prieċp.
   sigulda:    3, // Sigulda (reģionālā)
@@ -168,7 +170,6 @@ const LOCKER_COORDS: Record<string, { lat: number; lng: number; name: string; ci
   agenskalna: { lat: 56.9377, lng: 24.0859, name: "Āgenskalna tirgus",   city: "Rīga",      address: "Nometņu iela 64 / Tirgus",    hours: "24/7" },
   salaspils:  { lat: 56.8651, lng: 24.3526, name: "Salaspils",            city: "Salaspils", address: "Zviedru iela 1C / NESTE",     hours: "24/7" },
   ikskile:    { lat: 56.8359, lng: 24.5026, name: "Ikšķile",              city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode", hours: "10:00–20:00" },
-  tukums:     { lat: 56.9692, lng: 23.1611, name: "Tukuma tirgus",        city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus",   hours: "24/7" },
   dundaga:    { lat: 57.5074, lng: 22.3506, name: "Dundagas tirgus",      city: "Dundaga",   address: "Pils 3B / Tirgus",            hours: "24/7" },
   iukstes:    { lat: 56.9360, lng: 24.1830, name: "Ilūkstes iela 40A",      city: "Rīga",      address: "Ilūkstes iela 40A",              hours: "24/7" },
   sigulda:    { lat: 57.1536, lng: 24.8577, name: "Sigulda",                city: "Sigulda",   address: "Rūdolfa Blaumaņa iela 2",       hours: "24/7" },
@@ -297,6 +298,10 @@ const ROAD_FACTOR = 1.4;
 export function nearestLockersForCode(code: number, zone: DeliveryZone, limit = 3): NearestLocker[] {
   const origin = POSTAL_DATA[code] ?? ZONE_FALLBACK_COORDS[zone];
   return Object.entries(LOCKER_COORDS)
+    .filter(([id]) => {
+      const locker = getOpenLocker(id);
+      return locker && !locker.pickup_only;
+    })
     .map(([id, l]) => ({
       id,
       name: l.name,

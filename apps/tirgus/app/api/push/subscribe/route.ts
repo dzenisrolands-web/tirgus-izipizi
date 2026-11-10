@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isTrustedPushEndpoint } from '@/lib/push-endpoint';
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get('authorization') ?? '';
@@ -14,8 +15,9 @@ export async function POST(req: Request) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { endpoint, p256dh, auth } = await req.json();
-  if (!endpoint || !p256dh || !auth) {
+  const { endpoint, p256dh, auth } = await req.json().catch(() => ({}));
+  if (!isTrustedPushEndpoint(endpoint) || typeof p256dh !== 'string' || p256dh.length > 200 ||
+      typeof auth !== 'string' || auth.length > 100 || !p256dh || !auth) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
