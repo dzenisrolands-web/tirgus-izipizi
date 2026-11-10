@@ -6,47 +6,50 @@ const BASE = "https://tirgus.izipizi.lv";
 export const revalidate = 3600; // regenerate every hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
-
   const staticPages: MetadataRoute.Sitemap = [
-    { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1.0 },
-    { url: `${BASE}/catalog`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: BASE, changeFrequency: "daily", priority: 1.0 },
+    { url: `${BASE}/catalog`, changeFrequency: "hourly", priority: 0.9 },
     // { url: `${BASE}/keriens`, lastModified: now, changeFrequency: "hourly", priority: 0.9 }, // Sludinājumu dēlis paslēpts līdz launch
-    { url: `${BASE}/razotaji`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/razotaji`, changeFrequency: "weekly", priority: 0.8 },
     // /receptes paslēpts pirms launch — saturs jāsakārto, skat. project_recipes_cleanup.md
-    { url: `${BASE}/piegade`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/par-mums`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE}/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE}/sell`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${BASE}/contact`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
-    { url: `${BASE}/noteikumi`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/privatums`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${BASE}/atgriesana`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/piegade`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/par-mums`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/how-it-works`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/sell`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/contact`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${BASE}/lockers`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${BASE}/noteikumi`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/privatums`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/atgriesana`, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   // Fetch real DB data for listings, sellers, drops
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   let dbPages: MetadataRoute.Sitemap = [];
   if (url && key) {
     try {
       const supabase = createClient(url, key);
       const [listingsRes, sellersRes] = await Promise.all([
-        supabase.from("listings").select("id, slug, updated_at").eq("status", "active"),
-        supabase.from("sellers").select("id, updated_at").eq("status", "approved"),
+        supabase.from("listings").select("id, slug, price, updated_at").eq("status", "active").gt("price", 0),
+        supabase.from("sellers_public").select("id, updated_at").eq("status", "approved"),
       ]);
+      if (listingsRes.error) console.warn("[sitemap] Public listing query unavailable");
+      if (sellersRes.error) console.warn("[sitemap] Public seller query unavailable");
 
-      const listingPages: MetadataRoute.Sitemap = (listingsRes.data ?? []).map((l) => ({
-        url: `${BASE}/listing/${l.slug ?? l.id}`,
-        lastModified: l.updated_at ? new Date(l.updated_at) : now,
+      const listingPages: MetadataRoute.Sitemap = (listingsRes.error ? [] : listingsRes.data ?? [])
+        .filter(l => typeof l.price === "number" && Number.isFinite(l.price) && l.price > 0)
+        .map((l) => ({
+        url: `${BASE}/listing/${encodeURIComponent(l.slug || l.id)}`,
+        lastModified: validDate(l.updated_at),
         changeFrequency: "weekly",
         priority: 0.8,
       }));
 
-      const sellerPages: MetadataRoute.Sitemap = (sellersRes.data ?? []).map((s) => ({
-        url: `${BASE}/seller/${s.id}`,
-        lastModified: s.updated_at ? new Date(s.updated_at) : now,
+      const sellerPages: MetadataRoute.Sitemap = (sellersRes.error ? [] : sellersRes.data ?? []).map((s) => ({
+        url: `${BASE}/seller/${encodeURIComponent(s.id)}`,
+        lastModified: validDate(s.updated_at),
         changeFrequency: "weekly",
         priority: 0.7,
       }));
@@ -58,4 +61,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return [...staticPages, ...dbPages];
+}
+
+function validDate(value: unknown): Date | undefined {
+  if (typeof value !== "string") return undefined;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : undefined;
 }

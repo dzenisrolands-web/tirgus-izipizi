@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cookie, X, ChevronDown } from "lucide-react";
+import { Cookie, ChevronDown } from "lucide-react";
 import {
-  CONSENT_STORAGE_KEY,
-  CONSENT_VERSION,
   CONSENT_OPEN_EVENT,
-  CONSENT_CHANGED_EVENT,
+  DEFAULT_CONSENT,
+  readConsent,
+  saveConsent,
+  subscribeConsent,
   type Consent,
 } from "@/lib/cookie-consent";
 
@@ -36,7 +37,7 @@ const CATEGORIES: Category[] = [
     key: "analytics",
     title: "Analītika",
     description:
-      "Anonimizēta statistika par vietnes lietošanu, lai mēs varētu uzlabot funkcionalitāti. Pašlaik nelietojam, bet rezervējam šo izvēli nākotnei.",
+      "Google Analytics, Vercel Analytics, veiktspējas un apmeklējumu statistika. Ieslēdzas tikai pēc tavas piekrišanas; izvēli vari mainīt jebkurā laikā.",
   },
   {
     key: "marketing",
@@ -56,47 +57,27 @@ export function CookieConsent() {
   });
 
   useEffect(() => {
-    // Show banner if no consent recorded or version mismatch
-    const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
-    if (!raw) {
-      setVisible(true);
-    } else {
-      try {
-        const parsed = JSON.parse(raw) as Consent;
-        if (parsed.version !== CONSENT_VERSION) {
-          setVisible(true);
-        } else {
-          setDraft({
-            functional: parsed.functional,
-            analytics: parsed.analytics,
-            marketing: parsed.marketing,
-          });
-        }
-      } catch {
-        setVisible(true);
-      }
-    }
-
-    // Listen for footer button to re-open settings
+    const refresh = () => {
+      const consent = readConsent();
+      setDraft(consent ?? DEFAULT_CONSENT);
+      if (!consent) setVisible(true);
+    };
+    refresh();
+    const unsubscribe = subscribeConsent(refresh);
     const onOpen = () => {
+      refresh();
       setVisible(true);
       setExpanded(true);
     };
     window.addEventListener(CONSENT_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(CONSENT_OPEN_EVENT, onOpen);
+    return () => {
+      unsubscribe();
+      window.removeEventListener(CONSENT_OPEN_EVENT, onOpen);
+    };
   }, []);
 
   function save(consent: Pick<Consent, "functional" | "analytics" | "marketing">) {
-    const next: Consent = {
-      version: CONSENT_VERSION,
-      essential: true,
-      functional: consent.functional,
-      analytics: consent.analytics,
-      marketing: consent.marketing,
-      decidedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: next }));
+    setDraft(saveConsent(consent));
     setVisible(false);
     setExpanded(false);
   }

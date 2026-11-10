@@ -1,8 +1,9 @@
 import { MapPin, Clock, Thermometer } from "lucide-react";
-import { listings } from "@/lib/mock-data";
-import { publicLockers as lockers } from "@/lib/locker-policy";
+import { openLockers as lockers } from "@/lib/locker-policy";
 
 export const metadata = {
+  alternates: { canonical: "/lockers" },
+  openGraph: { url: "https://tirgus.izipizi.lv/lockers" },
   title: "Pārtikas pakomātu vietas — tirgus.izipizi.lv",
 };
 
@@ -23,7 +24,6 @@ export default function LockersPage() {
 
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {lockers.map((locker) => {
-          const count = listings.filter((l) => l.lockerId === locker.id).length;
           return (
             <div
               key={locker.id}
@@ -43,7 +43,7 @@ export default function LockersPage() {
               <p className="mt-1 text-xs text-gray-400">{locker.address}</p>
               <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-4">
                 <span className="text-xs text-gray-500">
-                  {count} aktīvs sludinājums{count === 1 ? "" : "i"}
+                  Darba laiks norādīts pie vietas
                 </span>
                 <a
                   href={`/catalog?city=${encodeURIComponent(locker.city)}`}

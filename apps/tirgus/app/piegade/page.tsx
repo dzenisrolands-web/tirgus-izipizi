@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { publicLockers as lockers } from "@/lib/locker-policy";
+import { openLockers as lockers } from "@/lib/locker-policy";
 import {
   Package, MapPin, Truck, Thermometer, Snowflake,
   CheckCircle, Zap, ArrowRight, ChevronDown,
@@ -10,11 +10,11 @@ import { PostalZoneLookup } from "@/components/postal-zone-lookup";
 
 export const metadata: Metadata = {
   title: "Piegāde — pārtikas pakomāts, kurjers, ekspres",
-  description: "Visas piegādes iespējas — IziPizi pārtikas pakomāts 24/7, standarta kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
+  description: "Visas piegādes iespējas — IziPizi pārtikas pakomāts norādītajā darba laikā, standarta kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
   alternates: { canonical: "/piegade" },
   openGraph: {
     title: "Piegāde | tirgus.izipizi.lv",
-    description: "IziPizi pārtikas pakomāts 24/7, kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
+    description: "IziPizi pārtikas pakomāts norādītajā darba laikā, kurjers pa Latviju vai eksprespiegāde 2–5h Rīgā.",
     url: "https://tirgus.izipizi.lv/piegade",
     type: "website" as const,
   },
@@ -110,10 +110,10 @@ export default function PiegadePage() {
                 </span>
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Pārtikas pakomāts</h3>
-              <p className="mt-0.5 text-xs text-gray-500">Saņem kad ērti — 24/7</p>
+              <p className="mt-0.5 text-xs text-gray-500">Saņem izvēlētās vietas darba laikā</p>
               <p className="mt-3 text-xl font-extrabold text-brand-700">no 3 €</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
-                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Pieejams 24/7</li>
+                <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Darba laiks pie katras vietas</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Temp. kontrole +2°C – −18°C</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Uzglabāšana līdz 48h</li>
               </ul>
@@ -170,7 +170,7 @@ export default function PiegadePage() {
         <section id="pakomati" className="scroll-mt-20">
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">Atrašanās vietas</p>
           <h2 className="mb-8 text-2xl font-extrabold text-gray-900 text-center">
-            {lockers.filter(l => !l.pickup_only).length} pārtikas pakomātu vietas
+            {lockers.filter(l => !l.pickup_only).length} atvērtas pārtikas pakomātu vietas
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lockers.filter(l => !l.pickup_only).map((locker) => (
@@ -238,7 +238,7 @@ export default function PiegadePage() {
             </div>
           )}
           <p className="mt-5 text-center text-xs text-gray-400">
-            Visi pārtikas pakomāti ir atvērti 24/7 ar temperatūras kontroli +2°C līdz −18°C.
+            Pakomātu darba laiks norādīts pie katras vietas. Temperatūras kontrole: +2°C līdz −18°C.
           </p>
         </section>
 
@@ -342,7 +342,7 @@ export default function PiegadePage() {
               Izvēlies produktus — piegādes veidu izvēlēsies pasūtīšanas solī, atkarībā no tā, kas šodien ērtāk.
             </p>
             <div className="mt-4 space-y-2 text-sm text-gray-300">
-              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts 24/7 · lētākais</p>
+              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts · saņem darba laikā</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Kurjers · mājas durvīs</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Ekspres · tajā pašā dienā Rīgā</p>
             </div>

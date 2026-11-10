@@ -5,29 +5,26 @@ import {
   CheckCircle, MapPin, Package,
   Calendar, Award, Quote,
 } from "lucide-react";
-import { sellers, listings } from "@/lib/mock-data";
-import { sellersMeta } from "@/lib/sellers-meta";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
 import { SellerProducts } from "@/components/seller-products";
 import { FollowSellerButton } from "@/components/follow-seller-button";
-import { isPublicReady, normalizeUrl } from "@/lib/utils";
+import { normalizeUrl } from "@/lib/utils";
 
 export const dynamicParams = true;
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  return sellers.map((s) => ({ id: s.id }));
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const mockSeller = sellers.find((s) => s.id === id);
-  const seller = mockSeller ?? (await fetchDbSellerProfile(id))?.seller;
-  if (!seller) return {};
-  const meta = sellersMeta[id] ?? (await fetchDbSellerProfile(id))?.meta;
+  const profile = await fetchDbSellerProfile(id);
+  if (!profile) return { robots: { index: false, follow: false } };
+  const { seller, meta } = profile;
   const title = `${seller.name} | tirgus.izipizi.lv`;
   const description = meta?.shortDesc ?? `${seller.name} produkti IziPizi tirgū.`;
-  const ogImage = meta?.cover ?? seller.avatar;
+  const ogImage = meta?.cover || seller.avatar || "/opengraph-image";
   return {
     title,
     description,
@@ -47,20 +44,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function SellerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const mockSeller = sellers.find((s) => s.id === id);
-
-  let seller, meta, sellerListings;
-  if (mockSeller) {
-    seller = mockSeller;
-    meta = sellersMeta[id];
-    sellerListings = listings.filter((l) => l.sellerId === id).filter(isPublicReady);
-  } else {
-    const db = await fetchDbSellerProfile(id);
-    if (!db) notFound();
-    seller = db.seller;
-    meta = db.meta;
-    sellerListings = db.listings;
-  }
+  const profile = await fetchDbSellerProfile(id);
+  if (!profile) notFound();
+  const { seller, meta, listings: sellerListings } = profile;
 
   const categories = Array.from(new Set(sellerListings.map((l) => l.category))).sort();
 
@@ -89,8 +75,8 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
       <article>
         <div className="relative h-64 w-full sm:h-80 overflow-hidden"
           style={{ background: "linear-gradient(135deg, #192635 0%, #2d1f45 100%)" }}>
@@ -168,7 +154,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
               {meta?.quote && (
                 <div className="relative rounded-2xl bg-[#192635] px-6 py-5 text-white overflow-hidden">
                   <div className="absolute -top-2 -left-1 opacity-20"><Quote size={64} /></div>
-                  <p className="relative text-base font-medium leading-relaxed text-white/90 italic">"{meta.quote.text}"</p>
+                  <p className="relative text-base font-medium leading-relaxed text-white/90 italic">&ldquo;{meta.quote.text}&rdquo;</p>
                   <p className="mt-3 text-sm font-semibold" style={{ background: "linear-gradient(90deg,#53F3A4,#AD47FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>— {meta.quote.author}</p>
                 </div>
               )}
