@@ -5,15 +5,16 @@ import Image from "next/image";
 import { Minus, Plus, MapPin, CheckCircle, ShoppingCart, Check, Zap } from "lucide-react";
 import { useState } from "react";
 import { type Listing } from "@/lib/mock-data";
-import { formatPrice, getStorageType, storageConfig, listingUrl } from "@/lib/utils";
+import { formatPrice, getStorageType, listingUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useStorageTypes } from "@/lib/storage-types-context";
+import { publicProductImage } from "@/lib/product-image";
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
   const storageTypes = useStorageTypes();
-  const rawStorageType = storageTypes[listing.id] ?? getStorageType(listing);
+  const rawStorageType = getStorageType({ ...listing, storageType: listing.storageType ?? storageTypes[listing.id] });
   const storageType: "frozen" | "chilled" = rawStorageType === "frozen" ? "frozen" : "chilled";
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
@@ -47,14 +48,15 @@ export function ListingCard({ listing }: { listing: Listing }) {
     setTimeout(() => setAdded(false), 1500);
   }
 
-  const url = listingUrl(listing);
+  const url = listingUrl({ ...listing, slug: encodeURIComponent(listing.slug || listing.id) });
+  const image = publicProductImage(listing.image);
 
   return (
     <div className="group flex h-full flex-col rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition">
       {/* Image */}
       <Link href={url} className="relative aspect-square w-full overflow-hidden bg-gray-100 block">
-        {listing.image && !imageError ? (
-          <Image src={listing.image} alt={listing.title} fill
+        {!imageError ? (
+          <Image src={image} alt={listing.title} fill
             onError={() => setImageError(true)}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
