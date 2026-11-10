@@ -114,6 +114,7 @@ test("historical closed destination remains stored but cannot create a new shipm
     if (url.pathname === "/auth/v1/user") return Response.json({ id: "fixture-user" });
     if (url.pathname === "/rest/v1/orders") return Response.json({
       id: "order", order_number: "TRG-historic", delivery_type: "locker", delivery_info: { locker_id: "tukums" },
+      payment_status: "paid", status: "processing", seller_ids: ["seller"], items: [{ seller_id: "seller" }],
     });
     if (url.pathname === "/rest/v1/sellers") return Response.json({ id: "seller", home_locker_ids: ["brivibas"] });
     throw new Error("No shipment/order update allowed");
