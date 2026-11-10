@@ -1,32 +1,30 @@
 import { NextResponse } from "next/server";
 import { assertSuperAdmin } from "@/lib/admin-auth";
-import { notifySellersNewOrder, notifyBuyerOrderStatus } from "@/lib/order-notifications";
-import { sendAllOrderEmails, sendEmail, brandedEmailLayout } from "@/lib/email";
+import { notifyBuyerOrderStatus } from "@/lib/order-notifications";
+import { sendEmail, brandedEmailLayout } from "@/lib/email";
 import { loadAndRender } from "@/lib/email-templates";
 
-const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
+const NEXT_STATUS: Record<string, string> = { paid: "processing", processing: "shipped", shipped: "delivered" };
 
 /**
- * Admin-only: update order status + sync payment_status/paid_at.
- * When changing to "paid", triggers the full flow (notifications + emails)
- * — same as the Paysera webhook would.
+ * Admin-only fulfillment. Payment confirmation belongs exclusively to the
+ * verified payment/reservation transaction, never to a status dropdown.
  */
 export async function POST(req: Request) {
   const ctx = await assertSuperAdmin(req);
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   const { supabase } = ctx;
 
-  const { orderId, status, resendNotifications } = await req.json().catch(() => ({})) as {
-    orderId?: string; status?: string; resendNotifications?: boolean;
+  const { orderId, status, reason } = await req.json().catch(() => ({})) as {
+    orderId?: string; status?: string; reason?: string;
   };
-  if (!orderId || !status) {
+  if (!orderId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId) || !status) {
     return NextResponse.json({ error: "Missing orderId or status" }, { status: 400 });
   }
-
   // Fetch current order
   const { data: order } = await supabase
     .from("orders")
-    .select("id, status, payment_status, paid_at")
+    .select("id, status, payment_status, paid_at, payment_review_reason")
     .eq("id", orderId)
     .single();
 
@@ -35,24 +33,28 @@ export async function POST(req: Request) {
   }
 
   const previousStatus = order.status;
-  const wasPaid = order.payment_status === "paid";
-  const now = new Date().toISOString();
-  const updates: Record<string, unknown> = { status };
-
-  if (status === "pending") {
-    updates.payment_status = "awaiting";
-    updates.paid_at = null;
-  } else if (status === "cancelled") {
-    updates.payment_status = "cancelled";
-  } else if (PAID_FLOW_STATUSES.has(status)) {
-    updates.payment_status = "paid";
-    updates.paid_at = order.paid_at ?? now;
+  if (status === "cancelled") {
+    if (typeof reason !== "string" || reason.trim().length < 10 || reason.length > 4000) {
+      return NextResponse.json({ error: "Cancellation requires a documented reason (10+ characters)" }, { status: 400 });
+    }
+    if (["shipped", "delivered"].includes(order.status)) {
+      return NextResponse.json({ error: "Dispatched orders require a documented returns reconciliation" }, { status: 409 });
+    }
+    const { data, error } = await supabase.rpc("cancel_reserved_order", { p_order_id: orderId, p_reason: `admin_cancel:${reason.trim()}` });
+    if (error) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (data !== true && order.status !== "cancelled") return NextResponse.json({ error: "Order changed concurrently; cancellation not applied" }, { status: 409 });
+    return NextResponse.json({ ok: true, result: data, refund: "Paid cancellations require external refund review; no money was refunded." });
   }
-
-  const { error: updateErr } = await supabase
+  if (NEXT_STATUS[order.status] !== status || order.payment_status !== "paid" || !order.paid_at || order.payment_review_reason) {
+    return NextResponse.json({ error: "Invalid fulfillment transition or unresolved payment review; payment cannot be changed by admin status" }, { status: 409 });
+  }
+  // Guard against a concurrent cancellation/refund. Never modify payment fields.
+  const updates = { status };
+  const { data: changed, error: updateErr } = await supabase
     .from("orders")
     .update(updates)
-    .eq("id", orderId);
+    .eq("id", orderId).eq("status", previousStatus).eq("payment_status", "paid")
+    .is("payment_review_reason", null).select("id");
 
   if (updateErr) {
     console.error("[admin/update-order-status] update failed:", updateErr);
@@ -60,23 +62,8 @@ export async function POST(req: Request) {
   }
 
   // ── Side effects: trigger notifications + emails on status transitions ────
+  if (!changed?.length) return NextResponse.json({ error: "Order changed concurrently" }, { status: 409 });
   const sideEffects: string[] = [];
-
-  // Newly marked as paid OR resend requested → full "paid" flow
-  if (status === "paid" && (!wasPaid || resendNotifications)) {
-    notifySellersNewOrder(orderId).catch((e) =>
-      console.error("[admin] notifySellersNewOrder failed:", e)
-    );
-    sendAllOrderEmails(orderId)
-      .then((r) => {
-        if (!r.buyer.ok) console.warn("[admin] buyer email skipped:", r.buyer.error);
-        for (const s of r.sellers) {
-          if (!s.ok) console.warn("[admin] seller email failed:", s.error);
-        }
-      })
-      .catch((e) => console.error("[admin] sendAllOrderEmails failed:", e));
-    sideEffects.push("seller_push", "order_emails");
-  }
 
   // Status transitions that should notify the buyer (push + email)
   if (

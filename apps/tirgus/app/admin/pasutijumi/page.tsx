@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard, AlertTriangle, Loader2, Send } from "lucide-react";
+import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 
@@ -57,7 +57,6 @@ const paymentStatusMap: Record<string, { label: string; cls: string }> = {
 };
 
 const STATUS_OPTIONS = ["all", "pending", "paid", "processing", "shipped", "delivered", "cancelled"] as const;
-const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
 export default function AdminPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -65,9 +64,6 @@ export default function AdminPasutijumiPage() {
   const [filter, setFilter] = useState<typeof STATUS_OPTIONS[number]>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
-  const [resending, setResending] = useState<string | null>(null);
-  const [resendResult, setResendResult] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -84,9 +80,9 @@ export default function AdminPasutijumiPage() {
 
   // Initial load + auto-refresh every 30s
   useEffect(() => {
-    loadOrders();
+    const initial = setTimeout(() => void loadOrders(), 0);
     const interval = setInterval(() => loadOrders(true), 30_000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [loadOrders]);
 
   async function getToken(): Promise<string | null> {
@@ -97,6 +93,8 @@ export default function AdminPasutijumiPage() {
   async function updateStatus(id: string, status: string) {
     const current = orders.find((o) => o.id === id);
     if (!current) return;
+    const reason = status === "cancelled" ? window.prompt("Atcelšanas pamatojums (vismaz 10 rakstzīmes). Apmaksāts pasūtījums nonāks manuālas atmaksas pārskatīšanā.") : undefined;
+    if (status === "cancelled" && (!reason || reason.trim().length < 10)) return;
 
     try {
       const token = await getToken();
@@ -105,7 +103,7 @@ export default function AdminPasutijumiPage() {
       const res = await fetch("/api/admin/update-order-status", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId: id, status }),
+        body: JSON.stringify({ orderId: id, status, reason }),
       });
       const json = await res.json();
 
@@ -114,82 +112,10 @@ export default function AdminPasutijumiPage() {
         return;
       }
 
-      const updates = json.updates as { status: string; payment_status?: string; paid_at?: string | null };
-      setOrders((prev) => prev.map((o) =>
-        o.id === id
-          ? {
-              ...o,
-              status: updates.status,
-              payment_status: updates.payment_status ?? o.payment_status,
-              paid_at: updates.paid_at === undefined ? o.paid_at : updates.paid_at,
-            }
-          : o,
-      ));
+      await loadOrders(true);
     } catch (e) {
       alert(`Tīkla kļūda: ${e instanceof Error ? e.message : "Nezināma kļūda"}`);
     }
-  }
-
-  /** Mark a pending order as paid + trigger full flow (notifications, emails) */
-  async function markAsPaid(order: Order) {
-    if (order.payment_status === "paid") return;
-    setMarkingPaid(order.id);
-    try {
-      const token = await getToken();
-      if (!token) { alert("Nav sesijas — pārlogojies."); return; }
-
-      const res = await fetch("/api/admin/update-order-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId: order.id, status: "paid" }),
-      });
-      const json = await res.json();
-
-      if (!res.ok || !json.ok) {
-        alert(`Kļūda: ${json.error ?? "Nezināma kļūda"}`);
-        return;
-      }
-
-      const updates = json.updates as { status: string; payment_status?: string; paid_at?: string | null };
-      setOrders((prev) => prev.map((o) =>
-        o.id === order.id
-          ? { ...o, status: "paid", payment_status: "paid", paid_at: updates.paid_at as string ?? new Date().toISOString() }
-          : o,
-      ));
-    } catch (e) {
-      alert(`Kļūda: ${e instanceof Error ? e.message : "Nezināma kļūda"}`);
-    } finally {
-      setMarkingPaid(null);
-    }
-  }
-
-  /** Resend notifications for an already-paid order (e.g., if webhook missed) */
-  async function resendNotifications(order: Order) {
-    setResending(order.id);
-    setResendResult(null);
-    try {
-      const token = await getToken();
-      if (!token) { alert("Nav sesijas"); return; }
-      // Set status to "paid" again — the API detects it's already paid
-      // but we force wasPaid=false by temporarily setting to pending then back
-      // Actually simpler: just call update-order-status with "paid" — if already paid,
-      // we need a special flag. Let's add resendOnly.
-      const res = await fetch("/api/admin/update-order-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId: order.id, status: "paid", resendNotifications: true }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        setResendResult({ id: order.id, ok: true, msg: `Paziņojumi nosūtīti (${(json.sideEffects ?? []).join(", ")})` });
-      } else {
-        setResendResult({ id: order.id, ok: false, msg: json.error ?? "Kļūda" });
-      }
-    } catch (e) {
-      setResendResult({ id: order.id, ok: false, msg: e instanceof Error ? e.message : "Tīkla kļūda" });
-    }
-    setResending(null);
-    setTimeout(() => setResendResult(null), 5000);
   }
 
   const visible = orders.filter(o => {
@@ -202,7 +128,7 @@ export default function AdminPasutijumiPage() {
 
   const pendingCount = orders.filter((o) => o.status === "pending" && o.payment_status !== "paid").length;
   const totalRevenue = orders
-    .filter((o) => o.payment_status === "paid" || !!o.paid_at || PAID_FLOW_STATUSES.has(o.status))
+    .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + o.total_cents, 0);
 
   if (loading) return (
@@ -240,8 +166,8 @@ export default function AdminPasutijumiPage() {
               {pendingCount} {pendingCount === 1 ? "pasūtījums gaida" : "pasūtījumi gaida"} apmaksu
             </p>
             <p className="mt-0.5 text-xs text-amber-700">
-              Ja Paysera apmaksa ir veikta, bet statuss nav mainījies — nospied <strong>"Atzīmēt kā apmaksātu"</strong> uz attiecīgā pasūtījuma.
-              Tas nosūtīs e-pastu pircējam un push paziņojumu ražotājam.
+              Ja Paysera apmaksa ir veikta, bet statuss nav mainījies, nepieciešama maksājuma un rezervācijas pārbaude.
+              Manuāla apmaksas statusa maiņa nav atļauta.
             </p>
           </div>
         </div>
@@ -382,52 +308,16 @@ export default function AdminPasutijumiPage() {
                       })()}
                     </div>
 
-                    {/* Payment status + Mark as Paid */}
                     {order.status === "pending" && order.payment_status !== "paid" && (
                       <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-3">
                         <AlertTriangle size={16} className="shrink-0 text-amber-600" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-amber-800">Paysera webhook nav saņemts</p>
-                          <p className="text-[10px] text-amber-600">Ja apmaksa Paysera ir veikta, nospied pogu →</p>
+                          <p className="text-xs font-semibold text-amber-800">Nav verificēta maksājuma apstiprinājuma</p>
+                          <p className="text-[10px] text-amber-600">Maksājumu apstiprina tikai pārbaudīts maksājumu sniedzēja paziņojums. Manuāli mainīt uz apmaksātu nav atļauts.</p>
                         </div>
-                        <button
-                          onClick={() => markAsPaid(order)}
-                          disabled={markingPaid === order.id}
-                          className="flex shrink-0 items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white hover:bg-green-700 transition disabled:opacity-60"
-                        >
-                          {markingPaid === order.id
-                            ? <><Loader2 size={12} className="animate-spin" /> Apstrādā...</>
-                            : <><CreditCard size={12} /> Atzīmēt kā apmaksātu</>
-                          }
-                        </button>
                       </div>
                     )}
-
-                    {/* Resend notifications for already-paid orders */}
-                    {order.payment_status === "paid" && (
-                      <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
-                        <Send size={14} className="shrink-0 text-blue-600" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-blue-800">Paziņojumi ražotājiem</p>
-                          <p className="text-[10px] text-blue-600">Nosūtīt/atkārtoti nosūtīt e-pastus un push paziņojumus visiem ražotājiem</p>
-                        </div>
-                        <button
-                          onClick={() => resendNotifications(order)}
-                          disabled={resending === order.id}
-                          className="flex shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition disabled:opacity-60"
-                        >
-                          {resending === order.id
-                            ? <><Loader2 size={11} className="animate-spin" /> Sūta...</>
-                            : <><Send size={11} /> Nosūtīt paziņojumus</>
-                          }
-                        </button>
-                      </div>
-                    )}
-                    {resendResult?.id === order.id && (
-                      <div className={`rounded-xl px-4 py-2 text-xs ${resendResult.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>
-                        {resendResult.ok ? "✓ " : "✗ "}{resendResult.msg}
-                      </div>
-                    )}
+                    <a href="/admin/finanses" className="text-sm underline">Finanšu pārskatīšana un atmaksas</a>
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                       <div className="flex items-center gap-3">
@@ -452,7 +342,9 @@ export default function AdminPasutijumiPage() {
                           onChange={e => updateStatus(order.id, e.target.value)}
                           className="rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-700 focus:outline-none"
                         >
-                          {Object.entries(statusMap).map(([val, { label }]) => (
+                          {Object.entries(statusMap).filter(([val]) => val === order.status ||
+                            (order.payment_status === "paid" && ({ paid: "processing", processing: "shipped", shipped: "delivered" } as Record<string, string>)[order.status] === val) ||
+                            (val === "cancelled" && ["pending", "paid", "processing"].includes(order.status))).map(([val, { label }]) => (
                             <option key={val} value={val}>{label}</option>
                           ))}
                         </select>

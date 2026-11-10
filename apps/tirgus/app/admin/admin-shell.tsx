@@ -28,6 +28,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/pirceji",              label: "Pirc\u0113ji",             icon: UserCheck },
       { href: "/admin/lietotaji",             label: "Lietot\u0101ji",            icon: Users },
       { href: "/admin/rekini",               label: "R\u0113\u0137ini",              icon: FileText },
+      { href: "/admin/finanses",             label: "Finanšu pārskatīšana", icon: Wallet },
     ],
   },
   {

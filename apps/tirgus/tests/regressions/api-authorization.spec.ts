@@ -6,6 +6,7 @@ import * as emailPreview from "../../app/api/admin/email-preview/route";
 import * as emailTemplates from "../../app/api/admin/email-templates/route";
 import * as feedback from "../../app/api/admin/feedback/route";
 import * as invoices from "../../app/api/admin/generate-invoices/route";
+import * as finance from "../../app/api/admin/finance/route";
 import * as slugs from "../../app/api/admin/generate-slugs/route";
 import * as impersonate from "../../app/api/admin/impersonate/route";
 import * as inviteBatch from "../../app/api/admin/invite/batch/route";
@@ -37,6 +38,7 @@ const modules: Record<string, Handlers> = {
   "admin/approve-seller": approveSeller, "admin/delete-seller": deleteSeller, "admin/delete-user": deleteUser,
   "admin/email-preview": emailPreview, "admin/email-templates": emailTemplates, "admin/feedback": feedback,
   "admin/generate-invoices": invoices, "admin/generate-slugs": slugs, "admin/impersonate": impersonate,
+  "admin/finance": finance,
   "admin/invite/batch": inviteBatch, "admin/invite": invite, "admin/link-seller": linkSeller,
   "admin/make-seller": makeSeller, "admin/paysera-diagnostics": diagnostics, "admin/sutijumi": shipments,
   "admin/team": team, "admin/test-email": emailTest, "admin/update-order-status": status, "admin/users": users,
@@ -50,6 +52,7 @@ const adminRoutes = [
   ["approve-seller", "POST"], ["delete-seller", "POST"], ["delete-user", "POST"],
   ["email-preview", "GET", "POST"], ["email-templates", "GET", "PUT"], ["feedback", "GET", "PATCH"],
   ["generate-invoices", "POST"], ["generate-slugs", "POST"], ["impersonate", "POST"],
+  ["finance", "GET", "POST"],
   ["invite/batch", "POST"], ["invite", "GET", "POST"], ["link-seller", "POST"],
   ["make-seller", "POST"], ["paysera-diagnostics", "GET", "POST"], ["sutijumi", "GET", "POST"],
   ["team", "GET", "POST", "DELETE"], ["test-email", "POST"], ["update-order-status", "POST"], ["users", "GET"],

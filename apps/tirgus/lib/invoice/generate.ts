@@ -73,7 +73,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     .select("id, order_number, paid_at, items, seller_ids")
     .gte("paid_at", period.start.toISOString())
     .lte("paid_at", period.end.toISOString())
-    .eq("payment_status", "paid");
+    .eq("payment_status", "paid")
+    .neq("status", "cancelled")
+    .is("payment_review_reason", null);
   if (ordersErr) throw ordersErr;
 
   // Missing historical evidence must not be reconstructed from current listings
