@@ -179,6 +179,14 @@ test("sitemap uses publishable existing public columns and real modification dat
   });
 });
 
+test("sitemap lists canonical delivery destination instead of redirected locker alias", async () => {
+  await backend(() => Response.json([]), async () => {
+    const urls = (await sitemap()).map(item => item.url);
+    expect(urls).toContain("https://tirgus.izipizi.lv/piegade");
+    expect(urls).not.toContain("https://tirgus.izipizi.lv/lockers");
+  });
+});
+
 test("sitemap backend errors fall back to static public pages without fake DB pages", async () => {
   await backend(() => Response.json({ message: "Dummy failure" }, { status: 500 }), async () => {
     const result = await sitemap();
