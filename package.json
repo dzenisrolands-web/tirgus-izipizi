@@ -17,7 +17,8 @@
     "release:preflight": "node scripts/release/preflight.mjs",
     "release:migrations": "node scripts/release/migrate.mjs",
     "release:auth-templates": "node scripts/release/auth-templates.mjs",
-    "release:test": "node --test scripts/release/*.test.mjs"
+    "release:test": "node --test scripts/release/*.test.mjs",
+    "release:test-db": "node scripts/release/staging.mjs"
   },
   "devDependencies": {
     "pg": "^8.23.1",

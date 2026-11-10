@@ -161,7 +161,7 @@ for (const method of ["locker", "courier", "express"]) {
     }, async () => {
       const response = await checkout(request("/api/checkout/create-session", checkoutBody(method)));
       expect(response.status).toBe(200);
-      expect(saved?.total_cents).toBe(method === "locker" ? 2500 : 2850);
+      expect(saved?.total_cents).toBe(method === "locker" ? 2800 : method === "express" ? 3408 : 3274);
       expect(saved?.seller_ids).toEqual([seller.id]);
       expect(saved?.items).toEqual([expect.objectContaining({ price: 12.5, title: "Real product", seller_id: seller.id })]);
       expect((saved?.items as Record<string, unknown>[])[0]).not.toHaveProperty("drop_id");

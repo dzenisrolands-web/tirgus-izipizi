@@ -7,7 +7,7 @@ import { checkoutListingIds, normalizeCheckoutItems, type CheckoutListing } from
 import { grantOrderAccess } from "@/lib/order-access";
 import { getOpenLocker, deliveryLockersForSellers } from "@/lib/locker-policy";
 import { lookupPostalCode } from "@/lib/postal-zones";
-import { BUYER_LOCKER_FEE_CENTS, BUYER_COURIER_FEE_CENTS } from "@/lib/delivery-policy";
+import { calculateDeliveryQuote, DELIVERY_TARIFF_VERSION } from "@/lib/delivery-policy";
 import { createReservedOrder } from "@/lib/stock-reservations";
 
 export async function POST(req: Request) {
@@ -53,11 +53,13 @@ export async function POST(req: Request) {
   const sellerNames = new Map(sellers.map(s => [s.id, s.name]));
   const sellerModes = new Map(sellers.map(s => [s.id, s.delivery_mode]));
   const sellerVatRegistered = new Map(sellers.map(s => [s.id, s.is_vat_registered]));
+  const sellerHomeLockers = new Map(sellers.map(s => [s.id, s.home_locker_ids ?? []]));
   const orderItems = items.map(i => ({
     ...i, sellerName: sellerNames.get(i.seller_id) ?? "",
     vat_rate: sellerVatRegistered.get(i.seller_id) === false ? 0 : i.vat_rate,
     seller_delivery_mode: sellerModes.get(i.seller_id),
     seller_courier_fee_cents: sellerModes.get(i.seller_id) === "courier" ? 350 : 0,
+    seller_home_locker_ids: sellerHomeLockers.get(i.seller_id),
   }));
   if (orderItems.some(i => i.vat_rate === null)) {
     return NextResponse.json({ error: "Precei nav norādīta PVN likme" }, { status: 400 });
@@ -84,11 +86,26 @@ export async function POST(req: Request) {
     deliveryInfo.zone = zone.zone;
     deliveryInfo.method = deliveryType;
   }
-  const feeCents = deliveryType === "locker" ? BUYER_LOCKER_FEE_CENTS : BUYER_COURIER_FEE_CENTS;
-  const deliveryFeeCents = feeCents * sellerIds.length;
+  const quote = calculateDeliveryQuote({
+    method: deliveryType,
+    buyerPostalCode: String(deliveryInfo.postal_code ?? ""),
+    lockerId: typeof deliveryInfo.locker_id === "string" ? deliveryInfo.locker_id : null,
+    sellers: sellers.map(seller => ({
+      sellerId: seller.id,
+      homeLockerIds: seller.home_locker_ids ?? [],
+      items: items.filter(item => item.seller_id === seller.id).map(item => ({
+        category: item.category ?? "", storageType: item.storage_type, expressDelivery: item.express_delivery,
+      })),
+    })),
+  });
+  if (!quote.ok) return NextResponse.json({
+    error: "Izvēlētajam grozam un adresei piegāde nav pieejama. Pārbaudi saņemšanas vietu vai piegādes veidu.",
+  }, { status: 400 });
+  const deliveryFeeCents = quote.totalCents;
   deliveryInfo.delivery_fee_cents = deliveryFeeCents;
-  deliveryInfo.delivery_fees_by_seller = sellerIds.map(sellerId => ({
-    sellerId, sellerName: sellerNames.get(sellerId), feeCents, method: deliveryType,
+  deliveryInfo.tariff_version = DELIVERY_TARIFF_VERSION;
+  deliveryInfo.delivery_fees_by_seller = quote.breakdown.map(fee => ({
+    ...fee, sellerName: sellerNames.get(fee.sellerId), feeCents: fee.totalCents,
   }));
   const subtotalCents = items.reduce((sum, i) => sum + Math.round(i.price * 100) * i.quantity, 0);
   let discountCents = 0;

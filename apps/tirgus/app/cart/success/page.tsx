@@ -8,6 +8,7 @@ import confetti from "canvas-confetti";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { paymentDisplayState } from "@/lib/payment-display";
 
 type OrderItem = { id?: string; title?: string; price?: number; quantity?: number; unit?: string };
 
@@ -16,6 +17,8 @@ type Order = {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_review_reason?: string | null;
+  payment_received_cents?: number | null;
   buyer_name: string;
   buyer_email: string;
   delivery_type?: string;
@@ -64,7 +67,7 @@ function CartSuccessContent() {
 
   // GA4 purchase event + confetti when payment confirmed
   useEffect(() => {
-    if (!order || order.payment_status !== "paid" || confettiFiredRef.current) return;
+    if (!order || paymentDisplayState(order) !== "paid" || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
 
     // GA4 purchase event
@@ -162,7 +165,8 @@ function CartSuccessContent() {
     );
   }
 
-  const isPaid = order.payment_status === "paid";
+  const paymentState = paymentDisplayState(order);
+  const isPaid = paymentState === "paid";
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
@@ -172,10 +176,13 @@ function CartSuccessContent() {
           {isPaid && <span className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-50" />}
         </div>
         <h1 className="mt-5 text-2xl font-extrabold text-gray-900">
-          {isPaid ? "Apmaksa veiksmīga!" : "Pasūtījums saņemts"}
+          {paymentState === "review" ? "Maksājums jāpārbauda" :
+            paymentState === "refunded" ? "Atmaksa reģistrēta" :
+            paymentState === "cancelled" ? "Pasūtījums atcelts" :
+            isPaid ? "Apmaksa veiksmīga!" : "Pasūtījums saņemts"}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Paldies, <strong>{order.buyer_name}</strong>! Apstiprinājums nosūtīts uz{" "}
+          Paldies, <strong>{order.buyer_name}</strong>! Pasūtījuma saziņas e-pasts:{" "}
           <strong>{order.buyer_email}</strong>.
         </p>
         <div className="mt-3 rounded-full bg-gray-100 px-4 py-1.5 text-sm font-mono font-semibold text-gray-700">
@@ -186,7 +193,13 @@ function CartSuccessContent() {
             Mock režīms (testēšanai) — reāli neviens nav norēķinājies
           </p>
         )}
-        {!isPaid && (
+        {paymentState === "review" && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          Maksājuma informācija ir saglabāta, bet pasūtījuma izpilde nav apstiprināta.
+          Administrators pārbaudīs rezervāciju un samaksu vai organizēs atmaksu.
+          {typeof order.payment_received_cents === "number" && <> Saņemts: {formatPrice(order.payment_received_cents / 100)}.</>}
+          {" "}Nesamaksā atkārtoti; sazinies ar birojs@izipizi.lv, norādot pasūtījuma numuru.
+        </p>}
+        {paymentState === "awaiting" && (
           <p className="mt-3 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
             Apstrādē... ({pollAttempt}/10) Ja neapstrādājas, sazinies ar mums: birojs@izipizi.lv
           </p>
