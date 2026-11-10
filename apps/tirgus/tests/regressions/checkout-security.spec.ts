@@ -10,12 +10,12 @@ import { POST as orderNotify } from "../../app/api/notify/order-status/route";
 import { POST as dropNotify } from "../../app/api/push/notify/route";
 import { POST as dropCheckout } from "../../app/api/checkout/drop/route";
 import { POST as callback } from "../../app/api/webhooks/paysera/route";
-import { normalizeCheckoutItems, type CheckoutListing } from "../../lib/checkout-items";
+import { checkoutListingIds, normalizeCheckoutItems, type CheckoutListing } from "../../lib/checkout-items";
 import { grantOrderAccess, hasGuestOrderAccess } from "../../lib/order-access";
 import { verifyPayseraCallback } from "../../lib/paysera";
 
 const listing: CheckoutListing = {
-  id: "listing", title: "Real product", price: 12.50, quantity: 10, unit: "gab.",
+  id: "ab000000-0000-4000-8000-000000000001", title: "Real product", price: 12.50, quantity: 10, unit: "gab.",
   seller_id: "seller", status: "active", variants: [], vat_rate: 21,
 };
 const seller = { id: "seller", user_id: "owner", name: "Real seller", status: "approved", delivery_mode: "locker", home_locker_ids: ["brivibas"] };
@@ -27,6 +27,29 @@ const order = {
 const request = (path: string, body: unknown, token?: string) => new Request(`https://example.invalid${path}`, {
   method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
   body: JSON.stringify(body),
+});
+
+test("plain and composite UUID cart IDs produce only valid UUID database candidates", async () => {
+  const variantId = "cd000000-0000-4000-8000-000000000002";
+  expect(checkoutListingIds([
+    { id: listing.id, quantity: 1 }, { id: `${listing.id}-${variantId}`, quantity: 1 },
+    { id: "invalid-prefix", quantity: 1 },
+  ])).toEqual([listing.id]);
+  for (const composite of [false, true]) {
+    await mocked((url, init) => {
+      if (url.pathname === "/rest/v1/listings") {
+        expect(url.searchParams.get("id")).toBe(`in.(${listing.id})`);
+        return Response.json([{ ...listing, variants: composite ? [{ id: variantId, title: "Large", price: 20, quantity: 2 }] : [] }]);
+      }
+      if (url.pathname === "/rest/v1/sellers") return Response.json([seller]);
+      if (url.pathname === "/rest/v1/orders" && init?.method === "POST") return new Response(null, { status: 201 });
+      throw new Error("Unexpected backend operation");
+    }, async () => {
+      const body = checkoutBody();
+      if (composite) body.items[0].id = `${listing.id}-${variantId}`;
+      expect((await checkout(request("/checkout", body))).status).toBe(200);
+    });
+  }
 });
 
 async function mocked<T>(
@@ -44,7 +67,7 @@ async function mocked<T>(
 
 function checkoutBody(deliveryType = "locker", locker = "brivibas") {
   return {
-    items: [{ id: "listing", quantity: 2, price: 0.01, title: "Fake product", sellerId: "intruder", drop_id: "invented" }],
+    items: [{ id: listing.id, quantity: 2, price: 0.01, title: "Fake product", sellerId: "intruder", drop_id: "invented" }],
     totalCents: 1, sellerIds: ["intruder"], deliveryFeeCents: -999,
     deliveryType, deliveryInfo: deliveryType === "locker" ? { locker_id: locker, locker_name: "Fake" } :
       { address: "Test address", city: "Rīga", postal_code: "LV-1010" },
@@ -92,13 +115,14 @@ for (const locker of ["tukums", "saga", "unknown", "dundaga"]) {
 }
 
 test("quantities, duplicates, unknown/inactive products and variant stock fail closed", () => {
+  const localListing = { ...listing, id: "listing" };
   for (const quantity of [0, -1, 0.5, 1000, NaN]) {
-    expect(() => normalizeCheckoutItems([{ id: "listing", quantity }], [listing], "locker")).toThrow();
+    expect(() => normalizeCheckoutItems([{ id: "listing", quantity }], [localListing], "locker")).toThrow();
   }
-  expect(() => normalizeCheckoutItems([{ id: "missing", quantity: 1 }], [listing], "locker")).toThrow();
-  expect(() => normalizeCheckoutItems([{ id: "listing", quantity: 1 }], [{ ...listing, status: "paused" }], "locker")).toThrow();
-  expect(() => normalizeCheckoutItems([{ id: "listing", quantity: 1 }, { id: "listing", quantity: 1 }], [listing], "locker")).toThrow();
-  const variantListing = { ...listing, variants: [{ id: "v1", title: "Large", price: 20, quantity: 2 }] };
+  expect(() => normalizeCheckoutItems([{ id: "missing", quantity: 1 }], [localListing], "locker")).toThrow();
+  expect(() => normalizeCheckoutItems([{ id: "listing", quantity: 1 }], [{ ...localListing, status: "paused" }], "locker")).toThrow();
+  expect(() => normalizeCheckoutItems([{ id: "listing", quantity: 1 }, { id: "listing", quantity: 1 }], [localListing], "locker")).toThrow();
+  const variantListing = { ...localListing, variants: [{ id: "v1", title: "Large", price: 20, quantity: 2 }] };
   expect(normalizeCheckoutItems([{ id: "listing-v1", quantity: 2 }], [variantListing], "locker")[0].price).toBe(20);
   expect(() => normalizeCheckoutItems([{ id: "listing-v1", quantity: 3 }], [variantListing], "locker")).toThrow();
   expect(() => normalizeCheckoutItems([{ id: "listing", quantity: 2 }, { id: "listing-v1", quantity: 1 }], [variantListing], "locker")).toThrow();

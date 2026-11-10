@@ -12,13 +12,9 @@ type Variant = { id: string; title: string; price: number; quantity: number };
 
 /** Candidate listing IDs support both plain IDs and the legacy `${listingId}-${variantId}` cart key. */
 export function checkoutListingIds(items: RequestedItem[]): string[] {
-  return [...new Set(items.flatMap(item => {
-    const candidates = [item.id];
-    for (let i = item.id.indexOf("-"); i !== -1; i = item.id.indexOf("-", i + 1)) {
-      candidates.push(item.id.slice(0, i));
-    }
-    return candidates;
-  }))];
+  const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  // listings.id is uuid: ONE invalid member makes PostgREST reject the entire IN query.
+  return [...new Set(items.map(item => item.id.slice(0, 36)).filter(id => uuid.test(id)))];
 }
 
 export function normalizeCheckoutItems(items: RequestedItem[], listings: CheckoutListing[], method: string) {
