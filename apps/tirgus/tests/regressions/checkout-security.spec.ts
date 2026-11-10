@@ -9,7 +9,7 @@ import { POST as shipment } from "../../app/api/shipments/create-from-order/rout
 import { POST as orderNotify } from "../../app/api/notify/order-status/route";
 import { POST as dropNotify } from "../../app/api/push/notify/route";
 import { POST as dropCheckout } from "../../app/api/checkout/drop/route";
-import { POST as callback } from "../../app/api/webhooks/paysera/route";
+import { POST as callback, GET as getCallback } from "../../app/api/webhooks/paysera/route";
 import { checkoutListingIds, normalizeCheckoutItems, type CheckoutListing } from "../../lib/checkout-items";
 import { grantOrderAccess, hasGuestOrderAccess } from "../../lib/order-access";
 import { verifyPayseraCallback } from "../../lib/paysera";
@@ -27,6 +27,28 @@ const order = {
 const request = (path: string, body: unknown, token?: string) => new Request(`https://example.invalid${path}`, {
   method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
   body: JSON.stringify(body),
+});
+
+test("documented Paysera ss1 works for GET and form POST without any payment fallback", async () => {
+  process.env.PAYSERA_MODE = "live";
+  process.env.PAYSERA_SIGN_PASSWORD = "nonfunctional-test-password";
+  process.env.PAYSERA_PROJECT_ID = "test-project";
+  const data = Buffer.from(new URLSearchParams({
+    orderid: order.order_number, amount: "1250", currency: "EUR", projectid: "test-project", test: "0", status: "1",
+  }).toString()).toString("base64url");
+  const ss1 = createHash("md5").update(data + "nonfunctional-test-password").digest("hex");
+  try {
+    await mocked(url => {
+      if (url.pathname === "/rest/v1/orders") return Response.json({ ...order, payment_status: "paid", status: "paid" });
+      throw new Error("Already-paid callback must not mutate or notify");
+    }, async () => {
+      expect((await getCallback(new Request(`https://example.invalid/callback?${new URLSearchParams({ data, ss1 })}`))).status).toBe(200);
+      expect((await callback(new Request("https://example.invalid/callback", {
+        method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ data, ss1 }),
+      }))).status).toBe(200);
+      expect((await getCallback(new Request(`https://example.invalid/callback?${new URLSearchParams({ data, ss1: "invalid" })}`))).status).toBe(400);
+    });
+  } finally { process.env.PAYSERA_MODE = "mock"; }
 });
 
 test("plain and composite UUID cart IDs produce only valid UUID database candidates", async () => {
@@ -204,7 +226,8 @@ test("callback accepts only matching project/currency/live payment mode and inte
   };
   try {
     expect(encode({}).valid).toBe(true);
-    const invalidParams: Record<string, string>[] = [{ projectid: "other" }, { currency: "USD" }, { test: "1" }, { amount: "1250junk" }, { amount: "-1" }];
+    const invalidParams: Record<string, string>[] = [{ projectid: "other" }, { currency: "USD" }, { test: "1" }, { amount: "1250junk" }, { amount: "-1" },
+      { payamount: "1", paycurrency: "EUR" }, { payamount: "1250", paycurrency: "USD" }];
     for (const extra of invalidParams) {
       expect(encode(extra).valid).toBe(false);
     }

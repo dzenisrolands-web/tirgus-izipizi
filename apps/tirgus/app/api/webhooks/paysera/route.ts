@@ -33,7 +33,8 @@ async function handle(req: Request) {
   // Paysera sends data either as URL params or as form body
   const url = new URL(req.url);
   let data = url.searchParams.get("data") ?? "";
-  let sign = url.searchParams.get("sign") ?? "";
+  // Classic callbacks use ss1; sign is retained for existing internal/test integrations.
+  let sign = url.searchParams.get("ss1") ?? url.searchParams.get("sign") ?? "";
   let source = data ? "url_params" : "none";
 
   if (!data) {
@@ -41,7 +42,7 @@ async function handle(req: Request) {
       const text = await req.text();
       const form = new URLSearchParams(text);
       data = form.get("data") ?? "";
-      sign = form.get("sign") ?? "";
+      sign = form.get("ss1") ?? form.get("sign") ?? "";
       source = data ? "form_body" : "empty";
     } catch (e) {
       console.error(`[paysera][${ts}] failed to parse body:`, e);

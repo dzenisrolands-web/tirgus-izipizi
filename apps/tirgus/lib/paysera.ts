@@ -104,13 +104,19 @@ export function verifyPayseraCallback(data: string, sign: string): PayseraCallba
     if (sign !== expected) return { valid: false, reason: "signature mismatch" };
   }
 
-  const params = parseQueryString(decoded);
+  let params: Record<string, string>;
+  try { params = parseQueryString(decoded); }
+  catch { return { valid: false, reason: "invalid encoded parameters" }; }
   if (mode === "mock" && process.env.NODE_ENV === "production") {
     return { valid: false, reason: "mock payments disabled in production" };
   }
   if (mode !== "mock") {
     if (params.projectid !== process.env.PAYSERA_PROJECT_ID) return { valid: false, reason: "project mismatch" };
     if (params.currency !== "EUR") return { valid: false, reason: "currency mismatch" };
+    if (params.payamount !== undefined && (params.paycurrency !== "EUR" ||
+        !/^\d+$/.test(params.payamount) || params.payamount !== params.amount)) {
+      return { valid: false, reason: "received payment amount/currency mismatch" };
+    }
     if (mode === "live" && params.test !== "0") return { valid: false, reason: "test payment in live mode" };
   }
   if (!params.orderid || !/^\d+$/.test(params.amount ?? "") ||
