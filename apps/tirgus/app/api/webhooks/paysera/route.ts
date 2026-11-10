@@ -28,7 +28,7 @@ async function handle(req: Request) {
   const ts = new Date().toISOString();
   const method = req.method;
 
-  console.log(`[paysera][${ts}] callback received: ${method} ${req.url}`);
+  console.log(`[paysera][${ts}] callback received: ${method}`);
 
   // Paysera sends data either as URL params or as form body
   const url = new URL(req.url);
@@ -78,10 +78,11 @@ async function handle(req: Request) {
   // Find order; ignore if already paid (idempotency)
   const { data: order } = await supabase
     .from("orders")
-    .select("id, payment_status, total_cents, seller_ids, items, buyer_name, buyer_id, order_number, promo_code, promo_discount_cents")
+    .select("id, status, payment_status, total_cents, seller_ids, items, buyer_name, buyer_id, order_number, promo_code, promo_discount_cents")
     .eq("order_number", result.orderNumber)
     .single<{
       id: string;
+      status: string;
       payment_status: string;
       total_cents: number;
       seller_ids: string[] | null;
@@ -108,15 +109,23 @@ async function handle(req: Request) {
     return new NextResponse("AMOUNT_MISMATCH", { status: 400 });
   }
 
-  // Mark as paid
-  await supabase
+  if (order.payment_status !== "awaiting" || order.status !== "pending") {
+    return new NextResponse("UNEXPECTED_STATE", { status: 409 });
+  }
+  // Compare-and-set: duplicate/concurrent callbacks may never repeat stock or notifications.
+  const { data: claimed, error: claimError } = await supabase
     .from("orders")
     .update({
       payment_status: "paid",
       status: "paid",
       paid_at: new Date().toISOString(),
     })
-    .eq("id", order.id);
+    .eq("id", order.id)
+    .eq("payment_status", "awaiting")
+    .eq("status", "pending")
+    .select("id");
+  if (claimError) return new NextResponse("UPDATE_FAILED", { status: 500 });
+  if (!claimed?.length) return new NextResponse("OK", { status: 200 });
 
   // If this order contains drop items, transition reserved → sold
   const dropItems = (order.items ?? []).filter((it) => it.drop_id);

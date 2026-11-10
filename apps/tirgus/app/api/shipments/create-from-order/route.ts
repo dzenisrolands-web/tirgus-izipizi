@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateShipmentNumber, type ShipmentSize, type LabelData } from "@/lib/shipping";
+import { getOpenLocker } from "@/lib/locker-policy";
 
 /**
  * POST /api/shipments/create-from-order
@@ -31,11 +32,15 @@ export async function POST(req: Request) {
   if (!orderId || !size || !lockerCode) {
     return NextResponse.json({ error: "orderId, size, lockerCode obligāti" }, { status: 400 });
   }
+  if (!["M", "L", "XL"].includes(size) || typeof lockerCode !== "string" ||
+      !/^[a-zA-Z0-9 -]{1,32}$/.test(lockerCode)) {
+    return NextResponse.json({ error: "Nederīgs izmērs vai kods" }, { status: 400 });
+  }
 
   // Fetch order
   const { data: order } = await sb
     .from("orders")
-    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status")
+    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status, payment_status")
     .eq("id", orderId)
     .single();
 
@@ -53,10 +58,19 @@ export async function POST(req: Request) {
   if (!seller) {
     return NextResponse.json({ error: "Nav ražotāja profila" }, { status: 403 });
   }
+  if (!order.seller_ids?.includes(seller.id)) {
+    return NextResponse.json({ error: "Nav tavs pasūtījums" }, { status: 403 });
+  }
+  if (order.payment_status !== "paid" || !["paid", "processing"].includes(order.status)) {
+    return NextResponse.json({ error: "Pasūtījums nav gatavs nosūtīšanai" }, { status: 409 });
+  }
 
   const shipmentNumber = generateShipmentNumber();
   const di = order.delivery_info as Record<string, unknown> | null;
   const isLocker = order.delivery_type === "locker" || !!di?.locker_id;
+  if (isLocker && !getOpenLocker(di?.locker_id)) {
+    return NextResponse.json({ error: "Saņemšanas pakomāts nav pieejams" }, { status: 400 });
+  }
 
   // Determine temp mode from size
   const tempMode = size === "L" ? "−18 °C" : "+2…+6 °C";
@@ -73,6 +87,9 @@ export async function POST(req: Request) {
     sigulda:    { name: "Sigulda",            address: "Rūdolfa Blaumaņa iela 2",   city: "Sigulda" },
   };
   const fromLockerId = (seller.home_locker_ids as string[] | null)?.[0];
+  if (fromLockerId && !getOpenLocker(fromLockerId)) {
+    return NextResponse.json({ error: "Nosūtīšanas pakomāts nav pieejams" }, { status: 400 });
+  }
   const fromLocker = fromLockerId ? LOCKERS[fromLockerId] : null;
 
   // Build label data

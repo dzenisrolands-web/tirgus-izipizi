@@ -7,6 +7,7 @@ import { CheckCircle, MapPin, Loader2, AlertCircle, Package } from "lucide-react
 import confetti from "canvas-confetti";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type OrderItem = { id?: string; title?: string; price?: number; quantity?: number; unit?: string };
 
@@ -67,14 +68,15 @@ function CartSuccessContent() {
     confettiFiredRef.current = true;
 
     // GA4 purchase event
-    if (typeof window !== "undefined" && typeof (window as any).gtag === "function") {
+    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
+    if (typeof gtag === "function") {
       const items = (order.items ?? []).map((it, i) => ({
         item_id: it.id ?? `item-${i}`,
         item_name: it.title ?? "Produkts",
         price: (it.price ?? 0),
         quantity: it.quantity ?? 1,
       }));
-      (window as any).gtag("event", "purchase", {
+      gtag("event", "purchase", {
         transaction_id: order.order_number,
         value: order.total_cents / 100,
         currency: "EUR",
@@ -98,38 +100,20 @@ function CartSuccessContent() {
     setTimeout(() => fire(0.5, 90), 250);
   }, [order]);
 
-  // Fetch order; poll a few times in case Paysera callback hasn't landed yet.
-  // If still awaiting after 6s, call confirm-arrival as webhook fallback.
-  const fallbackCalledRef = useRef(false);
+  // Poll for independently verified provider confirmation. A redirect never settles payment.
   useEffect(() => {
-    if (!orderNumber) { setLoading(false); return; }
+    if (!orderNumber) return;
     let cancelled = false;
 
     async function fetchOrder() {
-      const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`, {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (cancelled) return;
       if (res.ok) {
         const data = await res.json() as Order;
         setOrder(data);
-
-        // If still awaiting after a few polls, trigger fallback confirmation
-        if (data.payment_status !== "paid" && !fallbackCalledRef.current) {
-          fallbackCalledRef.current = true;
-          window.fetch("/api/checkout/confirm-arrival", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderNumber }),
-          }).then(async (r) => {
-            if (r.ok) {
-              const result = await r.json();
-              if (result.ok && (result.confirmed || result.already)) {
-                // Re-fetch to get updated status
-                const r2 = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
-                if (r2.ok && !cancelled) setOrder(await r2.json() as Order);
-              }
-            }
-          }).catch(() => {});
-        }
       }
       setLoading(false);
     }

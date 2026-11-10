@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { lockers } from "@/lib/mock-data";
+import { getOpenLocker } from "@/lib/locker-policy";
+import { grantOrderAccess } from "@/lib/order-access";
+import { randomBytes } from "node:crypto";
+import { COMMISSION_RATE, COURIER_FEE } from "@/lib/commission";
 
 /**
  * Reserve a drop and start Paysera checkout in one shot.
@@ -30,7 +34,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const { dropId, quantity } = body;
-  if (!dropId || !quantity || quantity < 1) {
+  if (typeof dropId !== "string" || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) {
     return NextResponse.json({ error: "Missing dropId or quantity" }, { status: 400 });
   }
 
@@ -42,6 +46,16 @@ export async function POST(req: Request) {
     .single();
 
   if (dropErr || !drop) return NextResponse.json({ error: "Drop not found" }, { status: 404 });
+  if (!getOpenLocker(drop.pickup_locker_id)) return NextResponse.json({ error: "Pakomāts nav pieejams" }, { status: 400 });
+  if (!Number.isSafeInteger(drop.price_cents) || drop.price_cents <= 0 ||
+      !Number.isSafeInteger(drop.price_cents * quantity)) {
+    return NextResponse.json({ error: "Nederīga cena" }, { status: 400 });
+  }
+  const { data: seller } = await supabase.from("sellers")
+    .select("id, status, delivery_mode, is_vat_registered").eq("id", drop.seller_id).single();
+  if (!seller || seller.status !== "approved" || !["locker", "courier"].includes(seller.delivery_mode)) {
+    return NextResponse.json({ error: "Ražotājs nav pieejams" }, { status: 400 });
+  }
   if (drop.status !== "active") return NextResponse.json({ error: "Drop is not active" }, { status: 400 });
   if (new Date(drop.expires_at).getTime() < Date.now()) {
     return NextResponse.json({ error: "Drop expired" }, { status: 400 });
@@ -79,7 +93,7 @@ export async function POST(req: Request) {
 
   // Generate order number
   const d = new Date();
-  const orderNumber = `KER-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const orderNumber = `KER-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${randomBytes(12).toString("hex")}`;
 
   // Insert order
   const { data: order, error: insertErr } = await supabase
@@ -114,6 +128,11 @@ export async function POST(req: Request) {
           unit: drop.unit,
           sellerName: "",
           seller_id: drop.seller_id,
+          commission_rate: COMMISSION_RATE,
+          // Hot drops have no product VAT field in the current schema; unknown requires manual invoice review.
+          vat_rate: seller.is_vat_registered === false ? 0 : null,
+          seller_delivery_mode: seller.delivery_mode,
+          seller_courier_fee_cents: seller.delivery_mode === "courier" ? Math.round(COURIER_FEE * 100) : 0,
         },
       ],
       total_cents: totalCents,
@@ -128,9 +147,7 @@ export async function POST(req: Request) {
   }
 
   // Build Paysera URL
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("host") ?? "tirgus.izipizi.lv";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `${proto}://${host}`;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tirgus.izipizi.lv";
 
   let paymentUrl: string;
   try {
@@ -149,5 +166,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ paymentUrl, orderId: order.order_number });
+  return grantOrderAccess(NextResponse.json({ paymentUrl, orderId: order.order_number }), order.order_number);
 }

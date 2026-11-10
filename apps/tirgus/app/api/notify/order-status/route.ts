@@ -23,9 +23,20 @@ export async function POST(req: Request) {
   const { orderId, status } = await req.json().catch(() => ({}));
   if (!orderId || !status) return NextResponse.json({ error: "Missing orderId or status" }, { status: 400 });
 
-  // Optional: verify this user is allowed to push for this order
-  // (i.e. they're either the buyer, the seller, or an admin)
-  // Skipped for now — keep simple
+  const { data: order } = await supabase.from("orders")
+    .select("status, payment_status, seller_ids").eq("id", orderId).single();
+  if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (user.app_metadata?.is_super_admin !== true) {
+    const { data: seller } = await supabase.from("sellers").select("id").eq("user_id", user.id).single();
+    if (!seller || !order.seller_ids?.includes(seller.id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+  // A caller cannot invent a status or send PINs for an unpaid/unshipped order.
+  if (order.payment_status !== "paid" || status !== order.status ||
+      !["processing", "shipped", "delivered"].includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 409 });
+  }
 
   const result = await notifyBuyerOrderStatus(orderId, status);
   return NextResponse.json({ ok: true, ...result });

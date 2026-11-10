@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { sendSellerApprovalEmail } from "@/lib/email";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 
 /**
  * POST /api/admin/approve-seller
@@ -13,20 +13,9 @@ import { sendSellerApprovalEmail } from "@/lib/email";
  * Also supports: { sellerId, resendOnly: true } — skips status update, just resends email.
  */
 export async function POST(req: Request) {
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
-
-  // Auth check
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
-  const { data: { user } } = await sb.auth.getUser(token);
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
+  const ctx = await assertSuperAdmin(req);
+  if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+  const { supabase: sb, user } = ctx;
 
   const body = await req.json();
   const sellerId = body.sellerId as string;

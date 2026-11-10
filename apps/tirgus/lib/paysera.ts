@@ -43,6 +43,7 @@ export function buildPayseraRedirectUrl(p: PayseraParams): string {
   const mode = getMode();
 
   if (mode === "mock") {
+    if (process.env.NODE_ENV === "production") throw new Error("Mock payments are disabled in production");
     return `${p.baseUrl}/cart/success?order=${encodeURIComponent(p.orderNumber)}&mock=1`;
   }
 
@@ -104,12 +105,24 @@ export function verifyPayseraCallback(data: string, sign: string): PayseraCallba
   }
 
   const params = parseQueryString(decoded);
+  if (mode === "mock" && process.env.NODE_ENV === "production") {
+    return { valid: false, reason: "mock payments disabled in production" };
+  }
+  if (mode !== "mock") {
+    if (params.projectid !== process.env.PAYSERA_PROJECT_ID) return { valid: false, reason: "project mismatch" };
+    if (params.currency !== "EUR") return { valid: false, reason: "currency mismatch" };
+    if (mode === "live" && params.test !== "0") return { valid: false, reason: "test payment in live mode" };
+  }
+  if (!params.orderid || !/^\d+$/.test(params.amount ?? "") ||
+      !Number.isSafeInteger(Number(params.amount)) || Number(params.amount) <= 0) {
+    return { valid: false, reason: "invalid order or amount" };
+  }
   return {
     valid: true,
     params,
     orderNumber: params.orderid ?? "",
     status: params.status ?? "",
-    amountCents: parseInt(params.amount ?? "0", 10),
+    amountCents: Number(params.amount),
   };
 }
 

@@ -8,16 +8,13 @@ import { sendInvitationEmail } from "@/lib/email";
  * Called by Vercel Cron every 20 minutes, or manually.
  *
  * Security: CRON_SECRET header check (Vercel cron sends this automatically).
- * Also works without secret for manual admin testing.
+ * Manual invocation still requires a verified super administrator.
  */
 export async function GET(req: Request) {
-  // Optional cron secret check
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
   const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
-  const isManual = !cronSecret; // allow if no secret configured
-
-  if (!isCron && !isManual) {
+  if (!isCron) {
     // Also allow super admin
     const token = authHeader?.replace("Bearer ", "");
     if (token) {
