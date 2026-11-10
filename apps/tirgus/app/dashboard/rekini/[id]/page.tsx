@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Printer, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { resolveInvoiceOperator, UNRESOLVED_INVOICE_OPERATOR } from "@/lib/invoice/operator-snapshot";
+import { invoiceCommissionVat } from "@/lib/invoice/vat";
 
 type Invoice = {
   id: string;
@@ -17,6 +18,10 @@ type Invoice = {
   total_net_cents: number;
   vat_rate: number | null;
   vat_amount_cents: number | null;
+  commission_vat_rate?: number | null;
+  commission_vat_cents?: number | null;
+  operator_version?: string | null;
+  operator_snapshot?: unknown;
   courier_fee_cents: number | null;
   courier_order_count: number | null;
   status: string;
@@ -80,6 +85,9 @@ export default function InvoiceDetailPage() {
     </div>
   );
 
+  const operator = resolveInvoiceOperator(invoice);
+  const commissionVat = invoiceCommissionVat(invoice);
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       {/* Top toolbar — hidden when printing */}
@@ -87,7 +95,7 @@ export default function InvoiceDetailPage() {
         <Link href="/dashboard/rekini" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
           <ArrowLeft size={14} /> Visi rēķini
         </Link>
-        <button onClick={() => window.print()}
+        <button onClick={() => window.print()} disabled={!operator}
           className="flex items-center gap-2 rounded-xl bg-[#192635] px-4 py-2 text-sm font-semibold text-white hover:bg-[#243647]">
           <Printer size={14} /> Drukāt / saglabāt PDF
         </button>
@@ -116,15 +124,15 @@ export default function InvoiceDetailPage() {
 
         {/* Parties */}
         <div className="grid grid-cols-1 gap-6 border-b border-gray-200 px-8 py-6 sm:grid-cols-2">
-          <div>
+          {operator ? <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Operators (sastādītājs)</p>
-            <p className="mt-1.5 font-bold text-gray-900">{operatorInfo.legalName}</p>
-            <p className="text-xs text-gray-600">Reģ. Nr.: {operatorInfo.registrationNumber}</p>
-            <p className="text-xs text-gray-600">PVN: {operatorInfo.vatNumber}</p>
-            <p className="mt-1 text-xs text-gray-500">{formattedAddress()}</p>
-            <p className="mt-1 text-xs text-gray-500">{operatorInfo.bank.name}</p>
-            <p className="text-xs font-mono text-gray-500">{operatorInfo.bank.iban}</p>
-          </div>
+            <p className="mt-1.5 font-bold text-gray-900">{operator.name}</p>
+            <p className="text-xs text-gray-600">Reģ. Nr.: {operator.regNr}</p>
+            <p className="text-xs text-gray-600">PVN: {operator.vatNr}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator.address}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator.bankName}</p>
+            <p className="text-xs font-mono text-gray-500">{operator.iban}</p>
+          </div> : <p role="alert" className="text-sm text-amber-800">{UNRESOLVED_INVOICE_OPERATOR}</p>}
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Tirgotājs (saņēmējs)</p>
             <p className="mt-1.5 font-bold text-gray-900">{invoice.seller_legal_name ?? "—"}</p>
@@ -178,13 +186,13 @@ export default function InvoiceDetailPage() {
               <span className="font-mono">{eur(invoice.total_gross_cents)}</span>
             </div>
             <div className="flex justify-between text-amber-700">
-              <span>Komisija 15% (no cenas bez PVN):</span>
+              <span>Komisija (bez pakalpojuma PVN):</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
+            {commissionVat.cents > 0 && (
               <div className="flex justify-between text-orange-700 text-xs">
-                <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
-                <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+                <span>PVN {commissionVat.rate}% par komisijas pakalpojumu:</span>
+                <span className="font-mono">−{eur(commissionVat.cents)}</span>
               </div>
             )}
             {!!invoice.courier_fee_cents && invoice.courier_fee_cents > 0 && (
@@ -204,7 +212,7 @@ export default function InvoiceDetailPage() {
         <div className="px-8 py-4 text-[10px] leading-relaxed text-gray-500">
           Šis rēķins sastādīts klienta self-billing kārtībā saskaņā ar PVN direktīvas
           224. pantu un Tirgotāja-Operatora vienošanos. Iebildumi: 7 dienu laikā uz{" "}
-          {operatorInfo.contact.emailComplaints}. Samaksa: 5 darba dienu laikā pēc
+          {operator?.complaintsEmail ?? "— (operatora rekvizīti jāpārbauda)"}. Samaksa: 5 darba dienu laikā pēc
           klusas pieņemšanas vai iebildumu atrisināšanas.
         </div>
       </div>

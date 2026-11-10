@@ -5,9 +5,11 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
-import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, COURIER_FEE, commissionBreakdown, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, COURIER_FEE, commissionBreakdown, vatAmountFromInclusive } from "@/lib/commission";
 import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 import type { Period } from "./period";
+import { newInvoiceOperatorSnapshot } from "./operator-snapshot";
+import { assertInvoiceSchema } from "./schema";
 
 type OrderItem = {
   id?: string;
@@ -62,6 +64,7 @@ function svc(): SupabaseClient {
  */
 export async function generateInvoicesForPeriod(period: Period): Promise<GenerateResult> {
   const supabase = svc();
+  await assertInvoiceSchema(supabase);
 
   // Fetch paid orders in period
   const { data: orders, error: ordersErr } = await supabase
@@ -199,7 +202,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     // The agreement names a specific operator entity. A consent given to a
     // previous operator does not authorise us to issue invoices in the
     // seller's name, so hold the payout until they accept the new version.
-    if (needsReconsent(seller.self_billing_agreement_version)) {
+    if (!seller.self_billing_agreement_version || needsReconsent(seller.self_billing_agreement_version)) {
       skipped.push({
         sellerId,
         reason: `self-billing consent is version ${seller.self_billing_agreement_version}, needs ${SELF_BILLING_VERSION}`,
@@ -260,6 +263,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     const { data: invoice, error: invErr } = await supabase
       .from("invoices")
       .insert({
+        ...newInvoiceOperatorSnapshot(),
         invoice_number: invoiceNumber,
         seller_id: sellerId,
         period_start: periodStart,

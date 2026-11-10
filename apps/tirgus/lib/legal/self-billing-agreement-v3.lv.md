@@ -103,23 +103,16 @@ Operators un Tirgotājs turpmāk tekstā kopā saukti — **Puses**, atsevišķi
 
 ## 5. Komisija
 
-5.1. Operatora komisija ir **5 % līdz 20 %** no katra pasūtījuma bruto summas. Komisija sedz:
+5.1. Operatora komisija ir **15 % no preču cenas bez preču PVN**. Komisijai papildus piemēro **21 % PVN par komisijas pakalpojumu**. Komisija sedz:
 
 - Maksājumu apstrādi (Paysera)
 - Pakomātu tīklu un piegādes infrastruktūru
 - Klientu atbalstu un atgriešanu apstrādi
 - Platformas mārketingu un uzturēšanu
 
-5.2. Komisijas likme tiek noteikta **katram produktam atsevišķi**:
+5.2. Fiksētā 15 % likme attiecas uz visiem produktiem; Tirgotājs to nepiedāvā un Operators to neapstiprina katram produktam atsevišķi.
 
-- Tirgotājs piedāvā likmi 5–20 % robežās, izveidojot vai rediģējot produktu
-- Operators (super-administrators) apstiprina, modificē vai noraida likmi 1–2 darba dienu laikā
-- Apstiprinātā likme tiek **piesaistīta produktam** un attiecas uz visiem turpmākajiem pasūtījumiem
-- Pasūtījuma izveides brīdī komisijas likme tiek **fiksēta uz pasūtījumu** (snapshot) un nemainās, ja Tirgotājs vēlāk maina likmi citiem nolūkiem
-
-5.3. Operators publicē indikatīvus komisijas lielumus pa kategorijām, lai palīdzētu Tirgotājam pieņemt informētu lēmumu.
-
-5.4. Operatora maiņa neietekmē jau apstiprinātās komisijas likmes.
+5.3. No bruto pārdošanas summas atskaita komisiju un PVN par komisijas pakalpojumu. Piemēram, precei par 12,10 € ar 21 % preču PVN cena bez PVN ir 10,00 €, komisija 1,50 € un komisijas PVN 0,32 €; Tirgotājam pirms citām piemērojamām izmaksām izmaksā 10,28 €.
 
 ---
 
