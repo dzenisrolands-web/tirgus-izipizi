@@ -12,12 +12,9 @@ import { BuyerAddressPrompt } from "@/components/buyer-address-prompt";
 import { CookieConsent } from "@/components/cookie-consent";
 import { CookieSettingsLink } from "@/components/cookie-settings-link";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { PWAInstallTracker } from "@/components/pwa-install-tracker";
 import { PWAInstallButton } from "@/components/pwa-install-button";
-import { Analytics } from "@vercel/analytics/next";
-import { PageviewTracker } from "@/components/pageview-tracker";
+import { ConsentedAnalytics } from "@/components/consented-analytics";
 import { EmailSubscribeBanner } from "@/components/email-subscribe-banner";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { operatorInfo, siteFooterLine } from "@/lib/operator-info";
 
 const inter = Inter({
@@ -48,7 +45,7 @@ export const metadata: Metadata = {
       "Pērc no vietējā un saņem ērti — pārtikas pakomātā vai ar piegādi uz mājām. Latvijas ražotāji vienuviet.",
     images: [
       {
-        url: "/og-default.jpg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "tirgus.izipizi.lv — Svaiga pārtika no Latvijas ražotājiem",
@@ -59,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "tirgus.izipizi.lv — Pērc no vietējā, saņem ērti",
     description: "Pērc no vietējā — pārtikas pakomātā vai ar piegādi.",
-    images: ["/og-default.jpg"],
+    images: ["/opengraph-image"],
   },
   robots: {
     index: true,
@@ -107,7 +104,7 @@ const organizationJsonLd = {
   name: "tirgus.izipizi.lv",
   alternateName: "Tirgus IziPizi",
   url: BASE_URL,
-  logo: `${BASE_URL}/og-default.jpg`,
+  logo: `${BASE_URL}/opengraph-image`,
   description:
     "Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz pārtikas pakomātam.",
   inLanguage: "lv-LV",
@@ -143,24 +140,18 @@ export default function RootLayout({
   return (
     <html lang="lv" className={inter.variable}>
       <head>
-        {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-VD3DEWCQ5Q" />
-        <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-VD3DEWCQ5Q');` }} />
         {/* Disable Android Chrome's "Auto Dark Theme" \u2014 site is light-mode by design */}
         <meta name="color-scheme" content="light" />
         <meta name="verify-paysera" content="f3000390816d8fda7eb2d4188878ff36" />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c") }}
         />
         {/* Paysera quality-sign badge noņemts — traucēja mobilo menu. verify-paysera meta tags paliek. */}
       </head>
       <body spellCheck={false}>
         <ServiceWorkerRegister />
-        <PWAInstallTracker />
-        <Analytics />
-        <SpeedInsights />
-        <PageviewTracker />
+        <ConsentedAnalytics />
         <CartProvider>
           <BuyerAddressProvider>
             <StorageTypesProvider>

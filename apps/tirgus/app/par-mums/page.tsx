@@ -102,8 +102,8 @@ export default function ParMumsPage() {
           <div className="mt-4 space-y-4 text-sm leading-relaxed text-gray-600">
             <p>
               <strong>{operatorInfo.shortName}</strong> operē Latvijas pārtikas pakomātu
-              tīklu — skapjīšus ar temperatūras kontroli, kas darbojas 24/7 un ļauj saņemt
-              svaigu pārtiku tad, kad tas ir ērti, nevis tad, kad atvērts veikals.
+              tīklu — skapjīšus ar temperatūras kontroli, kas ļauj saņemt
+              svaigu pārtiku izvēlētās vietas norādītajā darba laikā.
             </p>
             <p>
               Pakomātu tīkls atrisināja piegādi, bet neatbildēts palika galvenais jautājums:
@@ -131,12 +131,12 @@ export default function ParMumsPage() {
             <ValueCard
               icon={<Truck size={18} className="text-brand-600" />}
               title="Trīs piegādes veidi"
-              text="pārtikas pakomāts 24/7 ar temperatūras kontroli, kurjers uz mājas adresi vai ekspres piegāde tajā pašā dienā Rīgā un Pierīgā — izvēlies ērtāko."
+              text="pārtikas pakomāts norādītajā darba laikā ar temperatūras kontroli, kurjers uz mājas adresi vai ekspres piegāde tajā pašā dienā Rīgā un Pierīgā — izvēlies ērtāko."
             />
             <ValueCard
               icon={<Store size={18} className="text-brand-600" />}
               title="Godīga komisija"
-              text="Mūsu komisija ir 5–20% atkarībā no produkta — tirgotājs to ierosina, mēs apstiprinām. Caurspīdīgi un ar pamatojumu."
+              text="Komisija tikai no pārdošanas; nosacījumi saskaņā ar vienošanos."
             />
             <ValueCard
               icon={<Heart size={18} className="text-brand-600" />}

@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight, Package, Zap,
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
   TrendingUp, Sparkles, Leaf, Snowflake, Users, Banknote,
 } from "lucide-react";
-import { listings, sellers } from "@/lib/mock-data";
-import { publicLockers as lockers } from "@/lib/locker-policy";
-import { sellersMeta } from "@/lib/sellers-meta";
+import { openLockers as lockers } from "@/lib/locker-policy";
 import { ListingCard } from "@/components/listing-card";
-import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";
 import { HeroProductRotator } from "@/components/hero-product-rotator";
 import {
   fetchActiveListings,
@@ -20,7 +16,7 @@ import {
   fetchWeeklyFeatured,
 } from "@/lib/db-listings";
 import { fetchSalesCountsServer } from "@/lib/best-sellers-server";
-import { hasValidImage, isPublicReady } from "@/lib/utils";
+import { isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Pērc no vietējā, saņem ērti — pārtikas pakomātā vai ar piegādi",
@@ -77,29 +73,8 @@ export default async function HomePage() {
     fetchWeeklyFeatured(7),
     fetchApprovedSellers(),
   ]);
-  const allListings = [...dbListings, ...listings].filter(isPublicReady);
-
-  // Hero stats — real data, not hardcoded
-  const liveSellerCount = dbApproved.length || sellers.length;
-  const liveSellerNames = (dbApproved.length ? dbApproved.map((s) => s.seller.name) : sellers.map((s) => s.name))
-    .filter(Boolean)
-    .slice(0, 4);
-  // Tirgotāju sadaļas (hero logo josla + "Mūsu saimnieki" kartes) — jārāda
-  // VISI reālie apstiprinātie tirgotāji no DB, nevis fiksēta mock apakškopa.
-  // Mock saraksts paliek tikai kā fallback, ja DB vēl nav nācis neviena tirgotāja.
-  const spotlightSellers = dbApproved.length > 0
-    ? dbApproved
-    : sellers.map((s) => ({
-        seller: s,
-        meta: sellersMeta[s.id],
-        listings: listings.filter((l) => l.sellerId === s.id),
-      }));
-  // "Šonedēļ pievienoti" — last 7 days, active listings only
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  const freshThisWeekCount = dbListings.filter((l) => {
-    const t = new Date(l.createdAt).getTime();
-    return Number.isFinite(t) && Date.now() - t < SEVEN_DAYS_MS;
-  }).length;
+  const liveSellerCount = dbApproved.length;
+  const spotlightSellers = dbApproved;
 
   // Hero product rotator — round-robin per seller so every group of 4
   // shows 4 *different* sellers, and within the first ~2 groups every
@@ -138,6 +113,7 @@ export default async function HomePage() {
     title: l.title,
     price: l.price,
     image: l.image,
+    slug: l.slug,
     sellerName: l.seller?.farmName || l.seller?.name || "",
     createdAt: l.createdAt ?? new Date().toISOString(),
   }));
@@ -149,15 +125,15 @@ export default async function HomePage() {
   // raw dbBestSellers / dbNewest signal directly.
   function padToDiverseSellers(
     target: number,
-    primary: typeof allListings,
-    pool: typeof allListings,
+    primary: typeof realListings,
+    pool: typeof realListings,
   ) {
-    const sellerKeyOf = (l: (typeof allListings)[number]) =>
+    const sellerKeyOf = (l: (typeof realListings)[number]) =>
       l.sellerId || l.seller?.name || "unknown";
     // Dedupe primary by seller — a single seller's run shouldn't fill the row
     const seenIds = new Set<string>();
     const seenSellers = new Set<string>();
-    const out: typeof allListings = [];
+    const out: typeof realListings = [];
     for (const l of primary) {
       const sk = sellerKeyOf(l);
       if (seenIds.has(l.id) || seenSellers.has(sk)) continue;
@@ -224,7 +200,7 @@ export default async function HomePage() {
         "@id": "https://tirgus.izipizi.lv/#organization",
         name: "tirgus.izipizi.lv",
         url: "https://tirgus.izipizi.lv",
-        logo: { "@type": "ImageObject", url: "https://tirgus.izipizi.lv/logo.png" },
+        logo: { "@type": "ImageObject", url: "https://tirgus.izipizi.lv/opengraph-image" },
         sameAs: ["https://izipizi.lv"],
       },
     ],
@@ -232,7 +208,7 @@ export default async function HomePage() {
 
   return (
     <>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     <div>
 
       {/* ── HERO ─────────────────────────────────────────────── */}
@@ -291,7 +267,7 @@ export default async function HomePage() {
               </h1>
 
               <p className="mt-4 max-w-lg text-lg leading-relaxed text-gray-300 sm:text-xl">
-                {totalListings}+ produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
+                {totalListings} produkti no {liveSellerCount} Latvijas saimniekiem.{" "}
                 Saņem <strong className="text-white">pārtikas pakomātā</strong> vai ar{" "}
                 <strong className="text-white">kurjerpiegādi</strong> uz mājām.
               </p>
@@ -316,18 +292,20 @@ export default async function HomePage() {
                   <p className="mt-0.5 text-xs text-gray-400">Šodien tirgo</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{totalListings}+</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{totalListings}</p>
                   <p className="mt-0.5 text-xs text-gray-400">Svaigi produkti</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{lockers.length}+</p>
+                  <p className="text-2xl font-extrabold" style={{ color: "#53F3A4" }}>{lockers.length}</p>
                   <p className="mt-0.5 text-xs text-gray-400">pārtikas pakomātu vietas</p>
                 </div>
               </div>
             </div>
 
             {/* Right — product rotator (auto-fades every 5s) */}
-            <HeroProductRotator products={rotatorProducts} />
+            {rotatorProducts.length > 0
+              ? <HeroProductRotator products={rotatorProducts} />
+              : <p className="rounded-2xl border border-white/10 p-6 text-sm text-gray-300">Produkti šobrīd nav pieejami. Lūdzu, ieskaties vēlāk.</p>}
           </div>
 
           {/* Seller logos strip */}
@@ -378,13 +356,13 @@ export default async function HomePage() {
                   <TrendingUp size={20} className="text-rose-600" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Šonedēļ populārākie</span>
-                  <h2 className="mt-0.5 text-2xl font-extrabold text-gray-900">Šonedēļ visi pērk šo</h2>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Atklāj vietējo</span>
+                  <h2 className="mt-0.5 text-2xl font-extrabold text-gray-900">Produkti, ko vērts iepazīt</h2>
                 </div>
               </div>
-              <Link href="/catalog?sort=popular"
+              <Link href="/catalog"
                 className="hidden items-center gap-1 text-sm font-medium text-rose-600 hover:underline sm:flex">
-                Visi populārākie <ArrowRight size={14} />
+                Visi produkti <ArrowRight size={14} />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -500,10 +478,10 @@ export default async function HomePage() {
                       <span className="flex items-center gap-1">
                         <Package size={11} /> {count} produkti
                       </span>
-                      <span className="flex items-center gap-1">
+                      {seller.reviewCount > 0 && <span className="flex items-center gap-1">
                         <Star size={11} fill="currentColor" className="text-amber-400" />
                         {seller.rating} ({seller.reviewCount})
-                      </span>
+                      </span>}
                     </div>
                   </div>
                 </Link>
@@ -525,7 +503,7 @@ export default async function HomePage() {
               { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Pārlūko katalogu vai izmanto meklēšanu — atrodi ko vēlies." },
               { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "pārtikas pakomāts, kurjers vai ekspres — cena atkarīga no attāluma līdz ražotājam." },
               { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
-              { icon: "✅", step: "04", title: "Saņem ērti", desc: "pārtikas pakomātā 24/7, mājās vai dažu stundu laikā." },
+              { icon: "✅", step: "04", title: "Saņem ērti", desc: "pārtikas pakomātā norādītajā darba laikā vai ar piegādi mājās." },
             ].map((item, i) => (
               <div key={item.step} className="relative">
                 {i < 3 && (
@@ -556,7 +534,7 @@ export default async function HomePage() {
                 icon: <Package size={22} className="text-brand-500" />,
                 bg: "bg-brand-50 border-brand-200",
                 title: "IziPizi pārtikas pakomāts",
-                desc: `Saņem jebkurā no ${lockers.length}+ pārtikas pakomātiem 24/7. Dzesēts un saldēts režīms.`,
+                desc: `Saņem kādā no ${lockers.length} atvērtajām vietām norādītajā darba laikā. Dzesēts un saldēts režīms.`,
                 price: "3 € / skapītis",
                 href: "/piegade",
                 color: "text-brand-600",

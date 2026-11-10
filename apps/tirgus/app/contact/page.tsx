@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Mail, Phone, Clock, MapPin, MessageSquare } from "lucide-react";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contact" },
+  openGraph: { url: "https://tirgus.izipizi.lv/contact" },
   title: "Sazināties | tirgus.izipizi.lv",
   description: "Sazinies ar tirgus.izipizi.lv komandu — jautājumi, ieteikumi, kļūdas ziņojumi.",
 };
@@ -130,7 +132,7 @@ export default function ContactPage() {
           </div>
 
           <button type="submit" className="btn-primary">
-            Nosūtīt ziņu
+            Atvērt e-pasta lietotni
           </button>
         </form>
       </div>

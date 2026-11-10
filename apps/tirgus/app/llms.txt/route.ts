@@ -10,6 +10,7 @@
  * Served as plain text at /llms.txt.
  */
 import { NextResponse } from "next/server";
+import { openLockers } from "@/lib/locker-policy";
 import { operatorInfo } from "@/lib/operator-info";
 
 export const dynamic = "force-static";
@@ -20,7 +21,7 @@ const OPERATOR_SUMMARY = `${operatorInfo.shortName} (reg. nr. ${operatorInfo.reg
 
 const BODY = `# tirgus.izipizi.lv
 
-> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by ${OPERATOR_SUMMARY}. Pickup at IziPizi parcel lockers across Latvia (currently 7 locations) or courier delivery (zoned 0–3, 5.45 €–10.77 €). Express delivery in Rīga 2–5 h.
+> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by ${OPERATOR_SUMMARY}. Pickup at IziPizi parcel lockers across Latvia (currently ${openLockers.length} open locations) or courier delivery (zoned 0–3, 5.45 €–10.77 €). Express delivery in Rīga 2–5 h.
 
 ## What we sell
 
@@ -43,7 +44,7 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 1. Buyer picks products, optionally enters Latvian postal code for accurate courier price.
 2. Cart split per producer; buyer chooses pārtikas pakomāts pickup (flat 3 € per producer cabinet) OR courier delivery (zone-based) OR express (Rīga only, 9–12 €).
 3. Pay with Paysera (cards + SEPA).
-4. Producer confirms order within 24 h; gets push reminders at 30 min, 2 h, 6 h; auto-cancelled if not confirmed.
+4. Producer confirms order within 72 h; gets push reminders at 30 min, 2 h, 6 h; auto-cancelled if not confirmed.
 5. Producer drops stock at their assigned pārtikas pakomāts; courier transports to buyer if needed.
 6. Buyer receives push notification + SMS with locker PIN code; collects within 48 h.
 
@@ -52,7 +53,7 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 - **Language**: Latvian (lv-LV) only. No English version yet.
 - **Currency**: EUR (€), VAT 21 % included in displayed prices.
 - **Coverage**: All of Latvia. Zone 0 = Rīga centre, Zone 1 = Rīga + close suburbs, Zone 2 = greater Rīga area, Zone 3 = regional Latvia (Jelgava, Ogre, Cēsis, Daugavpils, etc.). 700+ rural postal codes get pārtikas pakomāts-only delivery.
-- **pārtikas pakomāts locations**: Brīvības iela 253 / Rīga centre, Āgenskalns tirgus / Rīga, Salaspils, Ikšķile, Ilūkstes iela 40A / Rīga, Dundagas tirgus, Sigulda.
+- **pārtikas pakomāts locations**: ${openLockers.map(locker => `${locker.name} / ${locker.city} (${locker.hours})`).join(", ")}.
 - **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express 2–5 hours in Rīga.
 - **Payment**: Paysera (cards, SEPA, bank transfer).
 - **Returns**: see /atgriesana — limited for fresh food; full refund if producer ships defective goods.
