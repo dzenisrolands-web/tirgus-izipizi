@@ -56,7 +56,8 @@ export function CatalogClient({
     if (filters.storageType !== "all") result = result.filter((l) => (storageTypes[l.id] ?? getStorageType(l)) === filters.storageType);
     if (filters.delivery === "courier") result = result.filter((l) => l.courier_delivery);
     if (filters.delivery === "express") result = result.filter((l) => l.express_delivery);
-    if (filters.delivery === "locker") result = result.filter((l) => !l.courier_delivery && !l.express_delivery);
+    // Locker pickup is available for every product; courier/express flags
+    // describe additional options, not exclusions from locker delivery.
     // Day filter: show only products that explicitly list the selected day.
     // Products with no dispatch_days set are hidden when a specific day is selected
     // (they haven't configured their availability).

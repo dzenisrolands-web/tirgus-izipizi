@@ -201,4 +201,5 @@ test("card quantity and variant identities match detail; catalog refresh invalid
   const catalog = source("app/catalog/catalog-client.tsx");
   expect(catalog).toContain("[listings, filters, query, sort, storageTypes]");
   expect(catalog).toContain('<option value="relevance">Atbilstība</option>');
+  expect(catalog).not.toContain("!l.courier_delivery && !l.express_delivery");
 });
