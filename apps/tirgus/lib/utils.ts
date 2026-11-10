@@ -63,6 +63,7 @@ export function isPublicReady(l: { image?: string | null; price?: number | null 
 // Saderība ar veco kodu — abas tagad ir LOCKER_FEE
 export const HOME_LOCKER_FEE = LOCKER_FEE;
 export const TRANSFER_FEE = LOCKER_FEE;
+/** @deprecated Display-only minimum. Use calculateDeliveryQuote for actual fees. */
 export const COURIER_BASE_FEE = BUYER_COURIER_FEE_CENTS / 100;
 
 /** Latvian relative time, e.g. "tikko", "pirms 2h", "pirms 3 dienām" */

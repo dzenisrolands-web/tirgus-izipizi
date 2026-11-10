@@ -15,7 +15,9 @@ import { fetchActiveListings, fetchBestSellers } from "@/lib/db-listings";
 import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { lookupPostalCode, effectiveCourierZone, pricingForZone, nearestLockersForCode } from "@/lib/postal-zones";
+import { lookupPostalCode, nearestLockersForCode } from "@/lib/postal-zones";
+import { calculateDeliveryQuote, deliveryStorageType, type DeliveryQuoteInput } from "@/lib/delivery-policy";
+import { deliveryListingForCartItem } from "@/lib/delivery-cart-metadata";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 import { useSavedAddresses, QUICK_LABELS, type SavedAddress } from "@/lib/saved-addresses";
 
@@ -224,9 +226,11 @@ export function CartPage() {
   }
 
   // Fetch seller info (drop-off lockers, courier pickup address) for items in cart
+  const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [sellersById, setSellersById] = useState<Map<string, SellerInfo>>(new Map());
   useEffect(() => {
-    const ids = [...new Set(items.map((i) => i.sellerId).filter(Boolean) as string[])];
+    const ids = [...new Set(items.map((i) =>
+      deliveryListingForCartItem(i.id, dbListings)?.sellerId).filter(Boolean) as string[])];
     if (ids.length === 0) { setSellersById(new Map()); return; }
     (async () => {
       const { data } = await supabase
@@ -243,69 +247,82 @@ export function CartPage() {
       }
       setSellersById(m);
     })();
-  }, [items]);
+  }, [items, dbListings]);
 
   // Postal code → zone lookup (for courier and express)
   const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
   const zonePricing = zoneResult.found ? zoneResult.pricing : null;
-  // Express is available only if zone supports it AND at least one cart item allows express
-  const anyItemAllowsExpress = items.length > 0 && items.every(i => i.express_delivery === true);
-  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null && anyItemAllowsExpress;
+  // Express requires every product to opt in; the shared quote also checks sender zones
+  const anyItemAllowsExpress = items.length > 0 && items.every(i =>
+    deliveryListingForCartItem(i.id, dbListings)?.express_delivery === true);
+
 
   // Group items by seller and compute per-seller delivery fees
   const sellerGroups = useMemo(() => {
     const groups = new Map<string, typeof items>();
     for (const item of items) {
-      const key = item.sellerId ?? `name:${item.sellerName}`;
+      const key = deliveryListingForCartItem(item.id, dbListings)?.sellerId ?? `unresolved:${item.id}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     }
     return Array.from(groups.entries()).map(([key, sellerItems]) => {
-      const sellerId = sellerItems[0].sellerId;
+      const sellerId = deliveryListingForCartItem(sellerItems[0].id, dbListings)?.sellerId;
       const sellerName = sellerItems[0].sellerName;
-      const tempZones = new Set(
-        sellerItems.map((i) => (i.storageType === "frozen" ? "frozen" : "chilled"))
-      );
-      const cabinetCount = Math.max(1, tempZones.size);
-      const isDualTemp = cabinetCount === 2;
       const sellerInfo = sellerId ? sellersById.get(sellerId) : undefined;
-      // Compute effective zone for THIS seller: MAX(seller drop-off zone, buyer zone)
-      const sellerLockerId = sellerInfo?.home_locker_ids?.[0];
-      const effZone = effectiveCourierZone(sellerLockerId, zonePricing?.zone);
-      const effPricing = pricingForZone(effZone);
-      const lockerFee = LOCKER_FEE * cabinetCount;
-      const courierFee = effPricing
-        ? (isDualTemp ? effPricing.dualTemp : effPricing.singleTemp)
-        : 0;
-      const expressFee = effPricing && effPricing.expressSingle !== null && effPricing.expressDual !== null
-        ? (isDualTemp ? effPricing.expressDual! : effPricing.expressSingle!)
-        : 0;
-      let activeFee = 0;
-      if (deliveryMethod === "locker") activeFee = lockerFee;
-      else if (deliveryMethod === "courier") activeFee = courierFee;
-      else if (deliveryMethod === "express") activeFee = expressFee;
+      const quoteItems = sellerItems.map(item => {
+        const listing = deliveryListingForCartItem(item.id, dbListings);
+        return { storageType: listing?.storageType, category: listing?.category ?? "",
+          expressDelivery: listing?.express_delivery };
+      });
+      const cabinetCount = new Set(quoteItems.map(deliveryStorageType)).size;
+      const isDualTemp = cabinetCount === 2;
+      const quoteSellers = [{ sellerId: sellerId && sellerInfo && sellerItems.every(item =>
+        deliveryListingForCartItem(item.id, dbListings)?.sellerId === sellerId) ? sellerId : "",
+        homeLockerIds: sellerInfo?.home_locker_ids ?? [], items: quoteItems }];
+      const quote = (method: DeliveryMethod) => calculateDeliveryQuote({
+        method, buyerPostalCode: postalCode, lockerId, sellers: quoteSellers,
+      });
+      const activeQuote = quote(deliveryMethod);
+      const courierQuote = quote("courier");
+      const expressQuote = quote("express");
+      // Locker option preview is a flat per-seller tariff even before selecting a destination.
+      const lockerFee = LOCKER_FEE;
+      const courierFee = courierQuote.ok ? courierQuote.totalCents / 100 : 0;
+      const expressFee = expressQuote.ok ? expressQuote.totalCents / 100 : 0;
+      const activeFee = activeQuote.ok ? activeQuote.totalCents / 100 : 0;
+      const effZone = activeQuote.ok ? activeQuote.breakdown[0]?.effectiveZone : null;
       const subtotal = sellerItems.reduce((s, i) => s + i.price * i.quantity, 0);
       return {
         key, sellerId, sellerName,
         items: sellerItems, cabinetCount, isDualTemp,
         lockerFee, courierFee, expressFee, activeFee, subtotal,
-        sellerInfo, effZone,
+        sellerInfo, effZone, quoteSellers, activeQuote, courierQuote, expressQuote,
       };
     });
-  }, [items, deliveryMethod, zonePricing, sellersById]);
+  }, [items, deliveryMethod, postalCode, lockerId, sellersById, dbListings]);
+
+  const quoteInput: DeliveryQuoteInput = {
+    method: deliveryMethod, buyerPostalCode: postalCode, lockerId,
+    sellers: sellerGroups.flatMap(group => group.quoteSellers),
+  };
+  const activeDeliveryQuote = calculateDeliveryQuote(quoteInput);
+  const expressAvailable = calculateDeliveryQuote({ ...quoteInput, method: "express" }).ok;
 
   // Aggregate cabinet count (max across sellers — for displaying delivery options)
   const cabinetCount = useMemo(() => {
     if (items.length === 0) return 1;
     const zones = new Set(
-      items.map((i) => (i.storageType === "frozen" ? "frozen" : "chilled"))
+      items.map((i) => {
+        const listing = deliveryListingForCartItem(i.id, dbListings);
+        return deliveryStorageType({ storageType: listing?.storageType, category: listing?.category ?? "" });
+      })
     );
     return Math.max(1, zones.size);
-  }, [items]);
+  }, [items, dbListings]);
   const isDualTemp = cabinetCount === 2;
 
   // Total delivery fee = sum of all sellers' active fees
-  const deliveryFee = sellerGroups.reduce((s, g) => s + g.activeFee, 0);
+  const deliveryFee = activeDeliveryQuote.ok ? activeDeliveryQuote.totalCents / 100 : 0;
 
   // Per-method totals (for displaying option pills)
   const lockerFee = sellerGroups.reduce((s, g) => s + g.lockerFee, 0);
@@ -315,11 +332,11 @@ export function CartPage() {
   // Now that zonePricing is defined, compute available time slots
   const availableTimeSlots = getTimeSlots(zonePricing?.zone ?? null, deliveryMethod);
 
-  const grandTotal = total + deliveryFee - (promoValid ? promoDiscount / 100 : 0);
+  const appliedPromoDiscount = promoValid ? Math.min(promoDiscount, Math.round(deliveryFee * 100)) : 0;
+  const grandTotal = total + deliveryFee - appliedPromoDiscount / 100;
 
   // Real product data for upsell sections (replaces hardcoded mock-data catalog,
   // which showed unrelated demo products like caviar regardless of cart contents).
-  const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [bestSellerListings, setBestSellerListings] = useState<Listing[]>([]);
   useEffect(() => {
     (async () => {
@@ -372,6 +389,7 @@ export function CartPage() {
 
   function missingFields(): string[] {
     const missing: string[] = [];
+    if (!activeDeliveryQuote.ok) missing.push("Derīgs piegādes aprēķins (pārbaudi produktus un saņemšanas vietu)");
     if (!form.name.trim()) missing.push("Vārds, uzvārds");
     if (!form.phone.trim()) missing.push("Tālrunis");
     if (!form.email.trim()) missing.push("E-pasts");
@@ -624,7 +642,7 @@ export function CartPage() {
                   price={sellerGroups.length > 0
                     ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : `no ${LOCKER_FEE.toFixed(2)} €`}
-                  hint="Bezmaksas · darba laiks pie katras vietas"
+                  hint="3,00 € par ražotāju · ar PVN"
                   highlight
                 />
                 <DeliveryMethodCard
@@ -633,9 +651,9 @@ export function CartPage() {
                   onSelect={() => setDeliveryMethod("courier")}
                   icon={<Truck size={18} />}
                   label="Kurjers"
-                  price={zonePricing
+                  price={zonePricing && sellerGroups.every(g => g.courierQuote.ok)
                     ? `${courierFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : "3.50 € par ražotāju"}
+                    : "Cena pēc adreses un ražotāja"}
                   hint="Mājas durvīs"
                 />
                 {anyItemAllowsExpress && (
@@ -647,7 +665,7 @@ export function CartPage() {
                     label="Eksprespiegāde"
                     price={zonePricing && expressAvailable
                       ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                      : "3.50 € par ražotāju"}
+                      : "Cena pēc adreses un ražotāja"}
                     hint="2–5h Rīgā"
                   />
                 )}
@@ -658,7 +676,7 @@ export function CartPage() {
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                   <AlertCircle size={14} className="mt-0.5 shrink-0" />
                   <p>Tavs grozs satur <strong>dzesētus un saldētus</strong> produktus —
-                    vajag <strong>2 temperatūras zonas</strong>; piegādes maksa par ražotāju nemainās.</p>
+                    vajag <strong>2 temperatūras zonas</strong>; kurjera tarifs ir lielāks, pakomāts joprojām 3,00 € par ražotāju.</p>
                 </div>
               )}
 
@@ -1151,7 +1169,7 @@ export function CartPage() {
                                 {g.cabinetCount} {g.cabinetCount === 1 ? "skapītis" : "skapīši"}
                                 {" · "}{tempLabels}
                                 {g.cabinetCount > 1 && (
-                                  <span> ({LOCKER_FEE.toFixed(2)} € × {g.cabinetCount})</span>
+                                  <span> · viena maksa par ražotāju</span>
                                 )}
                               </p>
                             )}
@@ -1178,7 +1196,7 @@ export function CartPage() {
                         Piegāde
                         {deliveryMethod === "locker" && cabinetCount > 1 && (
                           <span className="ml-1 text-xs text-gray-400">
-                            ({cabinetCount} skapīši × {LOCKER_FEE}€)
+                            (3,00 € par ražotāju)
                           </span>
                         )}
                         {deliveryMethod === "courier" && zonePricing && (
@@ -1189,7 +1207,7 @@ export function CartPage() {
                         )}
                       </span>
                       {deliveryFee === 0
-                        ? <span className="text-gray-500 text-xs">{deliveryMethod === "locker" ? "Bezmaksas" : "Norādi piegādes adresi"}</span>
+                        ? <span className="text-gray-500 text-xs">{deliveryMethod === "locker" ? "Izvēlies pakomātu" : "Pārbaudi adresi un pieejamību"}</span>
                         : <span>{formatPrice(deliveryFee)}</span>
                       }
                     </div>
@@ -1203,13 +1221,15 @@ export function CartPage() {
                   <span className="flex items-center gap-1">
                     <Tag size={11} /> Promo: {promoCode.toUpperCase()}
                   </span>
-                  <span>−{formatPrice(promoDiscount / 100)}</span>
+                  <span>−{formatPrice(appliedPromoDiscount / 100)}</span>
                 </div>
               )}
 
               <div className="border-t border-gray-100 pt-2 flex justify-between font-extrabold text-gray-900 text-base">
                 <span>Kopā</span>
-                <span>{formatPrice(step === "cart" ? total : grandTotal)}</span>
+                <span>{step !== "cart" && !activeDeliveryQuote.ok
+                  ? "Precizē piegādi"
+                  : formatPrice(step === "cart" ? total : grandTotal)}</span>
               </div>
             </div>
 

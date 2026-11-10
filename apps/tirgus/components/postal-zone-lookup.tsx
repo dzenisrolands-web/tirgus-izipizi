@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, AlertCircle, CheckCircle, Truck, Zap, Package, Clock } from "lucide-react";
 import { lookupPostalCode, type LookupResult } from "@/lib/postal-zones";
+import { formatPrice } from "@/lib/utils";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 
 const ZONE_COLORS: Record<number, { bg: string; border: string; text: string; badge: string }> = {
@@ -35,11 +36,9 @@ export function PostalZoneLookup() {
 
   function handleAddressChange(v: string) {
     setAddressText(v);
-    // If user clears the input or types significantly, drop result
-    if (!v.trim()) {
-      setResult(null);
-      setParsedAddress(null);
-    }
+    // A previous selection must not remain priced after editing the address.
+    setResult(null);
+    setParsedAddress(null);
   }
 
   return (
@@ -50,7 +49,7 @@ export function PostalZoneLookup() {
         </div>
         <div>
           <h3 className="font-bold text-gray-900">Pārbaudi piegādi savā adresē</h3>
-          <p className="text-xs text-gray-500">Sāc rakstīt adresi — atrasīsim zonu, cenu un tuvākos pārtikas pakomātus</p>
+          <p className="text-xs text-gray-500">Sāc rakstīt adresi — pārbaudīsim pasta indeksa zonu un tarifu</p>
         </div>
       </div>
 
@@ -112,7 +111,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
           <div className="mb-3 flex items-center gap-2">
             <Package size={14} className="text-brand-700" />
             <p className="text-xs font-bold uppercase tracking-wider text-brand-700">
-              Tuvākie pārtikas pakomāti — bezmaksas saņemšana
+              Tuvākie pārtikas pakomāti — 3,00 € par ražotāju
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
@@ -183,7 +182,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
         <div className="space-y-2">
           <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm">
             <Truck size={14} className="text-green-600" />
-            <span className="flex-1 text-gray-800">Standarta kurjers</span>
+            <span className="flex-1 text-gray-800">Standarta kurjers · {formatPrice(p.singleTemp)} / {formatPrice(p.dualTemp)}</span>
             <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
               <CheckCircle size={9} /> Pieejams
             </span>
@@ -191,7 +190,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
           {expressAvailable ? (
             <div className="flex items-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-sm">
               <Zap size={14} className="text-yellow-600" />
-              <span className="flex-1 text-yellow-800">Eksprespiegāde 2–5h</span>
+              <span className="flex-1 text-yellow-800">Eksprespiegāde 2–5h · {formatPrice(p.expressSingle!)} / {formatPrice(p.expressDual!)}</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-yellow-200 px-2 py-0.5 text-[10px] font-bold text-yellow-800">
                 <CheckCircle size={9} /> Pieejama
               </span>
@@ -206,7 +205,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
             </div>
           )}
           <p className="text-[11px] text-gray-500 leading-relaxed pt-1">
-            💡 Galīgo cenu redzēsi grozā — tā atkarīga no izvēlētajiem ražotājiem un viņu nodošanas vietām.
+            Cenas ar PVN: viena / divas temperatūras zonas. Galīgā cena grozā atkarīga arī no ražotājiem un viņu nodošanas vietām.
           </p>
         </div>
       </div>
@@ -245,7 +244,7 @@ function NotFoundResult({ result }: { result: Extract<LookupResult, { found: fal
         {result.nearestLockers && result.nearestLockers.length > 0 && (
           <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-gray-200">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-700">
-              pārtikas pakomāti — bezmaksas saņemšana
+              pārtikas pakomāti — 3,00 € par ražotāju
             </p>
             <ul className="space-y-1.5">
               {result.nearestLockers.map((l) => (

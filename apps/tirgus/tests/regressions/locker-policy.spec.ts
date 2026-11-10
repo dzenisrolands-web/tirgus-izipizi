@@ -32,15 +32,12 @@ test("pickup-only destinations require all sellers, not just any one seller", ()
   expect(deliveryLockersForSellers([]).some((l) => l.id === "dundaga")).toBe(false);
 });
 
-test("buyer delivery tariff is free locker / 3.50 courier per seller irrespective of temperature zones", () => {
-  expect(BUYER_LOCKER_FEE_CENTS).toBe(0);
-  expect(BUYER_COURIER_FEE_CENTS).toBe(350);
-  for (const pricing of Object.values(ZONE_PRICING)) {
-    expect(pricing.singleTemp).toBe(3.5);
-    expect(pricing.dualTemp).toBe(3.5);
-    if (pricing.expressSingle !== null) expect(pricing.expressSingle).toBe(3.5);
-    if (pricing.expressDual !== null) expect(pricing.expressDual).toBe(3.5);
-  }
+test("buyer delivery tariff is 3 EUR locker and zone-based cold-chain courier", () => {
+  expect(BUYER_LOCKER_FEE_CENTS).toBe(300);
+  expect(BUYER_COURIER_FEE_CENTS).toBe(774);
+  expect(ZONE_PRICING[0].singleTemp).toBe(7.74);
+  expect(ZONE_PRICING[3].dualTemp).toBe(13.19);
+  expect(ZONE_PRICING[3].expressSingle).toBeNull();
 });
 
 test("analytics defaults off in server rendering and unconditional Google tracking is removed", () => {

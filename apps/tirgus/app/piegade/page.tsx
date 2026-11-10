@@ -7,6 +7,9 @@ import {
   Trophy, Home, Timer, Leaf, Route,
 } from "lucide-react";
 import { operatorInfo } from "@/lib/operator-info";
+import { ZonesMap } from "@/components/zones-map";
+import { formatPrice } from "@/lib/utils";
+import { ZONE_PRICING } from "@/lib/postal-zones";
 import { PostalZoneLookup } from "@/components/postal-zone-lookup";
 
 export const metadata: Metadata = {
@@ -40,11 +43,11 @@ const FAQ = [
   },
   {
     q: "Vai varu saņemt pie durvīm, ja dzīvoju ārpus Rīgas?",
-    a: "Standarta kurjers pieejams 4 zonās — Rīgā, Pierīgā un reģionālajās lielākajās pilsētās (Zonas 0–3). Eksprespiegāde (tajā pašā dienā) pašlaik pieejama tikai Zonās 0–2 (Rīga un Pierīga).",
+    a: "Standarta kurjers pieejams 4 zonās — Rīgā, Pierīgā un publicētajos pasta indeksos (Zonas 0–3). Eksprespiegāde (tajā pašā dienā) pašlaik pieejama tikai Zonās 0–2 (Rīga un Pierīga).",
   },
   {
     q: "Vai pieejama piegāde uz nelieliem novadiem ārpus zonām?",
-    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko pieejamo pārtikas pakomātu (bez maksas) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
+    a: "Šobrīd ne — piegāde aprobežota ar 4 zonām. Ja tava adrese nav iekļauta zonās, izvēlies tuvāko pieejamo pārtikas pakomātu (3,00 € par ražotāju) vai sazinies ar mums uz birojs@izipizi.lv individuālam risinājumam.",
   },
 ];
 
@@ -112,7 +115,7 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Pārtikas pakomāts</h3>
               <p className="mt-0.5 text-xs text-gray-500">Saņem izvēlētās vietas darba laikā</p>
-              <p className="mt-3 text-xl font-extrabold text-brand-700">Bezmaksas</p>
+              <p className="mt-3 text-xl font-extrabold text-brand-700">3,00 € par ražotāju</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Darba laiks pie katras vietas</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-brand-500" /> Temp. kontrole +2°C – −18°C</li>
@@ -132,7 +135,7 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Kurjers</h3>
               <p className="mt-0.5 text-xs text-gray-500">Rīga, Pierīga, reģionālie centri</p>
-              <p className="mt-3 text-xl font-extrabold text-gray-800">3.50 € par ražotāju</p>
+              <p className="mt-3 text-xl font-extrabold text-gray-800">No {formatPrice(ZONE_PRICING[0].singleTemp)} par ražotāju</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> Piegāde uz adresi pieejamajās zonās</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-gray-400" /> 4 zonas (Rīga + reģioni)</li>
@@ -152,7 +155,7 @@ export default function PiegadePage() {
               </div>
               <h3 className="text-base font-extrabold text-gray-900">Eksprespiegāde</h3>
               <p className="mt-0.5 text-xs text-gray-500">2–5h Rīgā un Pierīgā</p>
-              <p className="mt-3 text-xl font-extrabold text-yellow-700">3.50 € par ražotāju</p>
+              <p className="mt-3 text-xl font-extrabold text-yellow-700">No {formatPrice(ZONE_PRICING[0].expressSingle!)} par ražotāju</p>
               <ul className="mt-3 space-y-1.5 text-xs text-gray-600">
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-yellow-500" /> Piegāde 2–5h pēc pasūtīšanas</li>
                 <li className="flex items-start gap-1.5"><CheckCircle size={12} className="mt-0.5 shrink-0 text-yellow-500" /> Vakara logs līdz 22:00</li>
@@ -165,6 +168,7 @@ export default function PiegadePage() {
         {/* ── PASTA INDEKSA PĀRBAUDE ── */}
         <section id="zonas" className="scroll-mt-20">
           <PostalZoneLookup />
+          <div className="mt-6"><ZonesMap /></div>
         </section>
 
         {/* ── pārtikas pakomātU ADRESES ── */}
@@ -261,7 +265,7 @@ export default function PiegadePage() {
                 </div>
               </div>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Pakomāta saņemšana ir bez maksas. Kurjera piegāde — 3,50 € vienreiz par katru ražotāju uz vienu adresi, neatkarīgi no produktu skaita un temperatūras zonu skaita.
+                Pakomāts — 3,00 € vienreiz par ražotāju un saņemšanas vietu, arī divām temperatūrām. Kurjers un ekspres — pēc pasta indeksa zonas un sūtījuma temperatūrām; cena ietver PVN. Maksa netiek reizināta ar produktu skaitu.
               </p>
             </div>
 
@@ -343,7 +347,7 @@ export default function PiegadePage() {
               Izvēlies produktus — piegādes veidu izvēlēsies pasūtīšanas solī, atkarībā no tā, kas šodien ērtāk.
             </p>
             <div className="mt-4 space-y-2 text-sm text-gray-300">
-              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts · bezmaksas saņemšana</p>
+              <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Pārtikas pakomāts · 3,00 € par ražotāju</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Kurjers · mājas durvīs</p>
               <p className="flex items-center gap-2"><CheckCircle size={14} className="text-brand-400 shrink-0" /> Ekspres · tajā pašā dienā Rīgā</p>
             </div>
@@ -365,7 +369,7 @@ export default function PiegadePage() {
               </a>
             </div>
             <p className="mt-4 text-xs text-gray-400">
-              Pircēja piegādes cena ar PVN: pakomāts 0 €, kurjers 3,50 € par ražotāju/adresi. Zonu pieejamība:{" "}
+              Pircēja piegādes cena ar PVN: pakomāts 3,00 € par ražotāju/adresi. Kurjera un ekspres cena — pēc faktiskās zonas un temperatūrām. Zonas un tarifi:{" "}
               <a href="https://www.izipizi.lv/zonas-cenas" target="_blank" rel="noopener" className="text-brand-600 hover:underline">
                 avots: izipizi.lv/zonas-cenas
               </a>

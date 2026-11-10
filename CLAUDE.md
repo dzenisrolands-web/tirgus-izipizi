@@ -103,7 +103,7 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   go live immediately without waiting for review
 - Revenue: fixed 15% commission on all products (`lib/commission.ts`)
 - Operator: SIA Svaigi (restored by owner request 2026-11-09); historical migration 0023 is not reapplied or reversed
-- Delivery: courier 3.50 EUR charged once per seller per address; locker free
+- Delivery (owner update 2026-11-10): locker 3.00 EUR gross once per seller/address, no dual-temperature surcharge. Courier/express use published izipizi.lv/zonas-cenas cold-chain zone tariffs plus 21% VAT (integer-cent rounding), not nonthermal rates. Use `apps/tirgus/lib/delivery-policy.ts` `calculateDeliveryQuote` on both server and UI; unknown buyer coverage and unavailable express must fail, never become free delivery.
 - Brand colors: izipizi green `#53F3A4`, purple `#AD47FF`, dark navy `#192635`
 - MVP: real Supabase DB in use; mock data retained for dev fallback
 
