@@ -17,4 +17,8 @@ export async function assertInvoiceSchema(supabase: SupabaseClient): Promise<voi
       `Invoice line schema unavailable. Apply 0038_invoice_operator_snapshots.sql before generation (${linesError.code ?? "unknown"}).`,
     );
   }
+  const { data: ready, error: rpcError } = await supabase.rpc("invoice_generation_ready");
+  if (rpcError || ready !== 1) {
+    throw new Error("Atomic invoice generation unavailable. Apply 0039_atomic_invoice_generation.sql before generation.");
+  }
 }

@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sendPushToSubscriptions } from "@/lib/push";
-import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, COURIER_FEE, commissionBreakdown, vatAmountFromInclusive } from "@/lib/commission";
+import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, commissionBreakdown, vatAmountFromInclusive } from "@/lib/commission";
 import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 import type { Period } from "./period";
 import { newInvoiceOperatorSnapshot } from "./operator-snapshot";
@@ -20,6 +20,8 @@ type OrderItem = {
   seller_id?: string | null;
   commission_rate?: number | null;
   vat_rate?: number | null; // product VAT rate (0/5/12/21)
+  seller_delivery_mode?: "courier" | "locker" | null;
+  seller_courier_fee_cents?: number | null;
 };
 
 type OrderRow = {
@@ -41,7 +43,6 @@ type SellerRow = {
   bank_name: string | null;
   bank_iban: string | null;
   self_billing_agreed: boolean | null;
-  delivery_mode: string | null;
   self_billing_agreement_version: string | null;
 };
 
@@ -75,27 +76,38 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     .eq("payment_status", "paid");
   if (ordersErr) throw ordersErr;
 
-  // Aggregate by seller
-  // Collect all listing IDs to batch-fetch their vat_rate
-  const allItemIds = new Set<string>();
+  // Missing historical evidence must not be reconstructed from current listings
+  // or seller profiles: their VAT/pickup settings may have changed since sale.
+  const reconciliation = new Map<string, string>();
+  const pickupByOrderSeller = new Map<string, string>();
   for (const order of (orders ?? []) as OrderRow[]) {
-    for (const item of order.items ?? []) {
-      if (item.id) allItemIds.add(item.id);
+    if (!order.paid_at || !order.items?.length) {
+      throw new Error(`Manual reconciliation required: order ${order.order_number} has no paid item evidence`);
     }
-  }
-  const listingVatMap = new Map<string, number>(); // listingId -> vat_rate
-  if (allItemIds.size > 0) {
-    const { data: listings } = await supabase
-      .from("listings")
-      .select("id, vat_rate")
-      .in("id", Array.from(allItemIds));
-    for (const l of listings ?? []) {
-      listingVatMap.set(l.id, l.vat_rate ?? 21);
+    for (const item of order.items ?? []) {
+      if (!item.seller_id) {
+        throw new Error(`Manual reconciliation required: order ${order.order_number} has an item without seller_id`);
+      }
+      const key = `${order.id}:${item.seller_id}`;
+      const priorPickup = pickupByOrderSeller.get(key);
+      if (item.commission_rate !== COMMISSION_RATE ||
+          ![0, 5, 12, 21].includes(item.vat_rate as number) ||
+          !["courier", "locker"].includes(item.seller_delivery_mode ?? "") ||
+          item.seller_courier_fee_cents !== (item.seller_delivery_mode === "courier" ? 350 : 0) ||
+          !Number.isFinite(item.price) || item.price <= 0 ||
+          !Number.isFinite(item.quantity) || item.quantity <= 0 ||
+          !Number.isSafeInteger(Math.round(item.price * 100) * item.quantity) ||
+          (priorPickup !== undefined && priorPickup !== item.seller_delivery_mode)) {
+        reconciliation.set(item.seller_id,
+          `manual reconciliation required: order ${order.order_number} has missing/unsupported commission, VAT, pickup or amount evidence`);
+      }
+      if (item.seller_delivery_mode) pickupByOrderSeller.set(key, item.seller_delivery_mode);
     }
   }
 
   type Aggregate = {
     sellerId: string;
+    courierOrderIds: Set<string>;
     lines: {
       order_id: string;
       order_number: string;
@@ -127,10 +139,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
 
     for (const item of order.items) {
       const sellerId = item.seller_id;
-      if (!sellerId) continue;
-      const rate = item.commission_rate ?? COMMISSION_RATE;
-      // Product VAT rate: from item (if stored), listing lookup, or fallback
-      const vatRate = item.vat_rate ?? (item.id ? listingVatMap.get(item.id) : undefined) ?? 21;
+      if (!sellerId || reconciliation.has(sellerId)) continue;
+      const rate = item.commission_rate!;
+      const vatRate = item.vat_rate!;
 
       const unitPriceCents = Math.round(Number(item.price) * 100);
       const lineGross = unitPriceCents * Number(item.quantity);
@@ -145,9 +156,10 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
 
       let agg = bySeller.get(sellerId);
       if (!agg) {
-        agg = { sellerId, lines: [], grossCents: 0, productVatCents: 0, commissionCents: 0, commissionNetCents: 0, commissionVatCents: 0, netCents: 0 };
+        agg = { sellerId, courierOrderIds: new Set(), lines: [], grossCents: 0, productVatCents: 0, commissionCents: 0, commissionNetCents: 0, commissionVatCents: 0, netCents: 0 };
         bySeller.set(sellerId, agg);
       }
+      if (item.seller_delivery_mode === "courier") agg.courierOrderIds.add(order.id);
       agg.lines.push({
         order_id: order.id,
         order_number: order.order_number,
@@ -174,20 +186,20 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   }
 
   if (bySeller.size === 0) {
-    return { generated: [], skipped: [], totalSellers: 0 };
+    return { generated: [], skipped: Array.from(reconciliation, ([sellerId, reason]) => ({ sellerId, reason })), totalSellers: reconciliation.size };
   }
 
   // Fetch seller details
   const sellerIds = Array.from(bySeller.keys());
   const { data: sellers } = await supabase
     .from("sellers")
-    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed, delivery_mode, self_billing_agreement_version")
+    .select("id, user_id, legal_name, registration_number, vat_number, is_vat_registered, legal_address, bank_name, bank_iban, self_billing_agreed, self_billing_agreement_version")
     .in("id", sellerIds);
   const sellerMap = new Map<string, SellerRow>();
   for (const s of (sellers ?? []) as SellerRow[]) sellerMap.set(s.id, s);
 
   const generated: GenerateResult["generated"] = [];
-  const skipped: GenerateResult["skipped"] = [];
+  const skipped: GenerateResult["skipped"] = Array.from(reconciliation, ([sellerId, reason]) => ({ sellerId, reason }));
 
   for (const [sellerId, agg] of bySeller) {
     const seller = sellerMap.get(sellerId);
@@ -229,14 +241,6 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
       continue;
     }
 
-    // Get invoice number
-    const { data: numData, error: numErr } = await supabase.rpc("next_invoice_number");
-    if (numErr || !numData) {
-      skipped.push({ sellerId, reason: `numbering failed: ${numErr?.message ?? "no number"}` });
-      continue;
-    }
-    const invoiceNumber = numData as unknown as string;
-
     // Commission breakdown:
     //   commissionNet = 15% of ex-VAT (operator's revenue)
     //   commissionVat = 21% VAT on commissionNet (operator remits to VID)
@@ -253,18 +257,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     const productVatCents = agg.productVatCents;
     const exVatGrossCents = agg.grossCents - productVatCents;
 
-    // Courier fee: deduct COURIER_FEE once per unique order if seller uses courier mode
-    const isCourier = seller.delivery_mode === "courier";
-    const uniqueOrderIds = new Set(agg.lines.map((l) => l.order_id));
-    const courierFeeCents = isCourier ? Math.round(COURIER_FEE * 100) * uniqueOrderIds.size : 0;
+    // Courier pickup uses order-time seller snapshots, once per seller/order.
+    const courierFeeCents = 350 * agg.courierOrderIds.size;
     const finalNetCents = agg.netCents - courierFeeCents;
 
-    // Insert invoice
-    const { data: invoice, error: invErr } = await supabase
-      .from("invoices")
-      .insert({
+    // Number, header and lines are one PostgreSQL transaction. No client-side
+    // fallback: an unavailable RPC must never leave a partial accounting record.
+    const { data: invoice, error: invErr } = await supabase.rpc("create_invoice_with_lines", {
+      p_header: {
         ...newInvoiceOperatorSnapshot(),
-        invoice_number: invoiceNumber,
         seller_id: sellerId,
         period_start: periodStart,
         period_end: periodEnd,
@@ -275,7 +276,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         commission_vat_rate: commissionVatRate,
         commission_vat_cents: agg.commissionVatCents,
         courier_fee_cents: courierFeeCents,
-        courier_order_count: isCourier ? uniqueOrderIds.size : 0,
+        courier_order_count: agg.courierOrderIds.size,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,
@@ -284,20 +285,12 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         seller_bank_name: seller.bank_name,
         seller_bank_iban: seller.bank_iban,
         status: "draft",
-      })
-      .select("id, invoice_number")
-      .single();
+      },
+      p_lines: agg.lines.map((line, line_order) => ({ ...line, line_order })),
+    });
 
     if (invErr || !invoice) {
-      skipped.push({ sellerId, reason: `insert failed: ${invErr?.message}` });
-      continue;
-    }
-
-    // Insert lines
-    const lines = agg.lines.map((l, i) => ({ ...l, invoice_id: invoice.id, line_order: i }));
-    const { error: linesErr } = await supabase.from("invoice_lines").insert(lines);
-    if (linesErr) {
-      skipped.push({ sellerId, reason: `lines insert failed: ${linesErr.message}` });
+      skipped.push({ sellerId, reason: `atomic invoice failed: ${invErr?.message ?? "no invoice returned"}` });
       continue;
     }
 
@@ -317,5 +310,5 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
   }
 
-  return { generated, skipped, totalSellers: bySeller.size };
+  return { generated, skipped, totalSellers: bySeller.size + reconciliation.size };
 }

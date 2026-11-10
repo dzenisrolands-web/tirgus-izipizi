@@ -24,12 +24,14 @@ test("missing or old operator consent cannot generate a snapshot under the new o
       globalThis.fetch = async (input, init) => {
         const url = new URL(String(input));
         expect(url.hostname).toBe("example.invalid");
-        expect(init?.method ?? "GET").toBe("GET");
         const table = url.pathname.split("/").pop();
+        if (table === "invoice_generation_ready") return Response.json(1);
+        expect(init?.method ?? "GET").toBe("GET");
         if (table === "invoices" || table === "invoice_lines") return Response.json([]);
         if (table === "orders") return Response.json([{
           id: "order", order_number: "TEST", paid_at: "2026-11-01T12:00:00Z",
-          items: [{ title: "Test", price: 1, quantity: 1, seller_id: "seller", vat_rate: 21 }],
+          items: [{ title: "Test", price: 1, quantity: 1, seller_id: "seller", vat_rate: 21,
+            commission_rate: 15, seller_delivery_mode: "locker", seller_courier_fee_cents: 0 }],
         }]);
         if (table === "sellers") return Response.json([{
           id: "seller", legal_name: "Test", bank_iban: "DUMMY",
@@ -114,6 +116,7 @@ test("schema preflight fails explicitly before any write or numbering", async ()
   const tables: string[] = [];
   function client(failingTable: string | null) {
     return {
+      rpc: async () => ({ data: 1, error: null }),
       from(table: string) {
         tables.push(table);
         return { select: () => ({ limit: async () => ({
@@ -139,6 +142,7 @@ test("new invoice generation persists operator snapshot using mocked backend onl
     expect(url.hostname).toBe("example.invalid");
     calls.push(`${init?.method ?? "GET"} ${url.pathname}`);
     const table = url.pathname.split("/").pop();
+    if (table === "invoice_generation_ready") return Response.json(1);
     const select = url.searchParams.get("select") ?? "";
     if ((table === "invoices" && select.includes("operator_snapshot")) ||
         (table === "invoice_lines" && select === "vat_rate,vat_amount_cents,ex_vat_cents")) {
@@ -146,19 +150,18 @@ test("new invoice generation persists operator snapshot using mocked backend onl
     }
     if (table === "orders") return Response.json([{
       id: "order", order_number: "TEST-1", paid_at: "2026-11-01T12:00:00Z",
-      seller_ids: ["seller"], items: [{ title: "Test", price: 12.1, quantity: 1, seller_id: "seller", vat_rate: 21 }],
+      seller_ids: ["seller"], items: [{ title: "Test", price: 12.1, quantity: 1, seller_id: "seller", vat_rate: 21,
+        commission_rate: 15, seller_delivery_mode: "locker", seller_courier_fee_cents: 0 }],
     }]);
     if (table === "sellers") return Response.json([{
       id: "seller", user_id: "user", legal_name: "Test seller", bank_iban: "DUMMY",
       self_billing_agreed: true, self_billing_agreement_version: "3.0", delivery_mode: "locker",
     }]);
-    if (table === "next_invoice_number") return Response.json("TIR-2026-9999");
-    if (table === "invoices" && init?.method === "POST") {
-      inserted = JSON.parse(String(init.body));
+    if (table === "create_invoice_with_lines" && init?.method === "POST") {
+      inserted = JSON.parse(String(init.body)).p_header;
       return Response.json({ id: "invoice", invoice_number: "TIR-2026-9999" });
     }
-    if (table === "invoices") return Response.json(null);
-    if (table === "invoice_lines" && init?.method === "POST") return new Response(null, { status: 201 });
+    if (table === "invoices" && (init?.method ?? "GET") === "GET") return Response.json(null);
     if (table === "push_subscriptions") return Response.json([]);
     throw new Error(`Unexpected mocked request: ${url.pathname}`);
   };
