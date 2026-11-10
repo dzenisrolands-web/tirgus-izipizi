@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { lockers } from "@/lib/mock-data";
+import { isClosedLockerId } from "@/lib/locker-policy";
 
 /**
  * Reserve a drop and start Paysera checkout in one shot.
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
     .single();
 
   if (dropErr || !drop) return NextResponse.json({ error: "Drop not found" }, { status: 404 });
+  if (isClosedLockerId(drop.pickup_locker_id)) {
+    return NextResponse.json({ error: "Tukuma pakomāts ir slēgts." }, { status: 400 });
+  }
   if (drop.status !== "active") return NextResponse.json({ error: "Drop is not active" }, { status: 400 });
   if (new Date(drop.expires_at).getTime() < Date.now()) {
     return NextResponse.json({ error: "Drop expired" }, { status: 400 });

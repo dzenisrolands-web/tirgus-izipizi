@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Flame, Clock, Thermometer, Euro, MapPin, Mic } from "lucide-react";
-import { lockers, categories } from "@/lib/mock-data";
+import { categories } from "@/lib/mock-data";
+import { publicLockers as lockers, isClosedLockerId } from "@/lib/locker-policy";
 import { ImageUpload } from "@/components/image-upload";
 import { AudioRecorder } from "@/components/audio-recorder";
 import { createDrop, updateDrop } from "@/lib/hot-drops/queries";
@@ -98,7 +99,7 @@ export function DropForm({
     if (!form.title.trim())              return setError("Nosaukums ir obligāts");
     if (form.price_cents <= 0)           return setError("Ievadi derīgu cenu");
     if (form.total_quantity <= 0)        return setError("Daudzumam jābūt > 0");
-    if (!form.pickup_locker_id)          return setError("Izvēlies pārtikas pakomātu");
+    if (!form.pickup_locker_id || isClosedLockerId(form.pickup_locker_id)) return setError("Izvēlies pieejamu pārtikas pakomātu — Tukuma pakomāts ir slēgts.");
     if (new Date(form.expires_at) <= new Date()) return setError("Termiņš nedrīkst būt pagātnē");
 
     setSaving(true);

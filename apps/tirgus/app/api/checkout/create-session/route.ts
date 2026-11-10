@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl } from "@/lib/paysera";
 import { COMMISSION_RATE } from "@/lib/commission";
 import { validatePromoCode } from "@/lib/promo";
+import { isClosedLockerId } from "@/lib/locker-policy";
 
 type CheckoutItem = {
   id: string;
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
 
   // Default to "locker" for backwards compat with old clients
   const deliveryType = body.deliveryType ?? "locker";
+  if (isClosedLockerId(body.deliveryInfo?.locker_id ?? body.locker?.id)) {
+    return NextResponse.json({ error: "Tukuma pakomāts ir slēgts. Izvēlies citu saņemšanas vietu." }, { status: 400 });
+  }
 
   if (!body.items?.length) return NextResponse.json({ error: "Tukšs grozs" }, { status: 400 });
   if (!body.contact?.email) return NextResponse.json({ error: "Trūkst kontaktinfo" }, { status: 400 });

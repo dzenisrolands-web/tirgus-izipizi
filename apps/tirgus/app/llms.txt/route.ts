@@ -52,7 +52,7 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 - **Language**: Latvian (lv-LV) only. No English version yet.
 - **Currency**: EUR (€), VAT 21 % included in displayed prices.
 - **Coverage**: All of Latvia. Zone 0 = Rīga centre, Zone 1 = Rīga + close suburbs, Zone 2 = greater Rīga area, Zone 3 = regional Latvia (Jelgava, Ogre, Cēsis, Daugavpils, etc.). 700+ rural postal codes get pārtikas pakomāts-only delivery.
-- **pārtikas pakomāts locations**: Brīvības iela 253 / Rīga centre, Āgenskalns tirgus / Rīga, Salaspils, Ikšķile, Tukuma tirgus, Dundagas tirgus, Sigulda.
+- **pārtikas pakomāts locations**: Brīvības iela 253 / Rīga centre, Āgenskalns tirgus / Rīga, Salaspils, Ikšķile, Ilūkstes iela 40A / Rīga, Dundagas tirgus, Sigulda.
 - **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express 2–5 hours in Rīga.
 - **Payment**: Paysera (cards, SEPA, bank transfer).
 - **Returns**: see /atgriesana — limited for fresh food; full refund if producer ships defective goods.

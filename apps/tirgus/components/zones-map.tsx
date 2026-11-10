@@ -50,7 +50,6 @@ const LOCKERS: { id: string; name: string; lat: number; lng: number; address: st
   { id: "agenskalna", name: "Āgenskalna tirgus", lat: 56.9377, lng: 24.0859, address: "Nometņu iela 64 / Tirgus",    hours: "24/7" },
   { id: "salaspils",  name: "Salaspils",         lat: 56.8651, lng: 24.3526, address: "Zviedru iela 1C / NESTE",     hours: "24/7" },
   { id: "ikskile",    name: "Ikšķile",           lat: 56.8359, lng: 24.5026, address: "Daugavas iela 63 / Labumu bode", hours: "10:00–20:00" },
-  { id: "tukums",     name: "Tukuma tirgus",     lat: 56.9692, lng: 23.1611, address: "J. Raiņa iela 30 / Tirgus",   hours: "24/7" },
   { id: "dundaga",    name: "Dundagas tirgus",   lat: 57.5074, lng: 22.3506, address: "Pils 3B / Tirgus",            hours: "24/7" },
   { id: "sigulda",    name: "Sigulda",           lat: 57.1536, lng: 24.8577, address: "Rūdolfa Blaumaņa iela 2",     hours: "24/7" },
 ];

@@ -6,7 +6,8 @@ import {
   CheckCircle, ChevronRight, ShoppingBag, Truck, Star,
   TrendingUp, Sparkles, Leaf, Snowflake, Users, Banknote,
 } from "lucide-react";
-import { listings, sellers, lockers } from "@/lib/mock-data";
+import { listings, sellers } from "@/lib/mock-data";
+import { publicLockers as lockers } from "@/lib/locker-policy";
 import { sellersMeta } from "@/lib/sellers-meta";
 import { ListingCard } from "@/components/listing-card";
 import { HotDropsPreview } from "@/components/keriens/HotDropsPreview";

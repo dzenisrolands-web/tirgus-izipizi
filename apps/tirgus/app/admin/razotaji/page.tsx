@@ -67,7 +67,6 @@ const LOCKERS = [
   { id: "agenskalna", label: "Āgenskalna tirgus, Rīga" },
   { id: "salaspils", label: "Salaspils" },
   { id: "ikskile",   label: "Ikšķile" },
-  { id: "tukums",    label: "Tukuma tirgus" },
   { id: "dundaga",   label: "Dundagas tirgus" },
   { id: "sigulda",   label: "Sigulda" },
 ];

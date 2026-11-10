@@ -7,6 +7,7 @@ import {
   Quote, Award, Calendar, Video, Save, Send, FileText, Package, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isClosedLockerId } from "@/lib/locker-policy";
 import { cn, normalizeUrl } from "@/lib/utils";
 import { ImageUpload } from "@/components/image-upload";
 import {
@@ -27,7 +28,6 @@ const LOCKERS_REGULAR = [
   { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
   { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
   { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
-  { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raīņa iela 30 / Tirgus" },
   { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
   { id: "sigulda",    name: "Sigulda",            city: "Sigulda",   address: "Rūdolfa Blaumaņa iela 2" },
 ];
@@ -97,7 +97,7 @@ export function DashboardProfileEditor() {
           facts: data.facts ?? [],
           milestones: data.milestones ?? [],
           events: data.events ?? [],
-          home_locker_ids: data.home_locker_ids ?? [],
+          home_locker_ids: (data.home_locker_ids ?? []).filter((id: string) => !isClosedLockerId(id)),
           courier_pickup_address: data.courier_pickup_address ?? "",
         };
         // The agreement binds the seller to a specific operator entity, so a new
@@ -142,7 +142,7 @@ export function DashboardProfileEditor() {
       facts: profile.facts,
       milestones: profile.milestones,
       events: profile.events,
-      home_locker_ids: profile.home_locker_ids,
+      home_locker_ids: profile.home_locker_ids.filter((id) => !isClosedLockerId(id)),
       courier_pickup_address: profile.courier_pickup_address,
       // Legal
       legal_name: profile.legal_name,

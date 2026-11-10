@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
-import { listings, lockers, type Listing } from "@/lib/mock-data";
+import { listings, type Listing } from "@/lib/mock-data";
+import { publicLockers as lockers, isClosedLockerId } from "@/lib/locker-policy";
 import { fetchActiveListings, fetchBestSellers } from "@/lib/db-listings";
 import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -94,9 +95,9 @@ export function CartPage() {
   useEffect(() => {
     const d = loadDraft();
     if (Object.keys(d).length > 0) {
-      if (d.step) setStep(d.step);
+      if (d.step) setStep(isClosedLockerId(d.lockerId) && (d.deliveryMethod ?? "locker") === "locker" ? "delivery" : d.step);
       if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
-      if (d.lockerId) setLockerId(d.lockerId);
+      if (d.lockerId && !isClosedLockerId(d.lockerId)) setLockerId(d.lockerId);
       if (d.postalCode) setPostalCode(d.postalCode);
       if (d.address) setAddress(d.address);
       if (d.city) setCity(d.city);
@@ -376,7 +377,7 @@ export function CartPage() {
     if (!form.name.trim()) missing.push("Vārds, uzvārds");
     if (!form.phone.trim()) missing.push("Tālrunis");
     if (!form.email.trim()) missing.push("E-pasts");
-    if (deliveryMethod === "locker" && !lockerId) missing.push("pārtikas pakomāts");
+    if (deliveryMethod === "locker" && (!lockerId || isClosedLockerId(lockerId))) missing.push("pārtikas pakomāts");
     if (deliveryMethod === "courier" || deliveryMethod === "express") {
       if (!zoneResult.found) missing.push("Pasta indekss (derīgā zonā)");
       if (!address.trim()) missing.push("Iela un mājas nr.");
@@ -389,6 +390,11 @@ export function CartPage() {
   }
 
   async function handlePay() {
+    if (deliveryMethod === "locker" && isClosedLockerId(lockerId)) {
+      setPayError("Tukuma pakomāts ir slēgts. Izvēlies citu saņemšanas vietu.");
+      setStep("delivery");
+      return;
+    }
     setSubmitting(true);
     setPayError("");
     try {
@@ -1027,7 +1033,8 @@ export function CartPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Saņemšanas veids</p>
                 {deliveryMethod === "locker" && (() => {
-                  const l = lockers.find((x) => x.id === lockerId)!;
+                  const l = lockers.find((x) => x.id === lockerId);
+                  if (!l) return <p className="text-sm text-red-600">Saņemšanas vieta nav pieejama. Izvēlies citu pakomātu piegādes solī.</p>;
                   return (
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50">
@@ -1233,7 +1240,7 @@ export function CartPage() {
                   <input
                     value={promoCode}
                     onChange={(e) => { setPromoCode(e.target.value); setPromoValid(false); setPromoMsg(""); setPromoDiscount(0); }}
-                    placeholder="PIRMAIS"
+                    placeholder="Ievadi promo kodu"
                     className="input flex-1 text-sm font-mono uppercase"
                     disabled={promoValid}
                   />
