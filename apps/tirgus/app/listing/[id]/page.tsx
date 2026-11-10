@@ -1,31 +1,32 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Star, CheckCircle, Clock, ArrowLeft } from "lucide-react";
-import { listings, sellerHomeLockers } from "@/lib/mock-data";
-import { fetchListingById, fetchListingBySlug } from "@/lib/db-listings";
-import { formatPrice, formatDate, daysUntil, getStorageType, storageConfig, hasValidImage, listingUrl } from "@/lib/utils";
+import { Star, CheckCircle, ArrowLeft } from "lucide-react";
+import { sellerHomeLockers } from "@/lib/mock-data";
+import { fetchListingById, fetchListingBySlug, fetchDbSellerProfile } from "@/lib/db-listings";
+import { formatPrice, getStorageType, storageConfig } from "@/lib/utils";
 import { ListingCard } from "@/components/listing-card";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { ReviewsSectionDb } from "@/components/reviews-section-db";
 import { AddToCartButton } from "@/components/add-to-cart-button";
 import { VariantSelector } from "@/components/variant-selector";
 import { ShareButton } from "@/components/share-button";
+import { ProductPhoto } from "./product-photo";
+
+function productUrl(listing: { id: string; slug?: string }): string {
+  return `/listing/${encodeURIComponent(listing.slug || listing.id)}`;
+}
 
 export const dynamicParams = true;
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  return listings.map((l) => ({ id: l.id }));
+  return [];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function resolveListing(idOrSlug: string) {
-  // Mock data first (by id)
-  const mock = listings.find((l) => l.id === idOrSlug);
-  if (mock) return { listing: mock, isUuid: false };
   // UUID → fetch by ID, then redirect to slug URL
   if (UUID_RE.test(idOrSlug)) {
     const l = await fetchListingById(idOrSlug);
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const { listing } = await resolveListing(id);
   if (!listing) return {};
-  const canonicalSlug = listing.slug ?? listing.id;
+  const canonicalUrl = productUrl(listing);
   const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
   const description = listing.description
     ? `${listing.description.slice(0, 140)}…`
@@ -48,11 +49,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
-    alternates: { canonical: `/listing/${canonicalSlug}` },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
-      url: `https://tirgus.izipizi.lv/listing/${canonicalSlug}`,
+      url: `https://tirgus.izipizi.lv${canonicalUrl}`,
       images: [{ url: listing.image, alt: listing.title }],
       type: "website",
       siteName: "tirgus.izipizi.lv",
@@ -65,18 +66,14 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const { listing, isUuid } = await resolveListing(id);
   if (!listing) notFound();
-  // Hide products without a valid image — they should not be public
-  if (!hasValidImage(listing)) notFound();
-  // Hide expired products — redirect to 404
-  if (daysUntil(listing.freshnessDate) < 0) notFound();
-  // UUID accessed directly — 301 redirect to SEO-friendly slug URL
-  if (isUuid && listing.slug) redirect(`/listing/${listing.slug}`);
+  // An active DB row is not expired merely because it was created months ago.
+  if (isUuid && listing.slug) permanentRedirect(productUrl(listing));
 
-  const days = daysUntil(listing.freshnessDate);
   const storage = storageConfig[getStorageType(listing)];
   const isHomeLocker = (sellerHomeLockers[listing.sellerId] ?? []).includes(listing.lockerId);
   const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
-  const otherListings = listings.filter((l) => l.sellerId === listing.sellerId && l.id !== listing.id).slice(0, 3);
+  const sellerProfile = await fetchDbSellerProfile(listing.sellerId);
+  const otherListings = (sellerProfile?.listings ?? []).filter((l) => l.id !== listing.id).slice(0, 3);
 
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -91,13 +88,12 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       priceCurrency: "EUR",
       availability: listing.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      url: `https://tirgus.izipizi.lv${listingUrl(listing)}`,
+      url: `https://tirgus.izipizi.lv${productUrl(listing)}`,
       seller: {
         "@type": "Organization",
         name: listing.seller.farmName,
-        url: `https://tirgus.izipizi.lv/seller/${listing.sellerId}`,
+        url: `https://tirgus.izipizi.lv/seller/${encodeURIComponent(listing.sellerId)}`,
       },
-      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "LV", returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 14, returnMethod: "https://schema.org/ReturnByMail" },
       shippingDetails: { "@type": "OfferShippingDetails", shippingRate: { "@type": "MonetaryAmount", value: 3, currency: "EUR" }, shippingDestination: { "@type": "DefinedRegion", addressCountry: "LV" }, deliveryTime: { "@type": "ShippingDeliveryTime", handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" }, transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" } } },
     },
     brand: {
@@ -114,14 +110,14 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
       { "@type": "ListItem", position: 1, name: "Sākums", item: "https://tirgus.izipizi.lv" },
       { "@type": "ListItem", position: 2, name: "Katalogs", item: "https://tirgus.izipizi.lv/catalog" },
       { "@type": "ListItem", position: 3, name: listing.category, item: `https://tirgus.izipizi.lv/catalog?category=${encodeURIComponent(listing.category)}` },
-      { "@type": "ListItem", position: 4, name: listing.title, item: `https://tirgus.izipizi.lv${listingUrl(listing)}` },
+      { "@type": "ListItem", position: 4, name: listing.title, item: `https://tirgus.izipizi.lv${productUrl(listing)}` },
     ],
   };
 
   return (
     <>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link href="/catalog" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
@@ -129,7 +125,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
       <div className="grid gap-6 lg:gap-10 lg:grid-cols-2">
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-gray-100">
-          <Image src={listing.image} alt={listing.title} fill className="object-cover" priority />
+          <ProductPhoto src={listing.image} title={listing.title} />
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-gray-700 backdrop-blur-sm">
             {listing.category}
           </span>
@@ -155,13 +151,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex flex-1 items-center gap-2 rounded-xl bg-amber-50 px-4 py-3">
-              <Clock size={16} className="shrink-0 text-amber-600" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Derīgs līdz: {formatDate(listing.freshnessDate)}</p>
-                <p className="text-xs text-amber-600">{days <= 0 ? "Beidzies!" : `Vēl ${days} diena${days === 1 ? "" : "s"}`}</p>
-              </div>
-            </div>
             <div className={`flex items-center gap-2 rounded-xl px-4 py-3 ${storage.cls}`}>
               <div>
                 <p className="text-sm font-semibold">{storage.label}</p>
@@ -209,7 +198,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
 
           <div className="rounded-xl border border-gray-100 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pārdevējs</p>
-            <Link href={`/seller/${listing.sellerId}`} className="mt-3 flex items-center gap-3 hover:opacity-80">
+            <Link href={`/seller/${encodeURIComponent(listing.sellerId)}`} className="mt-3 flex items-center gap-3 hover:opacity-80">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={listing.seller.avatar} alt={listing.seller.name} className="h-10 w-10 rounded-full object-cover" />
               <div className="flex-1">
@@ -230,7 +219,7 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <section className="mt-14"><ReviewsSectionDb listingId={id} /></section>
+      <section className="mt-14"><ReviewsSectionDb listingId={listing.id} /></section>
 
       {otherListings.length > 0 && (
         <section className="mt-16">
