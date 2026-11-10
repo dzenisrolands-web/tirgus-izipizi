@@ -125,8 +125,8 @@ test("admin cancellation uses reservation RPC and never overwrites paid evidence
     if (url.pathname === "/rest/v1/orders") return Response.json({
       id: orderId, status: "paid", payment_status: "paid", paid_at: "2026-01-01", payment_review_reason: null,
     });
-    expect(url.pathname).toBe("/rest/v1/rpc/cancel_reserved_order");
-    expect(JSON.parse(String(init?.body))).toEqual({ p_order_id: orderId, p_reason: "admin_cancel:Buyer requested cancellation" });
+    expect(url.pathname).toBe("/rest/v1/rpc/cancel_order_with_review");
+    expect(JSON.parse(String(init?.body))).toEqual({ p_order_id: orderId, p_reason: "admin_cancel:Buyer requested cancellation", p_actor_id: adminId });
     return Response.json(true);
   });
   try {
@@ -153,8 +153,8 @@ test("72h cron uses cancellation RPC and counts no-op races without notification
   process.env.CRON_SECRET = "test-local-cron-secret";
   let rpc = 0;
   const restore = withBackend((url, init) => {
-    if (url.pathname === "/rest/v1/rpc/cancel_reserved_order") {
-      expect(JSON.parse(String(init?.body))).toEqual({ p_order_id: orderId, p_reason: "auto_cancel_unconfirmed_72h" });
+    if (url.pathname === "/rest/v1/rpc/cancel_order_with_review") {
+      expect(JSON.parse(String(init?.body))).toEqual({ p_order_id: orderId, p_reason: "auto_cancel_unconfirmed_72h", p_actor_id: null });
       rpc++; return Response.json(false);
     }
     expect(url.pathname).toBe("/rest/v1/orders");

@@ -127,7 +127,7 @@ BEGIN
     RAISE EXCEPTION 'Late paid expired review was lost';
   END IF;
   IF (SELECT amount_cents FROM public.finance_refund_queue WHERE order_id = '00000000-0000-0000-0000-000000000020') IS NOT NULL
-    OR (SELECT amount_cents FROM public.finance_refund_queue WHERE order_id = '00000000-0000-0000-0000-000000000023') <> 1200 THEN
+    OR (SELECT amount_cents FROM public.finance_refund_queue WHERE order_id = '00000000-0000-0000-0000-000000000023') IS DISTINCT FROM 1200 THEN
     RAISE EXCEPTION 'Review amount guessed instead of using observed payment';
   END IF;
   IF (SELECT count(*) FROM public.finance_issues() WHERE issue = 'unknown_financial_snapshots') <> 3 THEN

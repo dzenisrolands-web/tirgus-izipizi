@@ -45,8 +45,8 @@ export async function GET(req: Request) {
   let cancelled = 0;
   let cancellationErrors = 0;
   for (const o of stale ?? []) {
-    const { data, error } = await supabase.rpc("cancel_reserved_order", {
-      p_order_id: o.id, p_reason: "auto_cancel_unconfirmed_72h",
+    const { data, error } = await supabase.rpc("cancel_order_with_review", {
+      p_order_id: o.id, p_reason: "auto_cancel_unconfirmed_72h", p_actor_id: null,
     });
     if (error) { cancellationErrors++; continue; }
     if (data === true) {

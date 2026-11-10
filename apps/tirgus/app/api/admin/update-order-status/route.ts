@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     if (["shipped", "delivered"].includes(order.status)) {
       return NextResponse.json({ error: "Dispatched orders require a documented returns reconciliation" }, { status: 409 });
     }
-    const { data, error } = await supabase.rpc("cancel_reserved_order", { p_order_id: orderId, p_reason: `admin_cancel:${reason.trim()}` });
+    const { data, error } = await supabase.rpc("cancel_order_with_review", {
+      p_order_id: orderId, p_reason: `admin_cancel:${reason.trim()}`, p_actor_id: ctx.user.id,
+    });
     if (error) return NextResponse.json({ error: error.message }, { status: 409 });
     if (data !== true && order.status !== "cancelled") return NextResponse.json({ error: "Order changed concurrently; cancellation not applied" }, { status: 409 });
     return NextResponse.json({ ok: true, result: data, refund: "Paid cancellations require external refund review; no money was refunded." });

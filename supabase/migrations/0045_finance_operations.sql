@@ -25,13 +25,14 @@ CREATE TABLE IF NOT EXISTS public.finance_review_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   entity_type text NOT NULL CHECK (entity_type IN ('order', 'invoice', 'refund')),
   entity_id uuid NOT NULL,
-  action text NOT NULL CHECK (action IN ('reviewed', 'refund_completed')),
-  actor_id uuid NOT NULL,
+  action text NOT NULL CHECK (action IN ('reviewed', 'refund_completed', 'order_cancelled', 'system_cancelled')),
+  actor_id uuid,
   reason text NOT NULL CHECK (length(btrim(reason)) >= 10),
   evidence text NOT NULL CHECK (length(btrim(evidence)) >= 10),
   reference text NOT NULL CHECK (length(btrim(reference)) >= 3),
   details jsonb NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (actor_id IS NOT NULL OR action = 'system_cancelled')
 );
 ALTER TABLE public.finance_refund_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finance_review_events ENABLE ROW LEVEL SECURITY;
@@ -79,6 +80,31 @@ END $$;
 DROP TRIGGER IF EXISTS guard_finance_fulfillment ON public.orders;
 CREATE TRIGGER guard_finance_fulfillment BEFORE UPDATE ON public.orders
 FOR EACH ROW EXECUTE FUNCTION public.guard_finance_fulfillment();
+
+CREATE OR REPLACE FUNCTION public.cancel_order_with_review(
+  p_order_id uuid, p_reason text, p_actor_id uuid
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE changed boolean;
+BEGIN
+  IF p_actor_id IS NULL THEN
+    IF p_reason IS DISTINCT FROM 'auto_cancel_unconfirmed_72h' THEN
+      RAISE EXCEPTION 'System cancellation requires the documented 72-hour policy';
+    END IF;
+  ELSIF p_reason NOT LIKE 'admin_cancel:%'
+     OR coalesce(length(btrim(substr(p_reason,14))), 0) < 10 THEN
+    RAISE EXCEPTION 'Administrator cancellation requires a documented reason';
+  END IF;
+  changed := public.cancel_reserved_order(p_order_id, p_reason);
+  IF changed THEN
+    INSERT INTO public.finance_review_events(entity_type,entity_id,action,actor_id,reason,evidence,reference,details)
+    VALUES ('order', p_order_id, CASE WHEN p_actor_id IS NULL THEN 'system_cancelled' ELSE 'order_cancelled' END,
+      p_actor_id, p_reason,
+      'Reservation cancellation completed atomically; no external payment refund initiated.',
+      'cancel_reserved_order:' || p_order_id::text,
+      jsonb_build_object('inventory', 'held reservations released; consumed inventory requires manual return reconciliation'));
+  END IF;
+  RETURN changed;
+END $$;
 
 -- An acknowledged issue is not repaired or made invoiceable. Accountants must
 -- supply original evidence; no bulk historical backfill endpoint exists.
@@ -254,11 +280,13 @@ END $$;
 REVOKE ALL ON FUNCTION public.capture_order_finance_review(), public.guard_invoice_order_eligibility(),
   public.guard_finance_fulfillment() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.finance_issues(),
+  public.cancel_order_with_review(uuid, text, uuid),
   public.record_finance_review(text, uuid, uuid, text, text, text),
   public.enqueue_manual_refund(uuid, uuid, text, text, text),
   public.complete_manual_refund(uuid, uuid, integer, text, boolean, timestamptz, text, text)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.finance_issues(),
+  public.cancel_order_with_review(uuid, text, uuid),
   public.record_finance_review(text, uuid, uuid, text, text, text),
   public.enqueue_manual_refund(uuid, uuid, text, text, text),
   public.complete_manual_refund(uuid, uuid, integer, text, boolean, timestamptz, text, text)

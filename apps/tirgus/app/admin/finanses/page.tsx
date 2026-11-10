@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 type Issue = { entity_type: string; entity_id: string; issue: string };
 type Refund = { id: string; order_id: string; amount_cents: number | null; status: string; reason: string; provider_reference: string | null };
-type Event = { id: string; entity_type: string; entity_id: string; action: string; actor_id: string; reference: string; reason: string; evidence: string; created_at: string };
+type Event = { id: string; entity_type: string; entity_id: string; action: string; actor_id: string | null; reference: string; reason: string; evidence: string; created_at: string };
 type Target = { entityId: string; entityType: string; action: "review" | "enqueue" | "complete"; expectedCents?: number | null };
 
 export default function FinancePage() {
@@ -102,7 +102,7 @@ export default function FinancePage() {
     </form>}
     <h2 className="text-xl font-bold">Audita vēsture</h2>
     {events.map(e => <div key={e.id} className="rounded border bg-white p-3">
-      <p>{e.created_at} · {e.actor_id} · {e.action} · {e.entity_type}:{e.entity_id}</p>
+      <p>{e.created_at} · {e.actor_id ?? "Sistēma (72h politika)"} · {e.action} · {e.entity_type}:{e.entity_id}</p>
       <p>{e.reference} · {e.reason}</p><p>{e.evidence}</p>
     </div>)}
   </div>;
