@@ -89,6 +89,25 @@ with concurrent.futures.ThreadPoolExecutor() as pool:
 assert stale.returncode != 0 and "Seller unavailable" in stale.stderr, stale
 sql("UPDATE sellers SET status='approved'")
 
+# Thermal/category/home-locker changes cannot reuse an earlier delivery quote.
+for field, old_value in [("category", "dairy"), ("storage_type", "chilled")]:
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        writer = pool.submit(sql, f"BEGIN; UPDATE listings SET {field}='changed' WHERE id='{LISTING}'; SELECT pg_sleep(1); COMMIT;")
+        wait_for_sleep()
+        stale = sql(f"""SELECT create_reserved_marketplace_order(jsonb_set(
+          stock_test_order('stale-{field}','{LISTING}'),'{{items,0,{field}}}','"{old_value}"'));""", check=False)
+        writer.result()
+    assert stale.returncode != 0 and "Delivery quote metadata changed" in stale.stderr, stale
+    sql(f"UPDATE listings SET {field}='{old_value}' WHERE id='{LISTING}'")
+with concurrent.futures.ThreadPoolExecutor() as pool:
+    writer = pool.submit(sql, "BEGIN; UPDATE sellers SET home_locker_ids=ARRAY['changed']; SELECT pg_sleep(1); COMMIT;")
+    wait_for_sleep()
+    stale = sql(f"""SELECT create_reserved_marketplace_order(jsonb_set(
+      stock_test_order('stale-home','{LISTING}'),'{{items,0,seller_home_locker_ids}}','[]'));""", check=False)
+    writer.result()
+assert stale.returncode != 0 and "Delivery quote metadata changed" in stale.stderr, stale
+sql("UPDATE sellers SET home_locker_ids='{}'")
+
 # A duplicate callback race claims payment exactly once.
 sql(reserve("callback"))
 callbacks = parallel(*["SELECT settle_reserved_marketplace_order('callback',500)" for _ in range(2)])

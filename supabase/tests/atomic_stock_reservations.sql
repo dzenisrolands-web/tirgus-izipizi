@@ -6,12 +6,14 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role BYPASSRLS; END IF;
 END $$;
 CREATE TABLE public.sellers (
-  id uuid PRIMARY KEY, status text, delivery_mode text, is_vat_registered boolean
+  id uuid PRIMARY KEY, status text, delivery_mode text, is_vat_registered boolean,
+  home_locker_ids text[] DEFAULT '{}'
 );
 CREATE TABLE public.listings (
   id uuid PRIMARY KEY, seller_id uuid REFERENCES sellers(id), status text,
   price numeric, quantity integer, variants jsonb DEFAULT '[]',
-  vat_rate numeric, courier_delivery boolean DEFAULT true, express_delivery boolean DEFAULT true
+  vat_rate numeric, courier_delivery boolean DEFAULT true, express_delivery boolean DEFAULT true,
+  category text DEFAULT 'dairy', storage_type text DEFAULT 'chilled'
 );
 CREATE TABLE public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), order_number text UNIQUE NOT NULL,
@@ -20,7 +22,8 @@ CREATE TABLE public.orders (
   delivery_type text, delivery_info jsonb, items jsonb, total_cents integer,
   total_amount numeric, seller_ids uuid[], promo_code text, promo_discount_cents integer, paid_at timestamptz
 );
-INSERT INTO public.sellers VALUES ('10000000-0000-0000-0000-000000000001','approved','locker',true);
+INSERT INTO public.sellers(id,status,delivery_mode,is_vat_registered)
+  VALUES ('10000000-0000-0000-0000-000000000001','approved','locker',true);
 INSERT INTO public.listings(id,seller_id,status,price,quantity,vat_rate) VALUES
   ('20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','active',2,50,21),
   ('20000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','active',2,1,21),
@@ -37,12 +40,13 @@ RETURNS jsonb LANGUAGE sql AS $$
   'seller_ids',jsonb_build_array('10000000-0000-0000-0000-000000000001'),
   'total_cents',price*100*qty+300,'items',jsonb_build_array(jsonb_build_object(
     'id',coalesce(cart_key,lid::text),'listing_id',lid,'seller_id','10000000-0000-0000-0000-000000000001',
-    'seller_delivery_mode','locker','vat_rate',21,'price',price,'quantity',qty)))
+    'seller_delivery_mode','locker','vat_rate',21,'price',price,'quantity',qty,
+    'commission_rate',15,'seller_courier_fee_cents',0)))
 $$;
 \ir ../migrations/0044_atomic_stock_reservations.sql
 
 DO $$
-DECLARE result jsonb; oid uuid; payload jsonb;
+DECLARE result jsonb; oid uuid; payload jsonb; field text;
 BEGIN
   IF has_function_privilege('anon','public.create_reserved_marketplace_order(jsonb)','EXECUTE')
     OR has_function_privilege('authenticated','public.settle_reserved_marketplace_order(text,integer)','EXECUTE')
@@ -117,6 +121,21 @@ BEGIN
     PERFORM create_reserved_marketplace_order(jsonb_set(stock_test_order('total'),'{total_cents}','1'));
     RAISE EXCEPTION 'Invalid total accepted';
   EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+  FOREACH field IN ARRAY ARRAY['category','storage_type','seller_home_locker_ids','commission_rate','seller_courier_fee_cents'] LOOP
+    payload := jsonb_set(stock_test_order('metadata-' || field),ARRAY['items','0',field],
+      CASE WHEN field='seller_home_locker_ids' THEN '["changed-locker"]'::jsonb
+           WHEN field='commission_rate' THEN '0'::jsonb
+           WHEN field='seller_courier_fee_cents' THEN '350'::jsonb
+           ELSE '"changed"'::jsonb END);
+    BEGIN
+      PERFORM create_reserved_marketplace_order(payload);
+      RAISE EXCEPTION 'Changed quote/financial metadata accepted: %',field;
+    EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM orders WHERE order_number LIKE 'metadata-%')
+    OR (SELECT quantity FROM listings WHERE id='20000000-0000-0000-0000-000000000001') <> 49 THEN
+    RAISE EXCEPTION 'Rejected metadata leaked stock/order writes';
+  END IF;
 
   -- Plain listing and composite first-variant aliases address the SAME inventory.
   payload := stock_test_order('aliases','20000000-0000-0000-0000-000000000003');

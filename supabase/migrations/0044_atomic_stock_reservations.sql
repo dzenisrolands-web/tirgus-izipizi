@@ -105,6 +105,17 @@ BEGIN
       RAISE EXCEPTION 'Listing unavailable or seller changed' USING ERRCODE = '22023';
     END IF;
     SELECT * INTO STRICT seller FROM public.sellers WHERE id = listing.seller_id;
+    IF (item ? 'category' AND coalesce(item->>'category','') IS DISTINCT FROM coalesce(listing.category::text,''))
+      OR (item ? 'storage_type' AND coalesce(item->>'storage_type','') IS DISTINCT FROM coalesce(listing.storage_type::text,''))
+      OR (item ? 'seller_home_locker_ids' AND item->'seller_home_locker_ids' IS DISTINCT FROM
+          to_jsonb(coalesce(seller.home_locker_ids,'{}'::text[]))) THEN
+      RAISE EXCEPTION 'Delivery quote metadata changed' USING ERRCODE = '22023';
+    END IF;
+    IF (item->>'commission_rate')::numeric IS DISTINCT FROM 15::numeric OR
+      (item->>'seller_courier_fee_cents')::integer IS DISTINCT FROM
+        (CASE WHEN seller.delivery_mode = 'courier' THEN 350 ELSE 0 END) THEN
+      RAISE EXCEPTION 'Invalid financial snapshot' USING ERRCODE = '22023';
+    END IF;
     IF item->>'seller_delivery_mode' IS DISTINCT FROM seller.delivery_mode OR
        (item->>'vat_rate')::numeric IS DISTINCT FROM
          (CASE WHEN seller.is_vat_registered = false THEN 0 ELSE listing.vat_rate END) THEN
