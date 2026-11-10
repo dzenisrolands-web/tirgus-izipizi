@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { load } from "cheerio";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 import type { Metadata } from "next";
 import { createDefaultMetadata } from "next/dist/lib/metadata/default-metadata";
 import { createMetadataElements } from "next/dist/lib/metadata/metadata-elements";
@@ -23,6 +24,9 @@ import { openLockers } from "../../lib/locker-policy";
 import { metadata as deliveryMetadata } from "../../app/piegade/page";
 import { metadata as aboutMetadata } from "../../app/par-mums/page";
 import { metadata as howMetadata } from "../../app/how-it-works/page";
+import { metadata as termsMetadata } from "../../app/noteikumi/page";
+import { metadata as privacyMetadata } from "../../app/privatums/page";
+import { metadata as returnsMetadata } from "../../app/atgriesana/page";
 
 type Handler = (url: URL, init?: RequestInit) => Response;
 const source = (path: string) => readFileSync(resolve(__dirname, "../..", path), "utf8");
@@ -140,6 +144,7 @@ test("actual Next metadata elements render route-specific canonical and OG URLs"
   for (const [metadata, path] of [
     [contactMetadata, "/contact"], [sellMetadata, "/sell"], [lockerMetadata, "/lockers"],
     [deliveryMetadata, "/piegade"], [aboutMetadata, "/par-mums"], [howMetadata, "/how-it-works"],
+    [termsMetadata, "/noteikumi"], [privacyMetadata, "/privatums"], [returnsMetadata, "/atgriesana"],
   ] as const) {
     const $ = await renderedMetadata(metadata, path);
     expect($('link[rel="canonical"]').attr("href")).toBe(`https://tirgus.izipizi.lv${path}`);
@@ -148,6 +153,16 @@ test("actual Next metadata elements render route-specific canonical and OG URLs"
   expect(source("app/layout.tsx")).not.toContain("og-default.jpg");
   expect(source("app/layout.tsx")).toContain('url: "/opengraph-image"');
   expect(source("app/opengraph-image.tsx")).toContain('contentType = "image/png"');
+});
+
+test("legal SEO overrides preserve every byte of existing legal page bodies", () => {
+  for (const route of ["noteikumi", "privatums", "atgriesana"]) {
+    const path = `app/${route}/page.tsx`;
+    const original = execFileSync("git", ["show", `53c3e2a53c5b666c3583dbbcf058e3de13d003aa:apps/tirgus/${path}`],
+      { cwd: resolve(__dirname, "../.."), encoding: "utf8" });
+    const body = (text: string) => text.slice(text.indexOf("export default function"));
+    expect(body(source(path)), path).toBe(body(original));
+  }
 });
 
 test("sitemap uses publishable existing public columns and real modification dates, not photos or approval gates for listings", async () => {

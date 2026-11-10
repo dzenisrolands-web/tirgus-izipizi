@@ -6,6 +6,8 @@ import { operatorInfo, formattedAddress } from "@/lib/operator-info";
 export const metadata: Metadata = {
   title: "Privātuma politika",
   description: `Kā ${operatorInfo.shortName} vāc, izmanto un aizsargā tavus personas datus tirgus.izipizi.lv platformā saskaņā ar GDPR.`,
+  alternates: { canonical: "/privatums" },
+  openGraph: { url: "https://tirgus.izipizi.lv/privatums" },
 };
 
 export default function PrivatumsPage() {
