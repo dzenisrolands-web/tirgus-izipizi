@@ -5,6 +5,7 @@ import { ShoppingBag, Clock, CheckCircle, Package, ChevronRight, Loader2, KeyRou
 import { ShippingLabel } from "@/components/shipping-label";
 import { SIZES, type LabelData, type ShipmentSize } from "@/lib/shipping";
 import { supabase } from "@/lib/supabase";
+import { orderSellerIds } from "@/lib/security-api";
 import { formatPrice } from "@/lib/utils";
 import { COMMISSION_RATE, COURIER_FEE, commissionForPrice } from "@/lib/commission";
 
@@ -12,6 +13,8 @@ type Order = {
   id: string;
   order_number: string;
   status: string;
+  payment_status: string;
+  seller_ids: string[];
   buyer_name: string;
   buyer_email: string;
   buyer_phone: string;
@@ -44,6 +47,7 @@ export default function DashboardPasutijumiPage() {
   const [shipSize, setShipSize] = useState<ShipmentSize>("M");
   const [labelData, setLabelData] = useState<LabelData | null>(null);
   const [sellerId, setSellerId] = useState("");
+  const [mutationError, setMutationError] = useState("");
 
   const NEXT_STATUS: Record<string, { label: string; next: string }> = {
     paid:       { label: "Apstiprināt pasūtījumu", next: "processing" },
@@ -51,24 +55,19 @@ export default function DashboardPasutijumiPage() {
     shipped:    { label: "Atzīmēt kā saņemtu",     next: "delivered" },
   };
 
-  async function restoreOrder(orderId: string) {
-    setUpdating(orderId);
-    await supabase.from("orders").update({ status: "paid" }).eq("id", orderId);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "paid" } : o));
-    setUpdating(null);
-  }
-
   async function notifyBuyer(orderId: string, status: string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
-      await fetch("/api/notify/order-status", {
+      const response = await fetch("/api/notify/order-status", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ orderId, status }),
       });
+      if (!response.ok) throw new Error("Paziņojumu neizdevās nosūtīt.");
     } catch (e) {
+      setMutationError("Statuss saglabāts, bet paziņojumu neizdevās nosūtīt.");
       console.error("notify failed", e);
     }
   }
@@ -83,17 +82,32 @@ export default function DashboardPasutijumiPage() {
         return;
       }
     }
+    const order = orders.find(o => o.id === orderId);
+    if (!order || order.payment_status !== "paid" || orderSellerIds(order).length !== 1) {
+      setMutationError("Šo pasūtījumu koordinē administrators.");
+      return;
+    }
     setUpdating(orderId);
-    await supabase.from("orders").update({ status: nextStatus }).eq("id", orderId);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
-    notifyBuyer(orderId, nextStatus); // fire and forget
-    setUpdating(null);
+    setMutationError("");
+    try {
+      const { data, error } = await supabase.from("orders").update({ status: nextStatus })
+        .eq("id", orderId).eq("status", order.status).eq("payment_status", "paid")
+        .select("id").maybeSingle();
+      if (error || !data) throw new Error("Pasūtījumu neizdevās atjaunināt. Pārlādē lapu.");
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+      await notifyBuyer(orderId, nextStatus);
+    } catch (error) {
+      setMutationError(error instanceof Error ? error.message : "Neizdevās atjaunināt pasūtījumu.");
+    } finally {
+      setUpdating(null);
+    }
   }
 
   async function confirmShip() {
     if (!shipDialog) return;
     const code = lockerCodeDraft.trim();
     if (!code) return;
+    setMutationError("");
     setUpdating(shipDialog.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -104,23 +118,14 @@ export default function DashboardPasutijumiPage() {
         body: JSON.stringify({ orderId: shipDialog.id, size: shipSize, lockerCode: code }),
       });
       const data = await res.json();
-      if (data.ok && data.label) {
-        setLabelData(data.label);
-        setOrders((prev) =>
-          prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-        );
-        // NB: pircejs sanem SMS tikai kad sutijums tiek ielikts pakomata (sistema apstiprina)
-      } else {
-        await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
-        setOrders((prev) =>
-          prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-        );
-      }
-    } catch {
-      await supabase.from("orders").update({ status: "shipped", locker_code: code }).eq("id", shipDialog.id);
-      setOrders((prev) =>
-        prev.map((o) => (o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o)),
-      );
+      if (!res.ok || !data.ok || !data.label) throw new Error(data.error ?? "Nosūtīšana noraidīta.");
+      setLabelData(data.label);
+      setOrders(prev => prev.map(o => o.id === shipDialog.id ? { ...o, status: "shipped", locker_code: code } : o));
+      if (data.logisticsRecorded === false) setMutationError("Pasūtījums nosūtīts; loģistikas ieraksts nav pieejams. Sazinies ar administratoru.");
+    } catch (error) {
+      setMutationError(error instanceof Error ? error.message : "Neizdevās nosūtīt. Mēģini vēlreiz.");
+      setUpdating(null);
+      return;
     }
     setShipDialog(null);
     setLockerCodeDraft("");
@@ -154,7 +159,7 @@ export default function DashboardPasutijumiPage() {
   );
 
   // Orders waiting for the seller to flip paid → processing.
-  // Auto-cancel kicks in 24 h after paid_at (see /api/cron/order-reminders).
+  // Auto-cancel kicks in 72 h after paid_at (see /api/cron/order-reminders).
   const pendingConfirm = orders.filter((o) => o.status === "paid");
 
   return (
@@ -164,6 +169,7 @@ export default function DashboardPasutijumiPage() {
         <p className="mt-0.5 text-sm text-gray-500">{orders.length} kopā</p>
       </div>
 
+      {mutationError && <p role="alert" className="mb-4 text-sm text-red-700">{mutationError}</p>}
       {pendingConfirm.length > 0 && (
         <div className="mb-5 rounded-2xl border-2 border-red-300 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
           <div className="flex items-start gap-3">
@@ -175,14 +181,14 @@ export default function DashboardPasutijumiPage() {
                 {pendingConfirm.length} {pendingConfirm.length === 1 ? "pasūtījums gaida" : "pasūtījumi gaida"} apstiprinājumu
               </p>
               <p className="mt-0.5 text-sm text-red-800">
-                Apstiprini katru pasūtījumu pēc iespējas ātrāk. <strong>Ja netiek apstiprināts 24h laikā, pasūtījums tiks automātiski atcelts</strong> un nauda atgriezta pircējam.
+                Apstiprini katru pasūtījumu pēc iespējas ātrāk. <strong>Ja netiek apstiprināts 72h laikā, pasūtījums tiks automātiski atcelts</strong>. Atmaksu koordinē administrators.
               </p>
             </div>
           </div>
           <ul className="mt-3 space-y-1.5">
             {pendingConfirm.map((o) => {
               const paidAt = o.paid_at ? new Date(o.paid_at).getTime() : Date.now();
-              const hoursLeft = Math.max(0, 24 - (Date.now() - paidAt) / 3_600_000);
+              const hoursLeft = Math.max(0, 72 - (Date.now() - paidAt) / 3_600_000);
               const isUrgent = hoursLeft < 6;
               return (
                 <li key={o.id}>
@@ -316,7 +322,7 @@ export default function DashboardPasutijumiPage() {
                       </div>
                       <p className="font-extrabold text-gray-900">{formatPrice(order.total_cents / 100)}</p>
                     </div>
-                    {NEXT_STATUS[order.status] && (
+                    {NEXT_STATUS[order.status] && order.payment_status === "paid" && orderSellerIds(order).length === 1 && (
                       <button
                         onClick={() => advanceStatus(order.id, NEXT_STATUS[order.status].next)}
                         disabled={updating === order.id}
@@ -326,20 +332,8 @@ export default function DashboardPasutijumiPage() {
                         {NEXT_STATUS[order.status].label}
                       </button>
                     )}
-                    {order.status === "cancelled" && (
-                      <div className="mt-2 space-y-2">
-                        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                          ⚠ Pasūtījums tika automātiski atcelts (24h apstiprināšanas laiks). Ja pasūtījums ir apmaksāts — atjauno to.
-                        </div>
-                        <button
-                          onClick={() => restoreOrder(order.id)}
-                          disabled={updating === order.id}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition disabled:opacity-60"
-                        >
-                          {updating === order.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                          Atjaunot pasūtījumu (apstiprināt)
-                        </button>
-                      </div>
+                    {(order.status === "cancelled" || orderSellerIds(order).length !== 1) && (
+                      <p className="text-sm text-amber-800">Sazinies ar administratoru par atcelšanu vai vairāku ražotāju piegādes koordinēšanu.</p>
                     )}
                   </div>
                 )}

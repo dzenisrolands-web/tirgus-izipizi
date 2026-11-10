@@ -62,13 +62,15 @@ export async function notifyBuyerOrderStatus(
 ): Promise<{ pushSent: number; smsSent: boolean; reasons: string[] }> {
   const supabase = svc();
   const reasons: string[] = [];
-  const { data: order } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from("orders")
     .select("id, order_number, buyer_id, buyer_name, buyer_email, buyer_phone, delivery_info, locker_code, items, seller_ids, total_cents")
     .eq("id", orderId)
+    .eq("payment_status", "paid")
+    .eq("status", status)
     .single<OrderRow>();
 
-  if (!order) return { pushSent: 0, smsSent: false, reasons: ["order not found"] };
+  if (orderError || !order) throw new Error("Persisted notification order unavailable");
 
   const tmpl = STATUS_TEMPLATES[status];
   if (!tmpl) return { pushSent: 0, smsSent: false, reasons: [`no template for status '${status}'`] };

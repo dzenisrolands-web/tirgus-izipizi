@@ -2,8 +2,8 @@
  * Shared super-admin authentication helper.
  *
  * Super admin status lives in `app_metadata.is_super_admin` (set server-side
- * via Auth Admin API). This is NOT readable or writable by the client token,
- * so a compromised browser session can never escalate to admin.
+ * via Auth Admin API). Clients can read app_metadata, but cannot write it.
+ * Always verify the token with auth.getUser; user_metadata is not trusted.
  *
  * All `/api/admin/*` routes and the admin shell should use this module
  * instead of checking `profiles.role`.
@@ -30,7 +30,7 @@ export async function assertSuperAdmin(req: Request): Promise<
   | { error: string; status: 401 | 403 }
 > {
   const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
+  const token = /^Bearer\s+(\S+)$/i.exec(auth)?.[1];
   if (!token) return { error: "Unauthorized", status: 401 };
 
   const supabase = adminClient();

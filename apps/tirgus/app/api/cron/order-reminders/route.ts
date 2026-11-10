@@ -4,7 +4,7 @@ import { notifySellerReminder, notifyOrderAutoCancelled } from "@/lib/order-noti
 
 // Vercel Cron — runs every 15 minutes.
 // Goal: keep sellers from sleeping on a paid order. Three escalating reminder
-// pushes (30 min, 2 h, 6 h after paid_at), then auto-cancel at 24 h.
+// pushes (30 min, 2 h, 6 h after paid_at), then auto-cancel at 72 h.
 //
 // We don't issue a Paysera refund here — the platform marks status=cancelled
 // and an admin handles the refund manually for now (Paysera integration is
@@ -22,7 +22,7 @@ type PendingOrder = {
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
   const secret = process.env.CRON_SECRET;
-  if (secret && auth !== `Bearer ${secret}`) {
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,21 +34,25 @@ export async function GET(req: Request) {
   const nowMs = Date.now();
   const cancelCutoffISO = new Date(nowMs - AUTO_CANCEL_HOURS * 3_600_000).toISOString();
 
-  // 1) AUTO-CANCEL: paid orders older than 24 h that the seller never confirmed.
-  const { data: stale } = await supabase
+  // 1) AUTO-CANCEL: paid orders older than 72 h that the seller never confirmed.
+  const { data: stale, error: staleError } = await supabase
     .from("orders")
     .select("id")
     .eq("status", "paid")
+    .eq("payment_status", "paid")
     .lte("paid_at", cancelCutoffISO);
 
+  if (staleError) return NextResponse.json({ error: "Order query failed" }, { status: 500 });
   let cancelled = 0;
   for (const o of stale ?? []) {
-    const { error } = await supabase
+    const { data: changed, error } = await supabase
       .from("orders")
       .update({ status: "cancelled", auto_cancelled_at: new Date().toISOString() })
       .eq("id", o.id)
-      .eq("status", "paid"); // optimistic guard against races
-    if (!error) {
+      .eq("status", "paid")
+      .eq("payment_status", "paid").select("id"); // optimistic guard against races
+    if (error) return NextResponse.json({ error: "Order update failed" }, { status: 500 });
+    if (changed?.length) {
       cancelled++;
       notifyOrderAutoCancelled(o.id).catch((e) =>
         console.error("[cron/reminders] notifyOrderAutoCancelled:", e),
@@ -57,16 +61,18 @@ export async function GET(req: Request) {
   }
 
   // 2) ESCALATE: paid orders past their next reminder slot.
-  // Pull all candidates (status=paid, paid within last 24 h, fewer than 3 reminders)
+  // Pull all candidates (status=paid, paid within last 72 h, fewer than 3 reminders)
   // and decide per-row whether the slot has been crossed.
-  const { data: pending } = await supabase
+  const { data: pending, error: pendingError } = await supabase
     .from("orders")
     .select("id, paid_at, seller_reminded_count")
     .eq("status", "paid")
+    .eq("payment_status", "paid")
     .gt("paid_at", cancelCutoffISO)
     .lt("seller_reminded_count", REMINDER_SLOTS_MIN.length)
     .returns<PendingOrder[]>();
 
+  if (pendingError) return NextResponse.json({ error: "Order query failed" }, { status: 500 });
   let reminded = 0;
   for (const o of pending ?? []) {
     if (!o.paid_at) continue;
@@ -75,15 +81,17 @@ export async function GET(req: Request) {
     if (elapsedMin < nextSlot) continue;
 
     const newCount = o.seller_reminded_count + 1;
-    const { error } = await supabase
+    const { data: changed, error } = await supabase
       .from("orders")
       .update({
         seller_reminded_count: newCount,
         seller_reminded_at: new Date().toISOString(),
       })
       .eq("id", o.id)
-      .eq("seller_reminded_count", o.seller_reminded_count); // race-safe
-    if (error) continue;
+      .eq("status", "paid").eq("payment_status", "paid")
+      .eq("seller_reminded_count", o.seller_reminded_count).select("id"); // race-safe
+    if (error) return NextResponse.json({ error: "Reminder update failed" }, { status: 500 });
+    if (!changed?.length) continue;
 
     reminded++;
     notifySellerReminder(o.id, newCount).catch((e) =>

@@ -7,6 +7,7 @@ import { CheckCircle, MapPin, Loader2, AlertCircle, Package } from "lucide-react
 import confetti from "canvas-confetti";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type OrderItem = { id?: string; title?: string; price?: number; quantity?: number; unit?: string };
 
@@ -63,7 +64,7 @@ function CartSuccessContent() {
 
   // GA4 purchase event + confetti when payment confirmed
   useEffect(() => {
-    if (!order || order.payment_status !== "paid" || confettiFiredRef.current) return;
+    if (!order || order.payment_status !== "paid" || order.status === "pending" || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
 
     // GA4 purchase event
@@ -98,40 +99,27 @@ function CartSuccessContent() {
     setTimeout(() => fire(0.5, 90), 250);
   }, [order]);
 
-  // Fetch order; poll a few times in case Paysera callback hasn't landed yet.
-  // If still awaiting after 6s, call confirm-arrival as webhook fallback.
-  const fallbackCalledRef = useRef(false);
+  // Read-only polling: a return URL can never confirm payment.
   useEffect(() => {
     if (!orderNumber) { setLoading(false); return; }
     let cancelled = false;
 
     async function fetchOrder() {
-      const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
-      if (cancelled) return;
-      if (res.ok) {
-        const data = await res.json() as Order;
-        setOrder(data);
-
-        // If still awaiting after a few polls, trigger fallback confirmation
-        if (data.payment_status !== "paid" && !fallbackCalledRef.current) {
-          fallbackCalledRef.current = true;
-          window.fetch("/api/checkout/confirm-arrival", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderNumber }),
-          }).then(async (r) => {
-            if (r.ok) {
-              const result = await r.json();
-              if (result.ok && (result.confirmed || result.already)) {
-                // Re-fetch to get updated status
-                const r2 = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`);
-                if (r2.ok && !cancelled) setOrder(await r2.json() as Order);
-              }
-            }
-          }).catch(() => {});
-        }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await window.fetch(`/api/orders/${encodeURIComponent(orderNumber!)}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+        });
+        if (cancelled) return;
+        if (res.ok) setOrder(await res.json() as Order);
+        else setOrder(null);
+      } catch {
+        // A network error is not confirmation of either payment or order absence.
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchOrder();
@@ -171,14 +159,15 @@ function CartSuccessContent() {
     return (
       <div className="mx-auto max-w-lg px-4 py-12 text-center">
         <AlertCircle size={40} className="mx-auto text-gray-300" />
-        <h1 className="mt-3 text-xl font-extrabold text-gray-900">Pasūtījums nav atrasts</h1>
-        <p className="mt-2 text-sm text-gray-500">Numurs <strong className="font-mono">{orderNumber}</strong> nav DB.</p>
+        <h1 className="mt-3 text-xl font-extrabold text-gray-900">Piekļuve pasūtījumam nav apstiprināta</h1>
+        <p className="mt-2 text-sm text-gray-500">Ielogojies ar pirkumā izmantoto kontu vai sazinies ar atbalstu: birojs@izipizi.lv. Šī saite pati par sevi neapstiprina apmaksu.</p>
+        <Link href="/login" className="btn-primary mt-4 inline-block">Ielogoties</Link>
         <Link href="/" className="btn-primary mt-6 inline-block">Atpakaļ uz sākumu</Link>
       </div>
     );
   }
 
-  const isPaid = order.payment_status === "paid";
+  const isPaid = order.payment_status === "paid" && order.status !== "pending";
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
@@ -191,7 +180,7 @@ function CartSuccessContent() {
           {isPaid ? "Apmaksa veiksmīga!" : "Pasūtījums saņemts"}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Paldies, <strong>{order.buyer_name}</strong>! Apstiprinājums nosūtīts uz{" "}
+          Paldies, <strong>{order.buyer_name}</strong>! Saziņas e-pasts:{" "}
           <strong>{order.buyer_email}</strong>.
         </p>
         <div className="mt-3 rounded-full bg-gray-100 px-4 py-1.5 text-sm font-mono font-semibold text-gray-700">

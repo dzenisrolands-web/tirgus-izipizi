@@ -114,6 +114,7 @@ test("historical closed destination remains stored but cannot create a new shipm
     if (url.pathname === "/auth/v1/user") return Response.json({ id: "fixture-user" });
     if (url.pathname === "/rest/v1/orders") return Response.json({
       id: "order", order_number: "TRG-historic", delivery_type: "locker", delivery_info: { locker_id: "tukums" },
+      payment_status: "paid", status: "processing", seller_ids: ["seller"], items: [{ seller_id: "seller" }],
     });
     if (url.pathname === "/rest/v1/sellers") return Response.json({ id: "seller", home_locker_ids: ["brivibas"] });
     throw new Error("No shipment/order update allowed");
@@ -133,11 +134,10 @@ test("all three promo cards are gated and stale closed-locker drafts are rejecte
   }
 });
 
-test("phase-one release does not import the migration-dependent payment or financial rewrite", () => {
-  // Deliberate release-boundary assertion; later phases must replace it with their own tests.
-  for (const path of ["lib/paysera.ts", "lib/invoice/generate.ts", "lib/operator-info.ts",
-    "lib/utils.ts", "lib/mock-data.ts", "app/api/webhooks/paysera/route.ts",
-    "app/api/checkout/confirm-arrival/route.ts"]) {
+test("security release preserves historical data, invoices, operator, tariffs and schema boundary", () => {
+  // Payment behavior is covered by the security-payment suite rather than frozen source bytes.
+  for (const path of ["lib/invoice/generate.ts", "lib/operator-info.ts",
+    "lib/utils.ts", "lib/mock-data.ts", "lib/commission.ts"]) {
     const original = execFileSync("git", ["show", `aa88b6575a4146e630bf24f40af5683825675305:apps/tirgus/${path}`],
       { cwd: app, encoding: "utf8" });
     expect(source(path), path).toBe(original);

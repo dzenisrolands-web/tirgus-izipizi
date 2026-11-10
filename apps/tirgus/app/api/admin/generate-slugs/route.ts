@@ -1,47 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { assertSuperAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slugify";
 
 /**
  * POST /api/admin/generate-slugs
  * Generates URL slugs for all sellers that don't have one yet.
- * Also creates the `referral_clicks` table if missing.
  * Requires admin auth (Bearer token).
  */
 export async function POST(req: Request) {
-  const sb = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
-
-  // Auth check — only admins
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (token) {
-    const { data: { user } } = await sb.auth.getUser(token);
-    if (!user) return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  } else {
-    return NextResponse.json({ ok: false, error: "Nav autorizācijas" }, { status: 401 });
-  }
-
-  // Ensure referral_clicks table exists (best-effort — exec_sql may not exist)
-  try {
-    await sb.rpc("exec_sql", {
-      query: `
-        CREATE TABLE IF NOT EXISTS referral_clicks (
-          id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-          seller_id text NOT NULL,
-          slug text NOT NULL,
-          referrer text,
-          ua text,
-          created_at timestamptz DEFAULT now()
-        );
-        CREATE INDEX IF NOT EXISTS idx_referral_clicks_seller ON referral_clicks(seller_id);
-        CREATE INDEX IF NOT EXISTS idx_referral_clicks_created ON referral_clicks(created_at);
-      `,
-    });
-  } catch {
-    // rpc exec_sql might not exist — table may need manual creation via SQL editor
-  }
+  const auth = await assertSuperAdmin(req);
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const sb = auth.supabase;
 
   // Fetch all sellers
   const { data: sellers, error } = await sb
@@ -62,7 +31,7 @@ export async function POST(req: Request) {
   for (const seller of sellers ?? []) {
     if (seller.slug) continue; // Already has slug
 
-    let base = slugify(seller.name || "seller");
+    const base = slugify(seller.name || "seller");
     let candidate = base;
     let counter = 2;
     while (existingSlugs.has(candidate)) {
@@ -70,11 +39,13 @@ export async function POST(req: Request) {
       counter++;
     }
 
-    const { error: updateErr } = await sb
+    const { data: changed, error: updateErr } = await sb
       .from("sellers")
       .update({ slug: candidate })
-      .eq("id", seller.id);
+      .eq("id", seller.id).select("id").maybeSingle();
 
+    if (updateErr) return NextResponse.json({ ok: false, error: "Slug update failed", generated: updated.length }, { status: 500 });
+    if (!changed) return NextResponse.json({ ok: false, error: "Seller changed; reload and retry", generated: updated.length }, { status: 409 });
     if (!updateErr) {
       existingSlugs.add(candidate);
       updated.push({ id: seller.id, name: seller.name, slug: candidate });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateShipmentNumber, type ShipmentSize, type LabelData } from "@/lib/shipping";
 import { isClosedLockerId } from "@/lib/locker-policy";
+import { bearerToken, orderSellerIds } from "@/lib/security-api";
 
 /**
  * POST /api/shipments/create-from-order
@@ -17,42 +18,56 @@ export async function POST(req: Request) {
   );
 
   // Auth
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  const token = bearerToken(req);
   if (!token) return NextResponse.json({ error: "Nav autorizācijas" }, { status: 401 });
-  const { data: { user } } = await sb.auth.getUser(token);
-  if (!user) return NextResponse.json({ error: "Nav autorizācijas" }, { status: 401 });
+  const { data: { user }, error: authError } = await sb.auth.getUser(token);
+  if (authError || !user) return NextResponse.json({ error: "Nav autorizācijas" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
-  const { orderId, size, lockerCode } = body as {
+  const body = (await req.json().catch(() => null)) ?? {};
+  const { orderId, size, lockerCode, sellerId } = body as {
     orderId?: string;
     size?: ShipmentSize;
     lockerCode?: string;
+    sellerId?: string;
   };
 
-  if (!orderId || !size || !lockerCode) {
+  if (typeof orderId !== "string" || !orderId.trim() || !["M", "L", "XL"].includes(size ?? "") ||
+      typeof lockerCode !== "string" || !/^[A-Za-z0-9-]{4,32}$/.test(lockerCode)) {
     return NextResponse.json({ error: "orderId, size, lockerCode obligāti" }, { status: 400 });
   }
-
   // Fetch order
-  const { data: order } = await sb
+  const { data: order, error: orderError } = await sb
     .from("orders")
-    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status")
+    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status, payment_status")
     .eq("id", orderId)
     .single();
 
+  if (orderError) return NextResponse.json({ error: "Order query failed" }, { status: 500 });
   if (!order) {
     return NextResponse.json({ error: "Pasūtījums nav atrasts" }, { status: 404 });
   }
 
   // Fetch seller (the user making this request must be a seller on the order)
-  const { data: seller } = await sb
+  const isAdmin = user.app_metadata?.is_super_admin === true;
+  const sellerIds = orderSellerIds(order);
+  if (isAdmin && (typeof sellerId !== "string" || !sellerIds.includes(sellerId))) {
+    return NextResponse.json({ error: "Admin must select a seller on the order" }, { status: 400 });
+  }
+  let sellerQuery = sb
     .from("sellers")
-    .select("id, name, farm_name, location, email, home_locker_ids")
-    .eq("user_id", user.id)
-    .single();
+    .select("id, name, farm_name, location, email, home_locker_ids");
+  sellerQuery = isAdmin ? sellerQuery.eq("id", sellerId!) : sellerQuery.eq("user_id", user.id);
+  const { data: seller, error: sellerError } = await sellerQuery.single();
 
-  if (!seller) {
+  if (sellerError) return NextResponse.json({ error: "Seller query failed" }, { status: 500 });
+  if (!seller || !sellerIds.includes(seller.id)) {
     return NextResponse.json({ error: "Nav ražotāja profila" }, { status: 403 });
+  }
+  if (!isAdmin && sellerIds.length !== 1) {
+    return NextResponse.json({ error: "Multi-seller fulfillment requires admin coordination" }, { status: 409 });
+  }
+  if (order.payment_status !== "paid" || order.status !== "processing") {
+    return NextResponse.json({ error: "Order must be paid and processing" }, { status: 409 });
   }
 
   const shipmentNumber = generateShipmentNumber();
@@ -97,15 +112,24 @@ export async function POST(req: Request) {
     toLockerCity: di?.locker_city as string | undefined,
     courierAddress: di?.address as string | undefined,
     courierCity: di?.city as string | undefined,
-    size,
+    size: size!,
     tempMode,
     lockerCode,
     createdAt: new Date().toISOString(),
   };
 
-  // Insert sutijumi record (best effort — table may not exist yet)
+  // Confirm the guarded order write before returning a label or recording logistics.
+  const { data: updated, error: updateError } = await sb.from("orders")
+    .update({ status: "shipped", locker_code: lockerCode })
+    .eq("id", orderId).eq("status", "processing").eq("payment_status", "paid")
+    .select("id").maybeSingle();
+  if (updateError) return NextResponse.json({ error: "Order update failed" }, { status: 500 });
+  if (!updated) return NextResponse.json({ error: "Order changed; reload before retrying" }, { status: 409 });
+
+  // Optional existing logistics table: its absence must not block legacy labels.
+  let logisticsRecorded = false;
   try {
-    await sb.from("sutijumi").insert({
+    const { error } = await sb.from("sutijumi").insert({
       delivery_type: label.deliveryType,
       from_locker: null,
       from_locker_name: label.senderAddress,
@@ -124,15 +148,10 @@ export async function POST(req: Request) {
       note: `${order.order_number} - ${label.senderName}`,
       status: "confirmed",
     });
+    logisticsRecorded = !error;
   } catch {
     // sutijumi table may not exist in this Supabase instance — non-blocking
   }
-
-  // Mark order as shipped + save locker code
-  await sb
-    .from("orders")
-    .update({ status: "shipped", locker_code: lockerCode })
-    .eq("id", orderId);
-
-  return NextResponse.json({ ok: true, label });
+  if (!logisticsRecorded) console.warn("[shipments] Optional logistics record unavailable");
+  return NextResponse.json({ ok: true, label, logisticsRecorded });
 }
