@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { SlidersHorizontal, X, Star } from "lucide-react";
-import { sellers, type Listing } from "@/lib/mock-data";
+import { type Listing } from "@/lib/mock-data";
 import { ListingCard } from "@/components/listing-card";
 import { FilterSidebar, DEFAULT_FILTERS, type Filters } from "@/components/filter-sidebar";
 import { cn, getStorageType } from "@/lib/utils";
@@ -43,19 +43,11 @@ export function CatalogClient({
     seller: params.get("seller") ?? "",
     category: params.get("category") ?? "Visi",
   }));
-  // Query state mirrors the URL — server already filtered `listings` by `q`,
-  // so this is for the active-search chip + clear button only.
-  const [query, setQuery] = useState(initialQuery);
-  const [sort, setSort] = useState("newest");
+  // The server keys this component by query/seller/category, so URL changes
+  // reset filter state without an extra effect-driven query copy.
+  const query = initialQuery;
+  const [sort, setSort] = useState(initialQuery.trim() ? "relevance" : "newest");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const s = params.get("seller") ?? "";
-    const c = params.get("category") ?? "Visi";
-    const q = params.get("q") ?? "";
-    setFilters((prev) => ({ ...prev, seller: s, category: c }));
-    setQuery(q);
-  }, [params]);
 
   const filtered = useMemo(() => {
     let result = [...listings];
@@ -75,7 +67,7 @@ export function CatalogClient({
     else if (sort === "price_desc") result.sort((a, b) => b.price - a.price || a.id.localeCompare(b.id));
     else if (sort === "alpha_asc") result.sort((a, b) => a.title.localeCompare(b.title, "lv") || a.id.localeCompare(b.id));
     else if (sort === "alpha_desc") result.sort((a, b) => b.title.localeCompare(a.title, "lv") || a.id.localeCompare(b.id));
-    else {
+    else if (sort === "newest" || !query.trim()) {
       // "newest" — strikti hronoloģiski, jaunākais vispirms. Lietotājs, kas šo
       // kārtošanu izvēlas skaidri no izvēlnes, sagaida reālu datumu secību, nevis
       // sadaļītu izklaidi starp pārdevējiem — tāpēc šeit vairs NAV
@@ -84,14 +76,17 @@ export function CatalogClient({
       result.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
     }
     return result;
-  }, [filters, query, sort, storageTypes]);
+  }, [listings, filters, query, sort, storageTypes]);
 
   // Show weekly featured at top only when no filters are active (clean catalog browse)
   const showFeatured = weeklyFeatured.length > 0
     && !query.trim()
     && filters.category === "Visi"
     && !filters.seller
-    && filters.storageType === "all";
+    && filters.storageType === "all"
+    && filters.delivery === "all"
+    && !filters.day
+    && filters.maxPrice === DEFAULT_FILTERS.maxPrice;
 
   const activeFilterCount = [
     filters.category !== "Visi",
@@ -103,7 +98,7 @@ export function CatalogClient({
     query.trim() !== "",
   ].filter(Boolean).length;
 
-  const activeSeller = filters.seller ? sellers.find((s) => s.id === filters.seller) : null;
+  const activeSeller = filters.seller ? listings.find((l) => l.sellerId === filters.seller)?.seller : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -139,6 +134,7 @@ export function CatalogClient({
         <div className="flex items-center gap-3">
           <select value={sort} onChange={(e) => setSort(e.target.value)}
             className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-500 focus:outline-none">
+            {query.trim() && <option value="relevance">Atbilstība</option>}
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}

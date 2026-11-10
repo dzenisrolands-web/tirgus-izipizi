@@ -26,15 +26,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Fetch real DB data for listings, sellers, drops
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   let dbPages: MetadataRoute.Sitemap = [];
   if (url && key) {
     try {
       const supabase = createClient(url, key);
       const [listingsRes, sellersRes] = await Promise.all([
-        supabase.from("listings").select("id, slug, updated_at").eq("status", "active"),
-        supabase.from("sellers").select("id, updated_at").eq("status", "approved"),
+        supabase.from("listings").select("id, slug, updated_at").eq("status", "active").gt("price", 0),
+        supabase.from("sellers_public").select("id").eq("status", "approved"),
       ]);
 
       const listingPages: MetadataRoute.Sitemap = (listingsRes.data ?? []).map((l) => ({
@@ -46,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       const sellerPages: MetadataRoute.Sitemap = (sellersRes.data ?? []).map((s) => ({
         url: `${BASE}/seller/${s.id}`,
-        lastModified: s.updated_at ? new Date(s.updated_at) : now,
+        lastModified: now,
         changeFrequency: "weekly",
         priority: 0.7,
       }));
