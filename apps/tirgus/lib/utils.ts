@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { BUYER_LOCKER_FEE_CENTS, BUYER_COURIER_FEE_CENTS } from "./delivery-policy";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,11 +33,8 @@ export const storageConfig = {
   chilled: { label: "+2°C – +6°C",  icon: "", cls: "bg-cyan-50 text-cyan-700 border border-cyan-200" },
 };
 
-// Pakomāts piegādes maksa — no 3.00 € (vienā temperatūras zonā).
-// Ja pasūtījums ietver 2 temperatūras zonas (dzesēts + saldēts), tiek
-// rezervēti 2 zonas → 6 €. Loģika: cart-page.tsx.
-// Kurjers un eksprespiegāde: maksa pēc zonām (tarifs), maksā PIRCĒJS.
-export const LOCKER_FEE = 3.00;
+// Buyer tariff is per seller/address, independent of product count or temperature zones.
+export const LOCKER_FEE = BUYER_LOCKER_FEE_CENTS / 100;
 
 /**
  * Validate that a listing's image URL looks like a real image, not a bogus
@@ -65,7 +63,7 @@ export function isPublicReady(l: { image?: string | null; price?: number | null 
 // Saderība ar veco kodu — abas tagad ir LOCKER_FEE
 export const HOME_LOCKER_FEE = LOCKER_FEE;
 export const TRANSFER_FEE = LOCKER_FEE;
-export const COURIER_BASE_FEE = 7.74;
+export const COURIER_BASE_FEE = BUYER_COURIER_FEE_CENTS / 100;
 
 /** Latvian relative time, e.g. "tikko", "pirms 2h", "pirms 3 dienām" */
 export function relativeTime(isoString: string): string {

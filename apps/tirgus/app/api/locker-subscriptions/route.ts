@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isOpenLockerId } from "@/lib/locker-policy";
 
 /**
  * Locker subscriptions API.
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { lockerId, pushEnabled, smsEnabled, phone } = body;
   if (!lockerId) return NextResponse.json({ error: "Missing lockerId" }, { status: 400 });
+  if (!isOpenLockerId(lockerId)) return NextResponse.json({ error: "Šis pakomāts nav pieejams" }, { status: 400 });
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

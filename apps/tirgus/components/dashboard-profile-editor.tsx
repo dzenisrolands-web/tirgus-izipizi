@@ -7,6 +7,7 @@ import {
   Quote, Award, Calendar, Video, Save, Send, FileText, Package, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { openLockers, isOpenLockerId } from "@/lib/locker-policy";
 import { cn, normalizeUrl } from "@/lib/utils";
 import { ImageUpload } from "@/components/image-upload";
 import {
@@ -22,23 +23,9 @@ import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 type Fact = { label: string; value: string };
 type Event = { title: string; desc: string };
 
-const LOCKERS_REGULAR = [
-  { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
-  { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
-  { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
-  { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
-  { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raīņa iela 30 / Tirgus" },
-  { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
-  { id: "sigulda",    name: "Sigulda",            city: "Sigulda",   address: "Rūdolfa Blaumaņa iela 2" },
-];
-
-// Pickup-only lockers — seller must personally deliver to these locations.
-// Products here are NOT redistributed by logistics.
-const LOCKERS_PICKUP_ONLY = [
-  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
-];
-
-const LOCKERS = [...LOCKERS_REGULAR, ...LOCKERS_PICKUP_ONLY];
+const LOCKERS_REGULAR = openLockers.filter((locker) => !locker.pickup_only);
+const LOCKERS_PICKUP_ONLY = openLockers.filter((locker) => locker.pickup_only);
+const LOCKERS = openLockers;
 
 type Profile = LegalData & {
   id?: string;
@@ -97,7 +84,7 @@ export function DashboardProfileEditor() {
           facts: data.facts ?? [],
           milestones: data.milestones ?? [],
           events: data.events ?? [],
-          home_locker_ids: data.home_locker_ids ?? [],
+          home_locker_ids: (data.home_locker_ids ?? []).filter(isOpenLockerId),
           courier_pickup_address: data.courier_pickup_address ?? "",
         };
         // The agreement binds the seller to a specific operator entity, so a new
@@ -121,7 +108,7 @@ export function DashboardProfileEditor() {
     setSaving(true);
     setSaveError("");
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setSaveError("Sesija beigusies. Pieslēdzies vēlreiz."); setSaving(false); return false; }
 
     const justAgreed = !saved.self_billing_agreed && profile.self_billing_agreed;
     // Explicit column list — avoids errors if new columns (tiktok, delivery_mode)
@@ -142,7 +129,7 @@ export function DashboardProfileEditor() {
       facts: profile.facts,
       milestones: profile.milestones,
       events: profile.events,
-      home_locker_ids: profile.home_locker_ids,
+      home_locker_ids: profile.home_locker_ids.filter(isOpenLockerId),
       courier_pickup_address: profile.courier_pickup_address,
       // Legal
       legal_name: profile.legal_name,
@@ -167,16 +154,17 @@ export function DashboardProfileEditor() {
 
     if (profile.id) {
       const { error } = await supabase.from("sellers").update(payload).eq("id", profile.id);
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      if (error) { setSaveError(error.message); setSaving(false); return false; }
     } else {
       const { data, error } = await supabase.from("sellers").insert({ ...payload, user_id: user.id, status: "draft" }).select().single();
-      if (error) { setSaveError(error.message); setSaving(false); return; }
+      if (error) { setSaveError(error.message); setSaving(false); return false; }
       if (data) setProfile((p) => ({ ...p, id: data.id }));
     }
     setSaved({ ...profile });
     setSaving(false);
     setSaveMsg("Saglabāts!");
     setTimeout(() => setSaveMsg(""), 2000);
+    return true;
   }
 
   async function submit() {
@@ -190,8 +178,10 @@ export function DashboardProfileEditor() {
     }
     setSaveError("");
     setSubmitting(true);
-    await save();
-    await supabase.from("sellers").update({ status: "pending" }).eq("id", profile.id);
+    const savedSuccessfully = await save();
+    if (!savedSuccessfully) { setSubmitting(false); return; }
+    const { error } = await supabase.from("sellers").update({ status: "pending" }).eq("id", profile.id);
+    if (error) { setSaveError(error.message); setSubmitting(false); return; }
     setProfile((p) => ({ ...p, status: "pending" }));
     setSaved((p) => ({ ...p, status: "pending" }));
     setSubmitting(false);

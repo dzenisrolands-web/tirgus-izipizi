@@ -8,6 +8,7 @@ import {
   LinkIcon, Send, LogIn, UserPlus, Eye, EyeOff, Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { openLockers } from "@/lib/locker-policy";
 import { getSellerOnboardingChecklist } from "@/lib/seller-onboarding";
 
 type Seller = {
@@ -62,15 +63,7 @@ const statusMap = {
   rejected: { label: "Noraidīts",    cls: "bg-red-100 text-red-600" },
 };
 
-const LOCKERS = [
-  { id: "brivibas",  label: "Brīvības 253, Rīga" },
-  { id: "agenskalna", label: "Āgenskalna tirgus, Rīga" },
-  { id: "salaspils", label: "Salaspils" },
-  { id: "ikskile",   label: "Ikšķile" },
-  { id: "tukums",    label: "Tukuma tirgus" },
-  { id: "dundaga",   label: "Dundagas tirgus" },
-  { id: "sigulda",   label: "Sigulda" },
-];
+const LOCKERS = openLockers.map((locker) => ({ id: locker.id, label: `${locker.name}, ${locker.city}` }));
 
 export default function AdminRazotajiPage() {
   const [sellers, setSellers] = useState<Seller[]>([]);

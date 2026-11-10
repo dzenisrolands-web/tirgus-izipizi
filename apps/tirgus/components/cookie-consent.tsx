@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cookie, X, ChevronDown } from "lucide-react";
+import { Cookie, ChevronDown } from "lucide-react";
 import {
   CONSENT_STORAGE_KEY,
   CONSENT_VERSION,
   CONSENT_OPEN_EVENT,
   CONSENT_CHANGED_EVENT,
   type Consent,
+  readConsent,
 } from "@/lib/cookie-consent";
 
 type Category = {
@@ -36,7 +37,7 @@ const CATEGORIES: Category[] = [
     key: "analytics",
     title: "Analītika",
     description:
-      "Anonimizēta statistika par vietnes lietošanu, lai mēs varētu uzlabot funkcionalitāti. Pašlaik nelietojam, bet rezervējam šo izvēli nākotnei.",
+      "Vercel Analytics, veiktspējas mērījumi un vietnes apmeklējumu statistika. Tiek ieslēgta tikai pēc tavas piekrišanas.",
   },
   {
     key: "marketing",
@@ -57,24 +58,15 @@ export function CookieConsent() {
 
   useEffect(() => {
     // Show banner if no consent recorded or version mismatch
-    const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
-    if (!raw) {
+    const parsed = readConsent();
+    if (!parsed) {
       setVisible(true);
     } else {
-      try {
-        const parsed = JSON.parse(raw) as Consent;
-        if (parsed.version !== CONSENT_VERSION) {
-          setVisible(true);
-        } else {
-          setDraft({
-            functional: parsed.functional,
-            analytics: parsed.analytics,
-            marketing: parsed.marketing,
-          });
-        }
-      } catch {
-        setVisible(true);
-      }
+      setDraft({
+        functional: parsed.functional,
+        analytics: parsed.analytics,
+        marketing: parsed.marketing,
+      });
     }
 
     // Listen for footer button to re-open settings
@@ -95,7 +87,12 @@ export function CookieConsent() {
       marketing: consent.marketing,
       decidedAt: new Date().toISOString(),
     };
-    localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage-blocked browsers keep all optional tracking disabled.
+      next.analytics = false;
+    }
     window.dispatchEvent(new CustomEvent(CONSENT_CHANGED_EVENT, { detail: next }));
     setVisible(false);
     setExpanded(false);

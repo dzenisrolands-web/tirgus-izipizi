@@ -4,7 +4,7 @@
  */
 
 export const CONSENT_STORAGE_KEY = "cookie-consent-v1";
-export const CONSENT_VERSION = 1;
+export const CONSENT_VERSION = 2;
 export const CONSENT_OPEN_EVENT = "open-cookie-settings";
 export const CONSENT_CHANGED_EVENT = "cookie-consent-changed";
 
@@ -30,11 +30,11 @@ export const DEFAULT_CONSENT: Consent = {
 
 export function readConsent(): Consent | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
-  if (!raw) return null;
   try {
+    const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as Consent;
-    if (parsed.version !== CONSENT_VERSION) return null;
+    if (!parsed || parsed.version !== CONSENT_VERSION) return null;
     return parsed;
   } catch {
     return null;

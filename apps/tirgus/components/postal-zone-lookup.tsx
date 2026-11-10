@@ -112,7 +112,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
           <div className="mb-3 flex items-center gap-2">
             <Package size={14} className="text-brand-700" />
             <p className="text-xs font-bold uppercase tracking-wider text-brand-700">
-              Tuvākie pārtikas pakomāti — vienmēr 3 € / skapītis
+              Tuvākie pārtikas pakomāti — bezmaksas saņemšana
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
@@ -169,7 +169,7 @@ function FoundResult({ result }: { result: Extract<LookupResult, { found: true }
               </div>
             ))}
           </div>
-          <a href="#pakomati-saraksts" className="mt-3 inline-block text-[11px] font-semibold text-brand-700 hover:underline">
+          <a href="#pakomati" className="mt-3 inline-block text-[11px] font-semibold text-brand-700 hover:underline">
             Skatīt visus pārtikas pakomātus →
           </a>
         </div>
@@ -245,7 +245,7 @@ function NotFoundResult({ result }: { result: Extract<LookupResult, { found: fal
         {result.nearestLockers && result.nearestLockers.length > 0 && (
           <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-gray-200">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-brand-700">
-              pārtikas pakomāti — vienmēr 3 € / skapītis
+              pārtikas pakomāti — bezmaksas saņemšana
             </p>
             <ul className="space-y-1.5">
               {result.nearestLockers.map((l) => (

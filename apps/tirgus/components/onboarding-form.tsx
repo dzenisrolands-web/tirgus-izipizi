@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle, ChevronRight, ChevronLeft, Loader2, Store, ImageIcon, Video, Link2, Upload, X, FileText, Truck, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { openLockers, isOpenLockerId } from "@/lib/locker-policy";
 import { cn, normalizeUrl } from "@/lib/utils";
 import { SellerLegalSection, EMPTY_LEGAL, validateLegal, type LegalData } from "@/components/seller-legal-section";
 import { LvAddressAutocomplete } from "@/components/lv-address-autocomplete";
@@ -12,16 +13,7 @@ import { SELF_BILLING_VERSION } from "@/lib/legal/self-billing";
 
 const STEPS = ["Pamatinfo", "Profils", "Video", "Sociālie", "Nodošana", "Juridiskā info"];
 
-const LOCKERS = [
-  { id: "brivibas",   name: "Brīvības 253",     city: "Rīga",      address: "Brīvības iela 253 / NESTE" },
-  { id: "agenskalna", name: "Āgenskalna tirgus", city: "Rīga",      address: "Nometņu iela 64 / Tirgus" },
-  { id: "salaspils",  name: "Salaspils",         city: "Salaspils", address: "Zviedru iela 1C / NESTE" },
-  { id: "ikskile",    name: "Ikšķile",           city: "Ikšķile",   address: "Daugavas iela 63 / Labumu bode" },
-  { id: "tukums",     name: "Tukuma tirgus",     city: "Tukums",    address: "J. Raiņa iela 30 / Tirgus" },
-  { id: "dundaga",    name: "Dundagas tirgus",   city: "Dundaga",   address: "Pils 3B / Tirgus" },
-  { id: "iukstes",    name: "Ilūkstes iela 40A",  city: "Rīga",      address: "Ilūkstes iela 40A" },
-  { id: "sigulda",    name: "Sigulda",            city: "Sigulda",   address: "Rūdolfa Blaumaņa iela 2" },
-];
+const LOCKERS = openLockers;
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -95,14 +87,14 @@ export function OnboardingForm() {
     if (step === 0) return form.name.trim() && form.location.trim();
     if (step === 1) return form.description.trim() && form.short_desc.trim();
     if (step === 2) return true; // video is optional
-    if (step === 4) return form.delivery_mode === "locker" ? form.home_locker_ids.length > 0 : !!form.courier_pickup_address.trim();
+    if (step === 4) return form.delivery_mode === "locker" ? form.home_locker_ids.some(isOpenLockerId) : !!form.courier_pickup_address.trim();
     if (step === 5) return validateLegal(form).length === 0;
     return true;
   }
 
   async function handleSubmit() {
     setError("");
-    if (form.home_locker_ids.length === 0 && !form.courier_pickup_address.trim()) {
+    if (!form.home_locker_ids.some(isOpenLockerId) && !form.courier_pickup_address.trim()) {
       setError("Atzīmē vismaz vienu pārtikas pakomātu vai norādi kurjera saņemšanas adresi sadaļā “Nodošana”.");
       setStep(4);
       return;

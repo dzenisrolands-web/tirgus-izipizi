@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { operatorInfo, formattedAddress } from "@/lib/operator-info";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/noteikumi" },
   title: "Lietošanas noteikumi",
   description:
     "Tirgus.izipizi.lv platformas vispārējie lietošanas noteikumi pircējiem un tirgotājiem.",

@@ -2,7 +2,7 @@
 
 import { X, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { lockers } from "@/lib/mock-data";
+import { openLockers as lockers } from "@/lib/locker-policy";
 
 export type DropFilterState = {
   category: string;

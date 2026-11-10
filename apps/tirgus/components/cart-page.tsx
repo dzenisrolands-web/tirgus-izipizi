@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
-import { listings, lockers, type Listing } from "@/lib/mock-data";
+import { listings, type Listing } from "@/lib/mock-data";
+import { getOpenLocker, deliveryLockersForSellers } from "@/lib/locker-policy";
 import { fetchActiveListings, fetchBestSellers } from "@/lib/db-listings";
 import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,7 @@ export function CartPage() {
   const [saveLabel, setSaveLabel] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
-  const [newsletterConsent, setNewsletterConsent] = useState(true);
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
   const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
   const [promoCode, setPromoCode] = useState("");
 
@@ -94,9 +95,9 @@ export function CartPage() {
   useEffect(() => {
     const d = loadDraft();
     if (Object.keys(d).length > 0) {
-      if (d.step) setStep(d.step);
+      if (d.step) setStep(d.deliveryMethod === "locker" && !getOpenLocker(d.lockerId) ? "delivery" : d.step);
       if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
-      if (d.lockerId) setLockerId(d.lockerId);
+      if (getOpenLocker(d.lockerId)) setLockerId(d.lockerId!);
       if (d.postalCode) setPostalCode(d.postalCode);
       if (d.address) setAddress(d.address);
       if (d.city) setCity(d.city);
@@ -250,7 +251,7 @@ export function CartPage() {
   const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
   const zonePricing = zoneResult.found ? zoneResult.pricing : null;
   // Express is available only if zone supports it AND at least one cart item allows express
-  const anyItemAllowsExpress = items.some(i => i.express_delivery !== false);
+  const anyItemAllowsExpress = items.length > 0 && items.every(i => i.express_delivery === true);
   const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null && anyItemAllowsExpress;
 
   // Group items by seller and compute per-seller delivery fees
@@ -376,7 +377,9 @@ export function CartPage() {
     if (!form.name.trim()) missing.push("Vārds, uzvārds");
     if (!form.phone.trim()) missing.push("Tālrunis");
     if (!form.email.trim()) missing.push("E-pasts");
-    if (deliveryMethod === "locker" && !lockerId) missing.push("pārtikas pakomāts");
+    if (deliveryMethod === "locker" && !deliveryLockersForSellers(
+      sellerGroups.map((group) => group.sellerInfo?.home_locker_ids ?? [])
+    ).some((locker) => locker.id === lockerId)) missing.push("pieejams pārtikas pakomāts");
     if (deliveryMethod === "courier" || deliveryMethod === "express") {
       if (!zoneResult.found) missing.push("Pasta indekss (derīgā zonā)");
       if (!address.trim()) missing.push("Iela un mājas nr.");
@@ -389,6 +392,11 @@ export function CartPage() {
   }
 
   async function handlePay() {
+    if (!canConfirm()) {
+      setPayError("Pārbaudi saņemšanas vietu un obligātos kontaktinformācijas laukus.");
+      setStep("delivery");
+      return;
+    }
     setSubmitting(true);
     setPayError("");
     try {
@@ -405,7 +413,7 @@ export function CartPage() {
       // Build delivery info based on chosen method
       let deliveryInfo: Record<string, unknown>;
       if (deliveryMethod === "locker") {
-        const locker = lockers.find((l) => l.id === lockerId)!;
+        const locker = getOpenLocker(lockerId)!;
         deliveryInfo = {
           locker_id: locker.id,
           locker_name: locker.name,
@@ -618,7 +626,7 @@ export function CartPage() {
                   price={sellerGroups.length > 0
                     ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
                     : `no ${LOCKER_FEE.toFixed(2)} €`}
-                  hint="24/7 piekļuve · Lētākais"
+                  hint="Bezmaksas · darba laiks pie katras vietas"
                   highlight
                 />
                 <DeliveryMethodCard
@@ -629,7 +637,7 @@ export function CartPage() {
                   label="Kurjers"
                   price={zonePricing
                     ? `${courierFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : "no 5.45 €"}
+                    : "3.50 € par ražotāju"}
                   hint="Mājas durvīs"
                 />
                 {anyItemAllowsExpress && (
@@ -641,7 +649,7 @@ export function CartPage() {
                     label="Eksprespiegāde"
                     price={zonePricing && expressAvailable
                       ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                      : "no 6.66 €"}
+                      : "3.50 € par ražotāju"}
                     hint="2–5h Rīgā"
                   />
                 )}
@@ -652,25 +660,16 @@ export function CartPage() {
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                   <AlertCircle size={14} className="mt-0.5 shrink-0" />
                   <p>Tavs grozs satur <strong>dzesētus un saldētus</strong> produktus —
-                    vajag <strong>2 skapīšus</strong>, tāpēc cena divkāršojas.</p>
+                    vajag <strong>2 temperatūras zonas</strong>; piegādes maksa par ražotāju nemainās.</p>
                 </div>
               )}
 
               {/* Method-specific details */}
               {deliveryMethod === "locker" && (() => {
-                // Dynamic locker filtering:
-                // All non-coming_soon lockers are shown by default (logistics distributes to all).
-                // Only pickup_only lockers (e.g. Dundaga) are hidden when no cart seller drops off there.
-                const cartSellerLockerIds = new Set<string>();
-                for (const g of sellerGroups) {
-                  const info = g.sellerInfo;
-                  if (info?.home_locker_ids) {
-                    for (const lid of info.home_locker_ids) cartSellerLockerIds.add(lid);
-                  }
-                }
-                const availableLockers = lockers
-                  .filter(l => !l.coming_soon)
-                  .filter(l => !l.pickup_only || cartSellerLockerIds.has(l.id));
+                // Pickup-only destinations must serve every seller in the cart.
+                const availableLockers = deliveryLockersForSellers(
+                  sellerGroups.map((group) => group.sellerInfo?.home_locker_ids ?? [])
+                );
                 // Compute distances from buyer to each locker (if postal code is set)
                 const distanceMap = new Map<string, number>();
                 const pc = postalCode.replace(/\D/g, "");
@@ -1027,7 +1026,8 @@ export function CartPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Saņemšanas veids</p>
                 {deliveryMethod === "locker" && (() => {
-                  const l = lockers.find((x) => x.id === lockerId)!;
+                  const l = getOpenLocker(lockerId);
+                  if (!l) return <p className="text-sm text-red-600">Šī saņemšanas vieta vairs nav pieejama. Izvēlies citu pakomātu piegādes solī.</p>;
                   return (
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50">
