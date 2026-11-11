@@ -314,7 +314,8 @@ for (const extra of [
     const body = baseBody(extra);
     const quote = await quoted(body);
     expect(quote).toMatchObject({ available: false, delivery: { ok: false }, deliveryFeeCents: null, preDiscountTotalCents: null, totalCents: null });
-    expect((await checkout(request({ ...body, totalCents: 2500 }))).status).toBe(409);
+    const closed = "locker_id" in extra.deliveryInfo && extra.deliveryInfo.locker_id === "tukums";
+    expect((await checkout(request({ ...body, totalCents: 2500 }))).status).toBe(closed ? 400 : 409);
     expect(mutations()).toEqual([]);
   });
 }

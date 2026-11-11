@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
 import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
-import { CheckoutError, orderItemSnapshot } from "@/lib/checkout-items";
+import { CheckoutError, orderItemSnapshot, record } from "@/lib/checkout-items";
+import { isClosedLockerId } from "@/lib/locker-policy";
 import {
   buildCheckoutQuote, checkoutBuyerId, checkoutExpectationsMatch, checkoutFailure,
   checkoutJson, contactForCheckout, readCheckoutBody,
@@ -10,6 +11,13 @@ import {
 export async function POST(req: Request) {
   try {
     const body = await readCheckoutBody(req);
+    if ((body.deliveryType ?? "locker") === "locker") {
+      const info = record(body.deliveryInfo) ? body.deliveryInfo : {};
+      const legacy = record(body.locker) ? body.locker : {};
+      if (isClosedLockerId(info.locker_id ?? legacy.id)) {
+        throw new CheckoutError(400, "CLOSED_LOCKER", "Tukuma pakomāts ir slēgts. Izvēlies citu saņemšanas vietu.");
+      }
+    }
     const contact = contactForCheckout(body);
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
     const buyerId = await checkoutBuyerId(req, supabase);
@@ -24,14 +32,14 @@ export async function POST(req: Request) {
       && typeof body.promoCode === "string" && body.promoCode.trim()) {
       return checkoutJson({
         ok: false, code: "quote_confirmation_required",
-        error: "Pārskati promo atlaidi un apstiprini aktuālo pasūtījuma summu.", quote,
+        error: "Atjauno lapu, pārskati promo atlaidi un apstiprini aktuālo pasūtījuma summu.", quote,
       }, 409);
     }
     if (!Number.isSafeInteger(quote.totalCents) || quote.totalCents! <= 0) {
       throw new CheckoutError(400, "INVALID_TOTAL", "Pasūtījuma summai jābūt lielākai par nulli.");
     }
     if (!checkoutExpectationsMatch(body, quote)) {
-      return checkoutJson({ ok: false, code: "QUOTE_CHANGED", error: "Grozs vai piegādes summa ir mainījusies. Pārskati un apstiprini vēlreiz.", quote }, 409);
+      return checkoutJson({ ok: false, code: "QUOTE_CHANGED", error: "Grozs vai piegādes summa ir mainījusies. Atjauno aprēķinu vai lapu, pārskati un apstiprini vēlreiz.", quote }, 409);
     }
     const orderNumber = newOrderNumber("TRG");
     let paymentUrl: string;

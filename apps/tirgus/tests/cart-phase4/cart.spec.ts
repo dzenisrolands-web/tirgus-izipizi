@@ -181,6 +181,18 @@ test("legacy plain listing reference can recover one canonical variant but never
   expect(hydrateCart(legacy, ambiguous)).toBe(legacy);
   expect(hydrateCart(legacy, [canonical({ quantity: 1 })])).toBe(legacy);
 });
+test("legacy slug-variant aliases hydrate only a unique declared server variant", () => {
+  const legacy = [item({ id: "old-slug-v1", listingId: undefined, variantId: undefined })];
+  const next = [canonical({ slug: "old-slug" })];
+  expect(hydrateCart(legacy, next)).toEqual(next);
+  expect(hydrateCart(legacy, [canonical({ slug: "another-slug" })])).toBe(legacy);
+});
+test("omitted legacy variant identity is not rewritten as an explicit base selection", () => {
+  const legacy = [item({ variantId: undefined })];
+  expect(cartReferences(legacy)).toEqual([{ id: "listing-a-v1", listingId: "listing-a", quantity: 1 }]);
+  expect(hydrateCart(legacy, [canonical()])).toEqual([canonical()]);
+  expect(hydrateCart([item({ variantId: null })], [canonical()])[0].variantId).toBeNull();
+});
 test("hydration replaces only canonical metadata without changing reference signature", () => {
   const before = [item({ quantity: 3 })];
   const hydrated = hydrateCart(before, [canonical({ quantity: 3 })]);

@@ -11,6 +11,7 @@ import { POST as checkout } from "../../app/api/checkout/create-session/route";
 import { POST as dropCheckout } from "../../app/api/checkout/drop/route";
 import { POST as subscribe } from "../../app/api/locker-subscriptions/route";
 import { POST as shipment } from "../../app/api/shipments/create-from-order/route";
+import { checkoutReadFixture, CHECKOUT_LISTING_ID, CHECKOUT_SELLER_ID } from "../fixtures/checkout-read";
 
 const app = resolve(__dirname, "../..");
 const source = (path: string) => readFileSync(resolve(app, path), "utf8");
@@ -59,31 +60,36 @@ for (const legacy of [false, true]) {
   test(`closed destination ${legacy ? "legacy" : "current"} body never reaches orders backend`, async () => {
     await backend(() => { throw new Error("No reads/writes expected"); }, async () => {
       const body = legacy ? { locker: { id: "tukums" } } : { deliveryInfo: { locker_id: "tukums" } };
-      expect((await checkout(req("/checkout", body))).status).toBe(400);
+      const response = await checkout(req("/checkout", body));
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toContain("slēgts");
     });
   });
 }
 
 for (const method of ["locker", "courier"]) {
-  test(`existing ${method} checkout keeps its original total and uses no new RPC`, async () => {
+  test(`existing ${method} request shape uses canonical prices and no new RPC`, async () => {
     let saved: Record<string, unknown> | undefined;
+    const fee = method === "locker" ? 300 : 774;
     await backend((url, init) => {
-      if (url.pathname === "/rest/v1/listings") return Response.json([]);
+      const read = checkoutReadFixture(url, init);
+      if (read) return read;
       if (url.pathname === "/rest/v1/orders" && init?.method === "POST") {
         saved = JSON.parse(String(init.body));
-        return Response.json({ id: "fixture-order", order_number: "TRG-fixture" }, { status: 201 });
+        return Response.json({ id: "fixture-order", order_number: saved!.order_number }, { status: 201 });
       }
       throw new Error("No new schema, RPC or notifications allowed");
     }, async () => {
       const response = await checkout(req("/checkout", {
-        items: [{ id: "fixture", title: "Fixture item", price: 9.34, quantity: 1, sellerId: "seller" }],
+        items: [{ id: CHECKOUT_LISTING_ID, title: "Fixture item", price: 9.34, quantity: 1, sellerId: CHECKOUT_SELLER_ID }],
         contact: { name: "Fixture", email: "fixture@example.invalid", phone: "12345" },
-        sellerIds: ["seller"], totalCents: 1234, deliveryFeeCents: 300, promoCode: "PIRMAIS",
+        sellerIds: [CHECKOUT_SELLER_ID], totalCents: 934 + fee, deliveryFeeCents: fee,
         deliveryType: method,
-        deliveryInfo: method === "locker" ? { locker_id: "brivibas" } : { address: "Fixture street", city: "Tukums" },
+        deliveryInfo: method === "locker" ? { locker_id: "brivibas" } : { address: "Fixture street", city: "Rīga", postal_code: "LV-1001" },
       }));
       expect(response.status).toBe(200);
-      expect(saved?.total_cents).toBe(1234);
+      expect(saved?.total_cents).toBe(934 + fee);
+      expect(saved?.seller_ids).toEqual([CHECKOUT_SELLER_ID]);
       expect(saved?.promo_code).toBeNull();
       expect(saved?.delivery_type).toBe(method);
       expect((await response.json()).paymentUrl).toContain("/cart/success?");
@@ -128,7 +134,8 @@ test("all three promo cards are gated and stale closed-locker drafts are rejecte
   expect(source("components/buyer-signup-form.tsx").match(/\{FIRST_ORDER_PROMO_ENABLED &&/g)).toHaveLength(2);
   expect(source("components/buyer-profile.tsx").match(/\{FIRST_ORDER_PROMO_ENABLED &&/g)).toHaveLength(1);
   expect(source("components/cart-page.tsx")).toContain('placeholder="Ievadi promo kodu"');
-  expect(source("components/cart-page.tsx")).toContain('setStep(isClosedLockerId(d.lockerId)');
+  // Phase four also rejects future/unknown destinations, not only Tukums.
+  expect(source("components/cart-page.tsx")).toContain("!getOpenLocker(d.lockerId)");
   for (const path of ["components/onboarding-form.tsx", "components/dashboard-profile-editor.tsx",
     "components/zones-map.tsx", "app/admin/razotaji/page.tsx"]) {
     expect(source(path)).not.toMatch(/\{\s*id:\s*"tukums"/);

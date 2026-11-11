@@ -1,4 +1,5 @@
 import type { CanonicalCartItem, CheckoutItemReference } from "./checkout-contract";
+import { canonicalCartId } from "./cart-identity";
 
 export type CartItem = {
   id: string;
@@ -49,7 +50,7 @@ export function parseCart(raw: string | null): CartItem[] {
 
 export function cartReferences(items: readonly CartItem[]): CheckoutItemReference[] {
   return items.map(({ id, listingId, variantId, quantity }) => ({
-    id, quantity, ...(listingId ? { listingId, variantId: variantId ?? null } : {}),
+    id, quantity, ...(listingId ? { listingId, ...(variantId !== undefined ? { variantId } : {}) } : {}),
   }));
 }
 
@@ -57,9 +58,14 @@ export function cartReferences(items: readonly CartItem[]): CheckoutItemReferenc
 export function quoteMatchesReferences(items: readonly CheckoutItemReference[], canonical: CanonicalCartItem[]): boolean {
   const quantities = new Map<string, number>();
   for (const item of items) {
-    const matches = canonical.filter(next => item.listingId
-      ? next.listingId === item.listingId && next.variantId === (item.variantId ?? null)
-      : next.id === item.id || next.variantId === item.id || next.listingId === item.id || next.slug === item.id);
+    const matches = canonical.filter(next => {
+      const legacyMatch = next.id === item.id || next.variantId === item.id ||
+        next.listingId === item.id || next.slug === item.id ||
+        (next.slug && next.variantId !== null && canonicalCartId(next.slug, next.variantId) === item.id);
+      return item.listingId
+        ? next.listingId === item.listingId && (item.variantId === undefined ? legacyMatch : next.variantId === item.variantId)
+        : legacyMatch;
+    });
     if (matches.length !== 1) return false;
     const key = matches[0].id;
     quantities.set(key, (quantities.get(key) ?? 0) + item.quantity);

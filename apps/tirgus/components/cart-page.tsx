@@ -517,7 +517,7 @@ export function CartPage() {
                   icon={<Package size={18} />}
                   label="pārtikas pakomāts"
                   price={lockerFee === null ? "Izvēlies pakomātu" : formatPrice(lockerFee)}
-                  hint="24/7 piekļuve · Lētākais"
+                  hint="Piekļuve izvēlētās vietas darba laikā"
                   highlight
                 />
                 <DeliveryMethodCard
