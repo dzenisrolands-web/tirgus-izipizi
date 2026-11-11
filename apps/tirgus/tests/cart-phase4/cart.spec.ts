@@ -167,6 +167,20 @@ test("proven aliases combine quantities but different variants remain distinct",
   expect(hydrateCart(aliases, [canonical({ quantity: 1 })])).toBe(aliases);
   expect(hydrateCart(aliases, next.slice(0, 1))).toBe(aliases);
 });
+test("legacy slug aliases hydrate using unique canonical server references only", () => {
+  const listingId = "ce61c2e9-746b-45c9-9f67-46a83eb7617d";
+  const legacy = [item({ id: "l164", listingId: undefined, variantId: undefined, quantity: 2 })];
+  const next = [canonical({ ...cartIdentity(listingId), slug: "l164", quantity: 2 })];
+  expect(hydrateCart(legacy, next)).toEqual(next);
+  expect(hydrateCart(legacy, [{ ...next[0], slug: "different" }])).toBe(legacy);
+});
+test("legacy plain listing reference can recover one canonical variant but never choose between two", () => {
+  const legacy = [item({ id: "listing-a", listingId: undefined, variantId: undefined, quantity: 2 })];
+  expect(hydrateCart(legacy, [canonical({ quantity: 2 })])).toEqual([canonical({ quantity: 2 })]);
+  const ambiguous = [canonical(), canonical({ ...cartIdentity("listing-a", "v2") })];
+  expect(hydrateCart(legacy, ambiguous)).toBe(legacy);
+  expect(hydrateCart(legacy, [canonical({ quantity: 1 })])).toBe(legacy);
+});
 test("hydration replaces only canonical metadata without changing reference signature", () => {
   const before = [item({ quantity: 3 })];
   const hydrated = hydrateCart(before, [canonical({ quantity: 3 })]);
@@ -247,6 +261,7 @@ test("available=false/null totals are not free delivery, and quote arithmetic mu
   expect(payableQuote({ ...good, totalCents: NaN })).toBe(false);
   expect(payableQuote({ ...good, totalCents: Infinity })).toBe(false);
   expect(payableQuote({ ...good, totalCents: good.totalCents! - 1 })).toBe(false);
+  expect(payableQuote({ ...good, discountCents: good.preDiscountTotalCents!, totalCents: 0 })).toBe(false);
   expect(currentQuote({ signature: "a", quote: good, receivedAt: 0 }, "b", 1)).toBeUndefined();
   expect(currentQuote({ signature: "a", quote: good, receivedAt: 0 }, "a", QUOTE_MAX_AGE_MS)).toBeUndefined();
 });
