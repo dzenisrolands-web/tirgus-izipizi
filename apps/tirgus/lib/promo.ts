@@ -32,6 +32,7 @@ export async function validatePromoCode(
   userId: string | null,
   deliveryFeeCents: number,
   deliveryType: string = "locker",
+  options: { supabase?: SupabaseClient; strictReadErrors?: boolean } = {},
 ): Promise<PromoResult> {
   const normalized = code.trim().toUpperCase();
 
@@ -39,17 +40,27 @@ export async function validatePromoCode(
   if (isDisabledFirstOrderPromo(normalized)) {
     return { valid: false, reason: "Pirmā pasūtījuma piedāvājums pašlaik nav pieejams" };
   }
-  const supabase = svc();
+  const supabase = options.supabase ?? svc();
 
   // 1. Look up code
-  const { data: promo } = await supabase
+  const { data: promo, error: promoError } = await supabase
     .from("promo_codes")
     .select("*")
     .eq("code", normalized)
     .eq("active", true)
     .maybeSingle();
 
+  if (options.strictReadErrors && promoError) throw new Error("Promo validation unavailable");
   if (!promo) return { valid: false, reason: "Kods nav atrasts vai nav aktīvs" };
+  if (options.strictReadErrors && (
+    !Number.isSafeInteger(promo.max_uses) || promo.max_uses < 0
+    || !Number.isSafeInteger(promo.used_count) || promo.used_count < 0
+    || (promo.expires_at != null && (typeof promo.expires_at !== "string" || !Number.isFinite(Date.parse(promo.expires_at))))
+    || !["free_delivery", "fixed", "percent"].includes(promo.type)
+    || (promo.type === "fixed" && (!Number.isSafeInteger(promo.discount_cents) || promo.discount_cents < 0))
+    || (promo.type === "percent" && (typeof promo.discount_percent !== "number"
+      || !Number.isFinite(promo.discount_percent) || promo.discount_percent < 0 || promo.discount_percent > 100))
+  )) throw new Error("Promo validation unavailable");
 
   // 2. Check expiry
   if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
@@ -63,12 +74,13 @@ export async function validatePromoCode(
 
   // 4. Check if user already used this code
   if (userId) {
-    const { data: existing } = await supabase
+    const { data: existing, error: redemptionError } = await supabase
       .from("promo_redemptions")
       .select("id")
       .eq("code", normalized)
       .eq("user_id", userId)
       .maybeSingle();
+    if (options.strictReadErrors && redemptionError) throw new Error("Promo validation unavailable");
     if (existing) {
       return { valid: false, reason: "Tu jau esi izmantojis šo kodu" };
     }
