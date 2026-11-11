@@ -16,7 +16,9 @@ import {
   fetchWeeklyFeatured,
 } from "@/lib/db-listings";
 import { fetchSalesCountsServer } from "@/lib/best-sellers-server";
-import { isPublicReady } from "@/lib/utils";
+import { BUYER_LOCKER_FEE_CENTS } from "@/lib/delivery-policy";
+import { ZONE_PRICING } from "@/lib/postal-zones";
+import { formatPrice, isPublicReady } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Pērc no vietējā, saņem ērti — pārtikas pakomātā vai ar piegādi",
@@ -501,7 +503,7 @@ export default async function HomePage() {
           <div className="mt-10 grid gap-3 sm:grid-cols-4">
             {[
               { icon: "🌾", step: "01", title: "Izvēlies produktu", desc: "Pārlūko katalogu vai izmanto meklēšanu — atrodi ko vēlies." },
-              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "pārtikas pakomāts, kurjers vai ekspres — cena atkarīga no attāluma līdz ražotājam." },
+              { icon: "🚚", step: "02", title: "Izvēlies piegādi", desc: "pārtikas pakomāts, kurjers vai ekspres — cena atkarīga no galamērķa pasta indeksa, ražotāju skaita un temperatūrām." },
               { icon: "💳", step: "03", title: "Apmaksā droši", desc: "Paysera vai karte. Ražotājs saņem pasūtījumu." },
               { icon: "✅", step: "04", title: "Saņem ērti", desc: "pārtikas pakomātā norādītajā darba laikā vai ar piegādi mājās." },
             ].map((item, i) => (
@@ -535,7 +537,7 @@ export default async function HomePage() {
                 bg: "bg-brand-50 border-brand-200",
                 title: "IziPizi pārtikas pakomāts",
                 desc: `Saņem kādā no ${lockers.length} atvērtajām vietām norādītajā darba laikā. Dzesēts un saldēts režīms.`,
-                price: "3 € / skapītis",
+                price: `${formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} par ražotāju`,
                 href: "/piegade",
                 color: "text-brand-600",
               },
@@ -543,8 +545,8 @@ export default async function HomePage() {
                 icon: <Truck size={22} className="text-gray-600" />,
                 bg: "bg-gray-50 border-gray-200",
                 title: "Kurjers",
-                desc: "Mājas durvīs 4 zonās — Rīga, Pierīga un reģionālie centri. 1–2 darba dienās.",
-                price: "no 5.45 €",
+                desc: "Uz adresi publicētajos zonu 0–3 pasta indeksos. Pieejamība atkarīga arī no produktiem.",
+                price: `no ${formatPrice(ZONE_PRICING[0].singleTemp)} par ražotāju`,
                 href: "/piegade",
                 color: "text-gray-700",
               },
@@ -552,8 +554,8 @@ export default async function HomePage() {
                 icon: <Zap size={22} className="text-yellow-500" />,
                 bg: "bg-yellow-50 border-yellow-200",
                 title: "Eksprespiegāde",
-                desc: "2–5h piegāde Rīgā un Pierīgā. Pasūti no rīta — saņem pusdienā.",
-                price: "no 6.66 €",
+                desc: "Publicētās zonas 0–2, tikai ja visi izvēlētie produkti atbalsta eksprespiegādi.",
+                price: `no ${formatPrice(ZONE_PRICING[0].expressSingle!)} par ražotāju`,
                 href: "/piegade",
                 color: "text-yellow-700",
               },

@@ -11,6 +11,8 @@
  */
 import { NextResponse } from "next/server";
 import { openLockers } from "@/lib/locker-policy";
+import { BUYER_LOCKER_FEE_CENTS } from "@/lib/delivery-policy";
+import { ZONE_PRICING, postalCodesByZone } from "@/lib/postal-zones";
 import { operatorInfo } from "@/lib/operator-info";
 
 export const dynamic = "force-static";
@@ -21,7 +23,7 @@ const OPERATOR_SUMMARY = `${operatorInfo.shortName} (reg. nr. ${operatorInfo.reg
 
 const BODY = `# tirgus.izipizi.lv
 
-> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by ${OPERATOR_SUMMARY}. Pickup at IziPizi parcel lockers across Latvia (currently ${openLockers.length} open locations) or courier delivery (zoned 0–3, 5.45 €–10.77 €). Express delivery in Rīga 2–5 h.
+> Latvian B2C marketplace for buying food directly from local farmers and small producers. Operated by ${OPERATOR_SUMMARY}. Pickup at IziPizi parcel lockers across Latvia (currently ${openLockers.length} open locations) or courier delivery (zoned 0–3, ${ZONE_PRICING[0].singleTemp.toFixed(2)} €–${ZONE_PRICING[3].dualTemp.toFixed(2)} € per producer, depending on destination postcode and temperatures). Express tariffs cover published zones 0–2 only, subject to every product permitting express.
 
 ## What we sell
 
@@ -41,8 +43,8 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 
 ## How it works
 
-1. Buyer picks products, optionally enters Latvian postal code for accurate courier price.
-2. Cart split per producer; buyer chooses pārtikas pakomāts pickup (flat 3 € per producer cabinet) OR courier delivery (zone-based) OR express (Rīga only, 9–12 €).
+1. Buyer picks products, must enter an exact published Latvian destination postcode for a courier or express tariff.
+2. Cart split per producer; buyer chooses pārtikas pakomāts pickup (flat ${(BUYER_LOCKER_FEE_CENTS / 100).toFixed(2)} € once per producer and pickup destination, including dual temperature) OR courier delivery (zone-based) OR express (published zones 0–2, ${ZONE_PRICING[0].expressSingle!.toFixed(2)} €–${ZONE_PRICING[2].expressDual!.toFixed(2)} € per producer depending on zone/temperature, all products must permit express).
 3. Pay with Paysera (cards + SEPA).
 4. Producer confirms order within 72 h; gets push reminders at 30 min, 2 h, 6 h; auto-cancelled if not confirmed.
 5. Producer drops stock at their assigned pārtikas pakomāts; courier transports to buyer if needed.
@@ -51,10 +53,10 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 ## Key facts for AI agents
 
 - **Language**: Latvian (lv-LV) only. No English version yet.
-- **Currency**: EUR (€), VAT 21 % included in displayed prices.
-- **Coverage**: All of Latvia. Zone 0 = Rīga centre, Zone 1 = Rīga + close suburbs, Zone 2 = greater Rīga area, Zone 3 = regional Latvia (Jelgava, Ogre, Cēsis, Daugavpils, etc.). 700+ rural postal codes get pārtikas pakomāts-only delivery.
+- **Currency**: EUR (€). Delivery prices shown include the existing 21% service VAT; product prices are as listed.
+- **Coverage**: Courier tariffs cover only ${([0, 1, 2, 3] as const).reduce<number>((count, zone) => count + postalCodesByZone(zone).length, 0)} published destination postcodes in zones 0–3. No automatic courier/express quote for unknown or out-of-list codes. No express tariff for zone 3. City labels and approximate distances do not establish eligibility. Open locker pickup may be an alternative; local pickup-only sites require every producer to deliver there.
 - **pārtikas pakomāts locations**: ${openLockers.map(locker => `${locker.name} / ${locker.city} (${locker.hours})`).join(", ")}.
-- **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express 2–5 hours in Rīga.
+- **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express subject to the published booking windows and all-product eligibility; a tariff quote is not carrier route certification.
 - **Payment**: Paysera (cards, SEPA, bank transfer).
 - **Returns**: see /atgriesana — limited for fresh food; full refund if producer ships defective goods.
 
