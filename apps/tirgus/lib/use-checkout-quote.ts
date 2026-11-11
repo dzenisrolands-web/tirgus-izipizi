@@ -20,7 +20,7 @@ export function currentQuote(state: QuoteState, signature: string, now = Date.no
 }
 export function payableQuote(quote: CheckoutQuote | undefined): quote is CheckoutQuote & { totalCents: number } {
   return quote?.available === true && !!quote.fingerprint && !!quote.version && quote.delivery.ok &&
-    Number.isSafeInteger(quote.totalCents) && quote.totalCents !== null && quote.totalCents >= 0 &&
+    Number.isSafeInteger(quote.totalCents) && quote.totalCents !== null && quote.totalCents > 0 &&
     Number.isSafeInteger(quote.subtotalCents) && Number.isSafeInteger(quote.deliveryFeeCents) &&
     Number.isSafeInteger(quote.preDiscountTotalCents) && Number.isSafeInteger(quote.discountCents) &&
     quote.subtotalCents >= 0 && quote.deliveryFeeCents !== null && quote.deliveryFeeCents >= 0 &&

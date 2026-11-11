@@ -59,7 +59,7 @@ export function quoteMatchesReferences(items: readonly CheckoutItemReference[], 
   for (const item of items) {
     const matches = canonical.filter(next => item.listingId
       ? next.listingId === item.listingId && next.variantId === (item.variantId ?? null)
-      : next.id === item.id || next.variantId === item.id || (next.variantId === null && next.listingId === item.id));
+      : next.id === item.id || next.variantId === item.id || next.listingId === item.id || next.slug === item.id);
     if (matches.length !== 1) return false;
     const key = matches[0].id;
     quantities.set(key, (quantities.get(key) ?? 0) + item.quantity);
