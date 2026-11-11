@@ -17,7 +17,10 @@
     "test:security:api": "playwright test --config=playwright.security-api.config.ts",
     "test:security:payments": "playwright test --config=playwright.security-payment.config.ts",
     "test:catalog:phase3": "playwright test --config=playwright.catalog-phase3.config.ts",
-    "test:public:phase3": "playwright test --config=playwright.public-phase3.config.ts"
+    "test:public:phase3": "playwright test --config=playwright.public-phase3.config.ts",
+    "test:delivery:phase4": "playwright test --config=playwright.delivery-policy-phase4.config.ts",
+    "test:checkout:phase4": "playwright test --config=playwright.checkout-phase4.config.ts",
+    "test:cart:phase4": "playwright test --config=playwright.cart-phase4.config.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

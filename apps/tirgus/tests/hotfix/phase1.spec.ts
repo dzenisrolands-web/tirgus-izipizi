@@ -6,7 +6,7 @@ import { FIRST_ORDER_PROMO_ENABLED, isDisabledFirstOrderPromo } from "../../lib/
 import { validatePromoCode } from "../../lib/promo";
 import { publicLockers, openLockers, isClosedLockerId } from "../../lib/locker-policy";
 import { lockers } from "../../lib/mock-data";
-import { nearestLockersForCode, ZONE_PRICING } from "../../lib/postal-zones";
+import { nearestLockersForCode, lookupPostalCode } from "../../lib/postal-zones";
 import { POST as checkout } from "../../app/api/checkout/create-session/route";
 import { POST as dropCheckout } from "../../app/api/checkout/drop/route";
 import { POST as subscribe } from "../../app/api/locker-subscriptions/route";
@@ -51,7 +51,8 @@ test("closed locker is absent from every public-choice list but retained histori
   expect(isClosedLockerId(" TuKuMs ")).toBe(true);
   expect(isClosedLockerId(null)).toBe(false);
   expect(nearestLockersForCode(2105, 3, 50).map(locker => locker.id)).not.toContain("tukums");
-  expect(ZONE_PRICING[3].cities).toContain("Tukums"); // City courier coverage is not a locker.
+  // A closed locker must not remove an independently published courier postcode.
+  expect(lookupPostalCode("LV-2105")).toMatchObject({ found: true, zone: 3 });
 });
 
 for (const legacy of [false, true]) {
@@ -134,7 +135,7 @@ test("all three promo cards are gated and stale closed-locker drafts are rejecte
   }
 });
 
-test("security release preserves historical data, invoices, operator, tariffs and schema boundary", () => {
+test("pricing release preserves historical data, invoices, operator, commission and schema boundary", () => {
   // Payment behavior is covered by the security-payment suite rather than frozen source bytes.
   for (const path of ["lib/invoice/generate.ts", "lib/operator-info.ts",
     "lib/utils.ts", "lib/mock-data.ts", "lib/commission.ts"]) {
