@@ -15,6 +15,7 @@ import { POST as checkout } from "../../app/api/checkout/create-session/route";
 import { POST as dropCheckout } from "../../app/api/checkout/drop/route";
 import { POST as retry } from "../../app/api/checkout/retry-payment/route";
 import { GET as readOrder } from "../../app/api/orders/[orderNumber]/route";
+import { checkoutReadFixture, CHECKOUT_LISTING_ID, CHECKOUT_SELLER_ID } from "../fixtures/checkout-read";
 
 const base = "https://example.invalid";
 const orderNumber = "TRG-20261110-1234"; // Legacy IDs remain supported.
@@ -51,10 +52,11 @@ test("closed Tukums destination still fails before order/reservation writes", as
     expect((await dropCheckout(request("/drop", { dropId: "fixture-drop", quantity: 1 }, { authorization: "Bearer fixture" }))).status).toBe(400);
   });
 });
-test("locker guest checkout retains current total and signs its return cookie", async () => {
+test("locker guest checkout uses the canonical total and signs its return cookie", async () => {
   let saved: Record<string, unknown> | undefined;
   await backend((url, init) => {
-    if (url.pathname === "/rest/v1/listings") return Response.json([]);
+    const read = checkoutReadFixture(url, init);
+    if (read) return read;
     if (url.pathname === "/rest/v1/orders" && init.method === "POST") {
       saved = JSON.parse(String(init.body));
       return Response.json({ id: "fixture-order", order_number: saved!.order_number }, { status: 201 });
@@ -62,14 +64,15 @@ test("locker guest checkout retains current total and signs its return cookie", 
     throw new Error("No schema/RPC/notification change permitted");
   }, async () => {
     const response = await checkout(request("/checkout", {
-      items: [{ id: "fixture", title: "Fixture", price: 9.34, quantity: 1 }],
-      contact: { name: "Fixture", email: "fixture@example.invalid" },
+      items: [{ id: CHECKOUT_LISTING_ID, title: "Fixture", price: 9.34, quantity: 1 }],
+      contact: { name: "Fixture", email: "fixture@example.invalid", phone: "+37120000000" },
       sellerIds: [], totalCents: 1234, deliveryFeeCents: 300,
       deliveryType: "locker", deliveryInfo: { locker_id: "brivibas" },
     }));
     const body = await response.json();
     expect(response.status).toBe(200);
     expect(saved).toMatchObject({ total_cents: 1234, delivery_type: "locker" });
+    expect(saved?.seller_ids).toEqual([CHECKOUT_SELLER_ID]);
     expect(hasOrderCapability(request("/order", undefined, { cookie: response.headers.get("set-cookie")!.split(";")[0] }), body.orderId)).toBe(true);
   });
 });
@@ -468,10 +471,11 @@ test("ownership helper never trusts unconfirmed email or user-controlled admin m
   expect(userOwnsOrder({ id: "other", email: "buyer@example.invalid", user_metadata: { is_super_admin: true } } as unknown as User, fixtureOrder())).toBe(false);
 });
 
-test("normal guest checkout returns usable capability, preserves totals/Tukums/PIRMAIS and ignores malicious Host", async () => {
+test("normal guest checkout returns usable capability, uses canonical totals and ignores malicious Host", async () => {
   let saved: Record<string, unknown> | null = null;
   await backend((url, init) => {
-    if (url.pathname === "/rest/v1/listings") return Response.json([]);
+    const read = checkoutReadFixture(url, init);
+    if (read) return read;
     if (url.pathname === "/rest/v1/orders" && init.method === "POST") {
       saved = JSON.parse(String(init.body));
       return Response.json({ id: "fixture-order", order_number: saved!.order_number }, { status: 201 });
@@ -480,10 +484,10 @@ test("normal guest checkout returns usable capability, preserves totals/Tukums/P
     throw new Error(`No stock rewrite/schema or notifications permitted: ${url.pathname}`);
   }, async () => {
     const response = await checkout(request("/checkout", {
-      items: [{ id: "fixture", title: "Fixture", price: 9.34, quantity: 1, sellerId: "seller" }],
+      items: [{ id: CHECKOUT_LISTING_ID, title: "Fixture", price: 9.34, quantity: 1, sellerId: CHECKOUT_SELLER_ID }],
       contact: { name: "Fixture", email: "fixture@example.invalid", phone: "12345" },
-      sellerIds: ["seller"], totalCents: 1234, deliveryFeeCents: 300, promoCode: "PIRMAIS",
-      deliveryType: "courier", deliveryInfo: { address: "Fixture street", city: "Tukums" },
+      sellerIds: [CHECKOUT_SELLER_ID], totalCents: 1708, deliveryFeeCents: 774,
+      deliveryType: "courier", deliveryInfo: { address: "Fixture street", city: "Rīga", postal_code: "LV-1001" },
     }, { host: "evil.example.invalid", "x-forwarded-proto": "http", "x-forwarded-host": "evil.example.invalid" }));
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -494,7 +498,7 @@ test("normal guest checkout returns usable capability, preserves totals/Tukums/P
     expect((await read({ cookie: returnedCookie }, body.orderId)).status).toBe(200);
     expect((await retry(request("/retry", { orderNumber: body.orderId }, { cookie: returnedCookie, host: "evil.example.invalid" }))).status).toBe(200);
   });
-  expect(saved).toMatchObject({ total_cents: 1234, promo_code: null, delivery_type: "courier" });
+  expect(saved).toMatchObject({ total_cents: 1708, promo_code: null, delivery_type: "courier", seller_ids: [CHECKOUT_SELLER_ID] });
 });
 
 test("authorized order read/retry DB errors return no-store 503 without PII", async () => {

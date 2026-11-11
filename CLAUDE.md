@@ -78,15 +78,18 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   and stored in the `email_templates` table
 
 ## Payment Status (Paysera)
-- **Status**: LIVE. Full checkout flow works end to end.
+- **Status**: Published integration. Isolated protocol/quote tests are not a
+  fresh bank-payment or fulfillment certification; controlled full-lifecycle
+  verification remains a separate release step.
 - **Provider**: Paysera (Latvian, SEPA + cards), project under SIA IziPizi
 - **Endpoints**:
   - `/api/checkout/create-session` — builds the Paysera request
   - `/api/webhooks/paysera` — payment confirmation callback
   - `/api/checkout/retry-payment` — retry for failed attempts
   - `/api/admin/paysera-diagnostics` — config troubleshooting
-- **Webhook fallback**: `/cart/success` self-confirms payment if the callback is
-  delayed, so a slow webhook cannot strand a paid order
+- **Payment confirmation**: only a verified signed Paysera callback confirms
+  payment. `/cart/success` performs authorized read-only polling; the retired
+  `/api/checkout/confirm-arrival` returns 410 and never changes payment status.
 - **Env**: `PAYSERA_MODE` (live/test/mock), `PAYSERA_PROJECT_ID`,
   `PAYSERA_SIGN_PASSWORD`. `mock` skips Paysera entirely — used by E2E tests.
 - **Still missing**: automatic refunds on cancellation (handled manually today)
@@ -103,7 +106,15 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   go live immediately without waiting for review
 - Revenue: fixed 15% commission on all products (`lib/commission.ts`)
 - Operator: SIA IziPizi (migrated from SIA Svaigi 2026-08, migration 0023)
-- Delivery: courier 3.50 EUR charged once per seller per address; locker free
+- Buyer delivery: parcel locker 3.00 EUR once per seller/destination, including
+  mixed chilled/frozen products. Courier/express use the published destination
+  postcode cold-chain tariffs plus the existing 21% delivery-service VAT.
+  Never use ambient rates, guessed origin zones, or `MAX(origin,destination)`.
+- Seller pickup: the separate 3.50 EUR courier-pickup deduction / free locker
+  drop-off remains unchanged. It is not the buyer's courier tariff.
+- New cart lines carry real listing/variant identity. Checkout derives prices
+  and seller audiences from DB data, not localStorage or submitted fee fields.
+  Quote previews do not reserve inventory or confirm payments.
 - Brand colors: izipizi green `#53F3A4`, purple `#AD47FF`, dark navy `#192635`
 - MVP: real Supabase DB in use; mock data retained for dev fallback
 

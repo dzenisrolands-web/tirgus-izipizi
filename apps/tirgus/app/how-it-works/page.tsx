@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BUYER_LOCKER_FEE_CENTS } from "@/lib/delivery-policy";
+import { ZONE_PRICING } from "@/lib/postal-zones";
+import { formatPrice } from "@/lib/utils";
 import {
   UserPlus, ClipboardList, PackageCheck, Bell, ShoppingBag, CheckCircle, ArrowRight,
   Truck, CreditCard, Shield, Star, Leaf,
@@ -18,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 const FAQ_HOW = [
-  { q: "Kādi piegādes veidi ir pieejami?", a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — no 3 €, izņem izvēlētās vietas norādītajā darba laikā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā." },
+  { q: "Kādi piegādes veidi ir pieejami?", a: `Pakomāts — ${formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} vienreiz par ražotāju un saņemšanas vietu, arī divām temperatūrām. Kurjers — no ${formatPrice(ZONE_PRICING[0].singleTemp)} par ražotāju publicētajos zonu 0–3 pasta indeksos. Ekspres — no ${formatPrice(ZONE_PRICING[0].expressSingle!)} par ražotāju zonās 0–2, tikai ja visi produkti to atļauj. Galīgo cenu nosaka galamērķa pasta indekss, temperatūras un ražotāju skaits.` },
   { q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?", a: "Produkti pārtikas pakomātā tiek uzglabāti 48 stundas no brīža, kad pārdevējs tos ievieto. Pēc tam tie tiek atgriezti pārdevējam." },
   { q: "Kā saņemšu paziņojumu par pasūtījumu?", a: "pārtikas pakomāta pasūtījumiem — uz e-pastu un SMS atsūtīsim pārtikas pakomāta kodu. Kurjeram un ekspres piegādei — kurjers sazināsies pirms ierašanās." },
   { q: "Ko darīt, ja produkts ir bojāts vai neatbilst aprakstam?", a: "Sazinies ar mums pa e-pastu tirgus@izipizi.lv. Pretenzijas par produkta kvalitāti pieņemam 24 stundu laikā pēc saņemšanas." },
@@ -45,7 +48,7 @@ const buyerSteps = [
   {
     icon: <Truck size={22} />,
     title: "Izvēlies piegādes veidu",
-    desc: "pārtikas pakomāts (no 3 €), kurjers uz adresi (no 5.45 €) vai ekspres piegāde Rīgā un Pierīgā (no 6.66 €).",
+    desc: `Pakomāts — ${formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} par ražotāju un saņemšanas vietu; kurjers no ${formatPrice(ZONE_PRICING[0].singleTemp)}, ekspres no ${formatPrice(ZONE_PRICING[0].expressSingle!)} par ražotāju, ja produkti un galamērķa indekss to atļauj.`,
   },
   {
     icon: <CreditCard size={22} />,
@@ -99,7 +102,7 @@ export default function HowItWorksPage() {
         <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Kā tas strādā?</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-500">
           tirgus.izipizi.lv savieno Latvijas ražotāju produktus ar pircējiem —
-          ar piegādi pārtikas pakomātā, kurjeru uz adresi vai ekspres piegādi. Cena atkarīga no attāluma līdz ražotājam.
+          ar piegādi pārtikas pakomātā, kurjeru uz adresi vai ekspres piegādi. Cena atkarīga no galamērķa pasta indeksa, ražotāju skaita un sūtījuma temperatūrām.
         </p>
       </div>
 
@@ -188,7 +191,7 @@ export default function HowItWorksPage() {
           {[
             {
               q: "Kādi piegādes veidi ir pieejami?",
-              a: "Trīs varianti: (1) IziPizi pārtikas pakomāts — no 3 €, izņem izvēlētās vietas norādītajā darba laikā; (2) Kurjers uz adresi — no 5.45 €, atkarībā no zonas, 1–2 darba dienās; (3) Ekspres piegāde Rīgā un Pierīgā — no 6.66 €, 2–5 stundu laikā tajā pašā dienā.",
+              a: `Pakomāts — ${formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} vienreiz par ražotāju un saņemšanas vietu, arī divām temperatūrām. Kurjers — no ${formatPrice(ZONE_PRICING[0].singleTemp)} par ražotāju publicētajos zonu 0–3 pasta indeksos. Ekspres — no ${formatPrice(ZONE_PRICING[0].expressSingle!)} par ražotāju zonās 0–2, tikai ja visi produkti to atļauj. Galīgo cenu nosaka galamērķa pasta indekss, temperatūras un ražotāju skaits.`,
             },
             {
               q: "Kādā termiņā produkti jāizņem no pārtikas pakomāta?",

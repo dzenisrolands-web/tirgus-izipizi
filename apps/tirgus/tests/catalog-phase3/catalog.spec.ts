@@ -450,13 +450,13 @@ test("changed server listings cannot be held by a stale memo dependency", () => 
   expect(client).toContain("catalogSort(params.get(\"sort\"))");
   expect(client).toContain("clearedCatalogParams");
 });
-test("variant/cart quantity mechanisms and frozen fee/mock sources remain byte-compatible", () => {
+test("catalog rendering and frozen historical sources remain compatible during cart phase four", () => {
   const original = (file: string) => execFileSync("git", ["show", `${base}:apps/tirgus/${file}`], { cwd: app, encoding: "utf8" });
-  for (const file of ["lib/utils.ts", "lib/mock-data.ts", "lib/cart-context.tsx", "components/variant-selector.tsx", "components/add-to-cart-button.tsx"]) {
+  // Cart identity and quantity behavior now have dedicated phase-four regressions;
+  // freezing their previously inconsistent handlers would prevent the actual fix.
+  for (const file of ["lib/utils.ts", "lib/mock-data.ts"]) {
     expect(source(file), file).toBe(original(file));
   }
-  const cardHandler = (text: string) => text.slice(text.indexOf("  function handleAddToCart"), text.indexOf("\n  const url ="));
-  expect(cardHandler(source("components/listing-card.tsx"))).toBe(cardHandler(original("components/listing-card.tsx")));
   const mapper = (text: string) => text.slice(text.indexOf("function mapVariants"), text.indexOf("\nfunction mapRow"));
   expect(mapper(source("lib/db-listings.ts"))).toBe(mapper(original("lib/db-listings.ts")));
   expect(source("app/listing/[id]/page.tsx")).not.toContain("merchantReturnDays");

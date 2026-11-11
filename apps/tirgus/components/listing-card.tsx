@@ -10,13 +10,14 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart-context";
 import { useStorageTypes } from "@/lib/storage-types-context";
 import { publicProductImage } from "@/lib/product-image";
+import { cartIdentity } from "@/lib/cart-identity";
 
 export function ListingCard({ listing }: { listing: Listing }) {
-  const expressAvailable = listing.express_delivery ?? listing.seller.location === "Rīga";
+  const expressAvailable = listing.express_delivery === true;
   const storageTypes = useStorageTypes();
   const rawStorageType = getStorageType({ ...listing, storageType: listing.storageType ?? storageTypes[listing.id] });
   const storageType: "frozen" | "chilled" = rawStorageType === "frozen" ? "frozen" : "chilled";
-  const { addItem } = useCart();
+  const { addItem, ready, storageError } = useCart();
   const [added, setAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [qty, setQty] = useState(1);
@@ -32,8 +33,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!ready || storageError) return;
     addItem({
-      id: activeVariant?.id ?? listing.id,
+      ...cartIdentity(listing.id, activeVariant?.id),
       title: activeTitle,
       price: activePrice,
       unit: activeUnit,
@@ -42,8 +44,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
       sellerId: listing.sellerId,
       storageType,
       express_delivery: listing.express_delivery ?? false,
-    });
-    // If qty > 1, add remaining via updateQty after first add
+    }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
@@ -101,7 +102,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
               {variants.map((v, i) => (
                 <button
                   key={v.id}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariantIdx(i); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariantIdx(i); setAdded(false); }}
                   className={cn(
                     "rounded-full px-2.5 py-1 text-[10px] font-semibold transition border",
                     i === selectedVariantIdx
@@ -120,8 +121,8 @@ export function ListingCard({ listing }: { listing: Listing }) {
       <div className="mt-auto border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
         {/* Price */}
         <div className="flex items-baseline gap-1">
-          {hasVariants && <span className="text-xs font-medium text-gray-400">no</span>}
           <span className="text-xl font-extrabold text-gray-900">{formatPrice(activePrice)}</span>
+          {activeVariant && <span className="text-xs text-gray-400">/ {activeVariant.title}</span>}
           {!hasVariants && <span className="text-xs text-gray-400">/ {listing.unit}</span>}
         </div>
         {/* Qty + Cart */}
@@ -134,13 +135,14 @@ export function ListingCard({ listing }: { listing: Listing }) {
             </button>
             <span className="w-7 text-center text-sm font-bold text-gray-900">{qty}</span>
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(qty + 1); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQty(Math.min(999, qty + 1)); }}
               className="flex h-8 w-8 items-center justify-center text-gray-500 hover:bg-gray-50 rounded-r-full transition">
               <Plus size={14} />
             </button>
           </div>
           <button
             onClick={handleAddToCart}
+            disabled={!ready || !!storageError}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-sm font-bold transition-all",
               added

@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, Send, X, Loader2, ArrowUpRight, Plus, Check } from "lucide-react";
+import { Sparkles, Send, X, Loader2, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useCart } from "@/lib/cart-context";
-import { formatPrice, getStorageType } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils";
 
 type Product = {
   id: string;
@@ -67,7 +66,7 @@ export function AISearchDialog({
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as Message[];
-        if (Array.isArray(parsed)) setMessages(parsed.slice(-MAX_STORED));
+        if (Array.isArray(parsed)) void Promise.resolve().then(() => setMessages(parsed.slice(-MAX_STORED)));
       }
     } catch {}
   }, []);
@@ -370,24 +369,6 @@ function MessageBubble({
 }
 
 function ProductCard({ product, onLink }: { product: Product; onLink?: () => void }) {
-  const { addItem } = useCart();
-  const [added, setAdded] = useState(false);
-
-  function handleAdd() {
-    addItem({
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      unit: product.unit,
-      image: product.image,
-      sellerName: product.sellerName,
-      sellerId: product.sellerId,
-      storageType: getStorageType(product),
-    });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
-  }
-
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
       <Link
@@ -416,23 +397,7 @@ function ProductCard({ product, onLink }: { product: Product; onLink?: () => voi
             {formatPrice(product.price)}
             <span className="ml-0.5 text-[9px] font-semibold text-gray-500">/{product.unit}</span>
           </span>
-          <button
-            onClick={handleAdd}
-            disabled={added}
-            className="flex h-7 items-center gap-1 rounded-full px-2 text-[10px] font-bold text-[#192635] transition active:scale-90"
-            style={{ background: added ? "#bbf7d0" : "linear-gradient(135deg, #53F3A4, #AD47FF)" }}
-            aria-label="Pievienot grozam"
-          >
-            {added ? (
-              <>
-                <Check size={11} strokeWidth={3} /> OK
-              </>
-            ) : (
-              <>
-                <Plus size={11} strokeWidth={3} /> Grozam
-              </>
-            )}
-          </button>
+          <Link href={normalizeHref(product.url)} onClick={onLink} className="text-xs font-semibold underline">Izvēlēties variantu</Link>
         </div>
       </div>
     </div>

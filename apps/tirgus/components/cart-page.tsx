@@ -7,24 +7,23 @@ import {
   Minus, Plus, Trash2, ShoppingCart, MapPin, Clock,
   ChevronRight, Loader2, CheckCircle, Tag, Package, Truck, Zap, AlertCircle, X,
 } from "lucide-react";
+import { cartIdentity } from "@/lib/cart-identity";
+import { cartReferences, type CartItem } from "@/lib/cart-state";
+import { useCheckoutQuote, payableQuote, currentQuote } from "@/lib/use-checkout-quote";
+import type { CheckoutQuoteRequest, CheckoutQuoteResponse } from "@/lib/checkout-contract";
+import { calculateDeliveryQuote } from "@/lib/delivery-policy";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
-import { listings, type Listing } from "@/lib/mock-data";
-import { publicLockers as lockers, isClosedLockerId } from "@/lib/locker-policy";
+import { type Listing } from "@/lib/mock-data";
+import { publicLockers as lockers, isClosedLockerId, getOpenLocker } from "@/lib/locker-policy";
 import { fetchActiveListings, fetchBestSellers } from "@/lib/db-listings";
-import { formatPrice, getStorageType, LOCKER_FEE, isPublicReady } from "@/lib/utils";
+import { formatPrice, getStorageType } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
-import { lookupPostalCode, effectiveCourierZone, pricingForZone, nearestLockersForCode } from "@/lib/postal-zones";
+import { lookupPostalCode, nearestLockersForCode } from "@/lib/postal-zones";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 import { useSavedAddresses, QUICK_LABELS, type SavedAddress } from "@/lib/saved-addresses";
-
-type SellerInfo = {
-  id: string;
-  name: string;
-  home_locker_ids: string[];
-  courier_pickup_address: string | null;
-};
+import { publicProductImage } from "@/lib/product-image";
 
 type DeliveryMethod = "locker" | "courier" | "express";
 type Step = "cart" | "delivery" | "confirm";
@@ -46,6 +45,7 @@ type CheckoutDraft = {
   deliveryNote: string;
   form: { name: string; phone: string; email: string };
   promoCode: string;
+  appliedPromoCode: string;
 };
 
 const CHECKOUT_KEY = "checkout_draft";
@@ -53,7 +53,18 @@ const CHECKOUT_KEY = "checkout_draft";
 function loadDraft(): Partial<CheckoutDraft> {
   try {
     const raw = localStorage.getItem(CHECKOUT_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const value: unknown = raw ? JSON.parse(raw) : {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    const result: Partial<CheckoutDraft> = {};
+    const record = value as Record<string, unknown>;
+    for (const key of ["lockerId", "postalCode", "address", "city", "addressSearch", "apartment", "floor", "entryCode", "deliveryDate", "timeSlot", "deliveryNote", "promoCode", "appliedPromoCode"] as const) {
+      if (typeof record[key] === "string") result[key] = record[key];
+    }
+    if (["cart", "delivery", "confirm"].includes(String(record.step))) result.step = record.step as Step;
+    if (["locker", "courier", "express"].includes(String(record.deliveryMethod))) result.deliveryMethod = record.deliveryMethod as DeliveryMethod;
+    const contact = record.form;
+    if (contact && typeof contact === "object" && ["name", "phone", "email"].every(key => typeof (contact as Record<string, unknown>)[key] === "string")) result.form = contact as CheckoutDraft["form"];
+    return result;
   } catch { return {}; }
 }
 
@@ -62,7 +73,7 @@ function saveDraft(d: CheckoutDraft) {
 }
 
 export function CartPage() {
-  const { items, updateQty, removeItem, total, count } = useCart();
+  const { items, updateQty, removeItem, count, hydrateItems, ready, storageError, clear } = useCart();
   const { address: buyerCtxAddress } = useBuyerAddress();
 
   const [step, setStep] = useState<Step>("cart");
@@ -86,32 +97,39 @@ export function CartPage() {
   const [saveLabel, setSaveLabel] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
-  const [newsletterConsent, setNewsletterConsent] = useState(true);
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
   const { addresses: savedAddresses, add: addSavedAddress, remove: removeSavedAddress } = useSavedAddresses();
   const [promoCode, setPromoCode] = useState("");
+  const [appliedPromoCode, setAppliedPromoCode] = useState("");
 
   // Restore checkout draft from localStorage after hydration (SSR-safe)
   const [draftLoaded, setDraftLoaded] = useState(false);
   useEffect(() => {
-    const d = loadDraft();
-    if (Object.keys(d).length > 0) {
-      if (d.step) setStep(isClosedLockerId(d.lockerId) && (d.deliveryMethod ?? "locker") === "locker" ? "delivery" : d.step);
-      if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
-      if (d.lockerId && !isClosedLockerId(d.lockerId)) setLockerId(d.lockerId);
-      if (d.postalCode) setPostalCode(d.postalCode);
-      if (d.address) setAddress(d.address);
-      if (d.city) setCity(d.city);
-      if (d.addressSearch) setAddressSearch(d.addressSearch);
-      if (d.apartment) setApartment(d.apartment);
-      if (d.floor) setFloor(d.floor);
-      if (d.entryCode) setEntryCode(d.entryCode);
-      if (d.deliveryDate) setDeliveryDate(d.deliveryDate);
-      if (d.timeSlot) setTimeSlot(d.timeSlot);
-      if (d.deliveryNote) setDeliveryNote(d.deliveryNote);
-      if (d.form) setForm(d.form);
-      if (d.promoCode) setPromoCode(d.promoCode);
-    }
-    setDraftLoaded(true);
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      const d = loadDraft();
+      if (Object.keys(d).length > 0) {
+        if (d.step) setStep(d.step === "confirm" || (!getOpenLocker(d.lockerId) && (d.deliveryMethod ?? "locker") === "locker") ? "delivery" : d.step);
+        if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
+        if (d.lockerId && getOpenLocker(d.lockerId)) setLockerId(d.lockerId);
+        if (d.postalCode) setPostalCode(d.postalCode);
+        if (d.address) setAddress(d.address);
+        if (d.city) setCity(d.city);
+        if (d.addressSearch) setAddressSearch(d.addressSearch);
+        if (d.apartment) setApartment(d.apartment);
+        if (d.floor) setFloor(d.floor);
+        if (d.entryCode) setEntryCode(d.entryCode);
+        if (d.deliveryDate) setDeliveryDate(d.deliveryDate);
+        if (d.timeSlot) setTimeSlot(d.timeSlot);
+        if (d.deliveryNote) setDeliveryNote(d.deliveryNote);
+        if (d.form) setForm(d.form);
+        if (d.promoCode) setPromoCode(d.promoCode);
+        if (d.appliedPromoCode) setAppliedPromoCode(d.appliedPromoCode);
+      }
+      setDraftLoaded(true);
+    });
+    return () => { active = false; };
   }, []);
 
   // Auto-save checkout state to localStorage on every change (skip first render before draft loads)
@@ -120,20 +138,22 @@ export function CartPage() {
     saveDraft({
       step, deliveryMethod, lockerId, postalCode, address, city,
       addressSearch, apartment, floor, entryCode, deliveryDate,
-      timeSlot, deliveryNote, form, promoCode,
+      timeSlot, deliveryNote, form, promoCode, appliedPromoCode,
     });
   }, [draftLoaded, step, deliveryMethod, lockerId, postalCode, address, city,
       addressSearch, apartment, floor, entryCode, deliveryDate,
-      timeSlot, deliveryNote, form, promoCode]);
+      timeSlot, deliveryNote, form, promoCode, appliedPromoCode]);
 
   // Sync address fields from context when it loads from localStorage (delayed hydration)
   useEffect(() => {
     if (buyerCtxAddress && !postalCode) {
-      setPostalCode(buyerCtxAddress.postalCode);
-      setCity(buyerCtxAddress.city);
-      setAddressSearch(buyerCtxAddress.fullText);
+      void Promise.resolve().then(() => {
+        setPostalCode(buyerCtxAddress.postalCode);
+        setCity(buyerCtxAddress.city);
+        setAddressSearch(buyerCtxAddress.fullText);
+      });
     }
-  }, [buyerCtxAddress]);
+  }, [buyerCtxAddress, postalCode]);
 
   function applyAddress(parsed: ParsedAddress) {
     if (parsed.street) setAddress(parsed.street);
@@ -159,16 +179,10 @@ export function CartPage() {
   }
 
   // Time slot options based on zone + delivery method
-  function getTimeSlots(zone: number | null, method: DeliveryMethod): string[] {
+  function getTimeSlots(zone: number | null): string[] {
     if (zone === null) return [];
-    if (zone === 0) {
+    if (zone === 0 || zone === 1) {
       return ["09:00–12:00", "12:00–18:00", "18:00–22:00"];
-    }
-    if (zone === 1) {
-      // 5h windows
-      return method === "express"
-        ? ["08:00–13:00", "13:00–18:00"]
-        : ["09:00–14:00", "14:00–19:00"];
     }
     // Zones 2-3: single all-day window
     return ["08:00–18:00"];
@@ -188,136 +202,50 @@ export function CartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [payError, setPayError] = useState("");
 
-  // Promo code (promoCode state is declared earlier, near draft restore)
-  const [promoDiscount, setPromoDiscount] = useState(0); // cents
-  const [promoMsg, setPromoMsg] = useState("");
-  const [promoValid, setPromoValid] = useState(false);
-  const [promoChecking, setPromoChecking] = useState(false);
-
-  async function checkPromo() {
-    if (!promoCode.trim()) return;
-    setPromoChecking(true);
-    setPromoMsg("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/promo/validate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ code: promoCode, deliveryFeeCents: Math.round(deliveryFee * 100), deliveryType: deliveryMethod }),
-      });
-      const result = await res.json();
-      if (result.valid) {
-        setPromoValid(true);
-        setPromoDiscount(result.discountCents);
-        setPromoMsg(`✓ Bezmaksas pakomāts! Ietaupījums: ${(result.discountCents / 100).toFixed(2)} €`);
-      } else {
-        setPromoValid(false);
-        setPromoDiscount(0);
-        setPromoMsg(result.reason ?? "Kods nav derīgs");
-      }
-    } catch {
-      setPromoMsg("Kļūda pārbaudot kodu");
-    }
-    setPromoChecking(false);
-  }
-
-  // Fetch seller info (drop-off lockers, courier pickup address) for items in cart
-  const [sellersById, setSellersById] = useState<Map<string, SellerInfo>>(new Map());
-  useEffect(() => {
-    const ids = [...new Set(items.map((i) => i.sellerId).filter(Boolean) as string[])];
-    if (ids.length === 0) { setSellersById(new Map()); return; }
-    (async () => {
-      const { data } = await supabase
-        .from("sellers_public")
-        .select("id, name, home_locker_ids, courier_pickup_address")
-        .in("id", ids);
-      const m = new Map<string, SellerInfo>();
-      for (const s of data ?? []) {
-        m.set(s.id, {
-          id: s.id,
-          name: s.name,
-          home_locker_ids: s.home_locker_ids ?? [],
-          courier_pickup_address: s.courier_pickup_address ?? null,
-        });
-      }
-      setSellersById(m);
-    })();
-  }, [items]);
-
-  // Postal code → zone lookup (for courier and express)
+  const deliveryInfo = useMemo(() => deliveryMethod === "locker"
+    ? { locker_id: lockerId, postal_code: postalCode, address, city, address_search: addressSearch }
+    : { postal_code: postalCode, address, city, apartment, floor, entry_code: entryCode,
+        address_search: addressSearch, method: deliveryMethod, delivery_date: deliveryDate, time_slot: timeSlot, note: deliveryNote },
+    [deliveryMethod, lockerId, postalCode, address, addressSearch, city, apartment, floor, entryCode, deliveryDate, timeSlot, deliveryNote]);
+  const quoteRequest: CheckoutQuoteRequest = { items: cartReferences(items), deliveryType: deliveryMethod, deliveryInfo, promoCode: appliedPromoCode.trim() };
+  const promoDirty = promoCode.trim() !== appliedPromoCode.trim();
+  const checkout = useCheckoutQuote(quoteRequest, ready && draftLoaded && !storageError && !promoDirty, promoCode);
+  const { quote, signature, state: quoteState, activeSignature } = checkout;
+  const [reviewedSignature, setReviewedSignature] = useState("");
+  const [reviewedFingerprint, setReviewedFingerprint] = useState("");
+  useEffect(() => { if (quote) hydrateItems(quote.items); }, [quote, hydrateItems]);
+  const total = quote ? quote.subtotalCents / 100 : null;
+  const displayItems = quote?.items ?? items;
   const zoneResult = useMemo(() => lookupPostalCode(postalCode), [postalCode]);
   const zonePricing = zoneResult.found ? zoneResult.pricing : null;
-  // Express is available only if zone supports it AND at least one cart item allows express
-  const anyItemAllowsExpress = items.some(i => i.express_delivery !== false);
-  const expressAvailable = !!zonePricing && zonePricing.expressSingle !== null && anyItemAllowsExpress;
-
-  // Group items by seller and compute per-seller delivery fees
-  const sellerGroups = useMemo(() => {
-    const groups = new Map<string, typeof items>();
-    for (const item of items) {
-      const key = item.sellerId ?? `name:${item.sellerName}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(item);
-    }
-    return Array.from(groups.entries()).map(([key, sellerItems]) => {
-      const sellerId = sellerItems[0].sellerId;
-      const sellerName = sellerItems[0].sellerName;
-      const tempZones = new Set(
-        sellerItems.map((i) => (i.storageType === "frozen" ? "frozen" : "chilled"))
-      );
-      const cabinetCount = Math.max(1, tempZones.size);
-      const isDualTemp = cabinetCount === 2;
-      const sellerInfo = sellerId ? sellersById.get(sellerId) : undefined;
-      // Compute effective zone for THIS seller: MAX(seller drop-off zone, buyer zone)
-      const sellerLockerId = sellerInfo?.home_locker_ids?.[0];
-      const effZone = effectiveCourierZone(sellerLockerId, zonePricing?.zone);
-      const effPricing = pricingForZone(effZone);
-      const lockerFee = LOCKER_FEE * cabinetCount;
-      const courierFee = effPricing
-        ? (isDualTemp ? effPricing.dualTemp : effPricing.singleTemp)
-        : 0;
-      const expressFee = effPricing && effPricing.expressSingle !== null && effPricing.expressDual !== null
-        ? (isDualTemp ? effPricing.expressDual! : effPricing.expressSingle!)
-        : 0;
-      let activeFee = 0;
-      if (deliveryMethod === "locker") activeFee = lockerFee;
-      else if (deliveryMethod === "courier") activeFee = courierFee;
-      else if (deliveryMethod === "express") activeFee = expressFee;
-      const subtotal = sellerItems.reduce((s, i) => s + i.price * i.quantity, 0);
-      return {
-        key, sellerId, sellerName,
-        items: sellerItems, cabinetCount, isDualTemp,
-        lockerFee, courierFee, expressFee, activeFee, subtotal,
-        sellerInfo, effZone,
-      };
-    });
-  }, [items, deliveryMethod, zonePricing, sellersById]);
-
-  // Aggregate cabinet count (max across sellers — for displaying delivery options)
-  const cabinetCount = useMemo(() => {
-    if (items.length === 0) return 1;
-    const zones = new Set(
-      items.map((i) => (i.storageType === "frozen" ? "frozen" : "chilled"))
-    );
-    return Math.max(1, zones.size);
-  }, [items]);
-  const isDualTemp = cabinetCount === 2;
-
-  // Total delivery fee = sum of all sellers' active fees
-  const deliveryFee = sellerGroups.reduce((s, g) => s + g.activeFee, 0);
-
-  // Per-method totals (for displaying option pills)
-  const lockerFee = sellerGroups.reduce((s, g) => s + g.lockerFee, 0);
-  const courierFee = sellerGroups.reduce((s, g) => s + g.courierFee, 0);
-  const expressFee = sellerGroups.reduce((s, g) => s + g.expressFee, 0);
-
-  // Now that zonePricing is defined, compute available time slots
-  const availableTimeSlots = getTimeSlots(zonePricing?.zone ?? null, deliveryMethod);
-
-  const grandTotal = total + deliveryFee - (promoValid ? promoDiscount / 100 : 0);
+  // Preview only canonical server metadata; local seller/temperature flags are not authority.
+  const canonicalSellers = (quote?.sellers ?? []).map(seller => ({
+    sellerId: seller.id, homeLockerIds: seller.homeLockerIds,
+    items: (quote?.items ?? []).filter(item => item.sellerId === seller.id).map(item => ({
+      category: item.category, storageType: item.storageType,
+      courierDelivery: item.courier_delivery, expressDelivery: item.express_delivery,
+    })),
+  }));
+  function methodPreview(method: DeliveryMethod, destination = lockerId) {
+    if (!quote || !canonicalSellers.length) return null;
+    const result = calculateDeliveryQuote({ method, lockerId: destination, buyerPostalCode: postalCode, sellers: canonicalSellers });
+    return result.ok ? result.totalCents / 100 : null;
+  }
+  const lockerFee = methodPreview("locker");
+  const courierFee = methodPreview("courier");
+  const expressFee = methodPreview("express");
+  const anyItemAllowsExpress = !!quote?.items.length && quote.items.every(item => item.express_delivery === true);
+  const expressAvailable = anyItemAllowsExpress && expressFee !== null;
+  const isDualTemp = new Set(quote?.items.map(item => item.storageType)).size > 1;
+  const deliveryFee = quote?.deliveryFeeCents == null ? null : quote.deliveryFeeCents / 100;
+  const availableTimeSlots = getTimeSlots(zonePricing?.zone ?? null);
+  const grandTotal = quote?.totalCents == null ? null : quote.totalCents / 100;
+  const promoValid = quote?.promo.valid === true;
+  const promoDiscount = quote?.discountCents ?? 0;
+  const promoChecking = !promoDirty && !quote && !quoteState.error;
+  const promoMsg = quote?.promo.reason ?? (promoValid ? "Kods pielietots aprēķinā" : "");
+  function checkPromo() { setAppliedPromoCode(promoCode.trim()); checkout.refresh(); }
+  const sellerGroups = quote?.sellers ?? [];
 
   // Real product data for upsell sections (replaces hardcoded mock-data catalog,
   // which showed unrelated demo products like caviar regardless of cart contents).
@@ -334,15 +262,15 @@ export function CartPage() {
     })();
   }, []);
 
-  const cartItemIds = new Set(items.map((i) => i.id));
-  const sellerIds = new Set(items.map((i) => i.sellerId).filter(Boolean) as string[]);
+  const cartItemIds = useMemo(() => new Set(items.map(i => i.listingId ?? i.id)), [items]);
+  const sellerIds = useMemo(() => new Set(items.map(i => i.sellerId).filter(Boolean) as string[]), [items]);
 
   // "No tiem pašiem ražotājiem" — other real products from sellers already in the cart.
   const upsells = useMemo(() =>
     dbListings
       .filter((l) => sellerIds.has(l.sellerId) && !cartItemIds.has(l.id))
       .slice(0, 6),
-    [dbListings, items]
+    [dbListings, cartItemIds, sellerIds]
   );
 
   // "Pircēji bieži pievieno arī" — real best-sellers (based on actual paid orders
@@ -358,18 +286,18 @@ export function CartPage() {
       (l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId) && !seen.has(l.id)
     );
     return [...fromOrders, ...fallback].slice(0, 4);
-  }, [bestSellerListings, dbListings, items]);
+  }, [bestSellerListings, dbListings, cartItemIds, sellerIds]);
 
   function setField(k: keyof typeof form, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
   function canProceedToDelivery() {
-    return items.length > 0;
+    return ready && !storageError && items.length > 0;
   }
 
   function canConfirm() {
-    return missingFields().length === 0;
+    return missingFields().length === 0 && payableQuote(quote) && !storageError;
   }
 
   function missingFields(): string[] {
@@ -377,13 +305,13 @@ export function CartPage() {
     if (!form.name.trim()) missing.push("Vārds, uzvārds");
     if (!form.phone.trim()) missing.push("Tālrunis");
     if (!form.email.trim()) missing.push("E-pasts");
-    if (deliveryMethod === "locker" && (!lockerId || isClosedLockerId(lockerId))) missing.push("pārtikas pakomāts");
+    if (deliveryMethod === "locker" && (!getOpenLocker(lockerId))) missing.push("pārtikas pakomāts");
     if (deliveryMethod === "courier" || deliveryMethod === "express") {
       if (!zoneResult.found) missing.push("Pasta indekss (derīgā zonā)");
       if (!address.trim()) missing.push("Iela un mājas nr.");
       if (!city.trim()) missing.push("Pilsēta");
       if (!deliveryDate) missing.push("Datums");
-      if (!timeSlot) missing.push("Laika logs");
+      if (!availableTimeSlots.includes(timeSlot)) missing.push("Laika logs");
       if (deliveryMethod === "express" && !expressAvailable) missing.push("Eksprespiegāde nav pieejama šajā zonā");
     }
     return missing;
@@ -395,89 +323,49 @@ export function CartPage() {
       setStep("delivery");
       return;
     }
+    const current = currentQuote(checkout.state, signature);
+    if (!canConfirm() || !payableQuote(current) || reviewedSignature !== signature || reviewedFingerprint !== current.fingerprint) {
+      setPayError("Groza aprēķins ir mainījies. Pārskati un apstiprini to atkārtoti.");
+      setStep("delivery");
+      return;
+    }
+    const paymentSignature = signature;
+    const paymentGeneration = checkout.generation.current;
     setSubmitting(true);
     setPayError("");
     try {
-      // Prefer sellerId from cart item; fall back to mock data lookup for legacy items
-      const uniqueSellerIds = [...new Set(
-        items
-          .map((i) => i.sellerId ?? listings.find((l) => l.id === i.id)?.sellerId)
-          .filter(Boolean) as string[]
-      )];
-
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      // Build delivery info based on chosen method
-      let deliveryInfo: Record<string, unknown>;
-      if (deliveryMethod === "locker") {
-        const locker = lockers.find((l) => l.id === lockerId)!;
-        deliveryInfo = {
-          locker_id: locker.id,
-          locker_name: locker.name,
-          locker_address: locker.address,
-          locker_city: locker.city,
-        };
-      } else {
-        deliveryInfo = {
-          postal_code: postalCode,
-          address,
-          city,
-          apartment: apartment || undefined,
-          floor: floor || undefined,
-          entry_code: entryCode || undefined,
-          zone: zoneResult.found ? zoneResult.zone : null,
-          method: deliveryMethod,
-          delivery_date: deliveryDate || tomorrowISO(),
-          time_slot: timeSlot,
-          note: deliveryNote || undefined,
-        };
+      if (activeSignature.current !== paymentSignature || checkout.generation.current !== paymentGeneration || !currentQuote(checkout.state, paymentSignature)) {
+        throw new Error("Grozs ir mainījies. Pārskati aprēķinu atkārtoti.");
       }
-
       const res = await fetch("/api/checkout/create-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          items: items.map((i) => ({
-            id: i.id, title: i.title, price: i.price, quantity: i.quantity,
-            unit: i.unit, sellerName: i.sellerName, sellerId: i.sellerId ?? null,
-          })),
-          deliveryType: deliveryMethod,
-          deliveryInfo,
-          // Backwards compat: also send locker if locker method
-          ...(deliveryMethod === "locker" && {
-            locker: deliveryInfo,
-          }),
+        headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ ...quoteRequest,
           contact: { name: form.name, email: form.email, phone: form.phone },
-          sellerIds: uniqueSellerIds,
-          // IMPORTANT: send the PRE-discount total (items + delivery). The server
-          // independently re-validates the promo code and subtracts the discount
-          // exactly once (see app/api/checkout/create-session/route.ts). Sending
-          // grandTotal here (which already has the discount subtracted client-side)
-          // caused the discount to be applied TWICE, undercharging buyers by the
-          // full discount amount a second time.
-          totalCents: Math.round((total + deliveryFee) * 100),
-          promoCode: promoValid ? promoCode.trim().toUpperCase() : undefined,
-          // Delivery fee breakdown — one fee per seller, commission per product
-          deliveryFeeCents: Math.round(deliveryFee * 100),
-          deliveryFeesBySeller: sellerGroups.map((g) => ({
-            sellerId: g.sellerId ?? null,
-            sellerName: g.sellerName,
-            feeCents: Math.round(g.activeFee * 100),
-            method: deliveryMethod,
-          })),
+          expectedTotalCents: current.totalCents,
+          quoteFingerprint: current.fingerprint,
         }),
       });
-
+      if (res.status === 409) {
+        const replacement: CheckoutQuoteResponse = await res.json();
+        if (activeSignature.current === paymentSignature && checkout.generation.current === paymentGeneration) {
+          if (replacement.ok || !replacement.quote || !checkout.replace(replacement.quote, paymentSignature)) checkout.invalidate();
+          setReviewedSignature("");
+          setStep("delivery");
+        }
+        setPayError("Cena vai piegādes nosacījumi mainījās. Pārskati un apstiprini jauno aprēķinu. Maksājums netika atkārtots.");
+        setSubmitting(false);
+        return;
+      }
+      if (activeSignature.current !== paymentSignature || checkout.generation.current !== paymentGeneration) throw new Error("Grozs ir mainījies. Maksājuma saite netiks atvērta.");
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error ?? "Kļūda izveidojot maksājumu");
       }
 
       const { paymentUrl } = await res.json();
+      if (typeof paymentUrl !== "string" || !paymentUrl) throw new Error("Maksājuma saite nav pieejama.");
       // Subscribe to newsletter if consent given (fire-and-forget)
       if (newsletterConsent && form.email.trim()) {
         fetch("/api/subscribe", {
@@ -493,7 +381,7 @@ export function CartPage() {
       // Navigate via /pay which does a server-side 302 redirect to Paysera.
       // The 302 preserves Referer in the HTTP redirect chain, fixing Paysera
       // 0x13 error in PWA standalone mode.
-      window.location.href = `/pay?url=${encodeURIComponent(paymentUrl)}`;
+      window.location.assign(new URL(`/pay?url=${encodeURIComponent(paymentUrl)}`, window.location.origin).href);
     } catch (err) {
       console.error(err);
       setPayError(err instanceof Error ? err.message : "Kļūda izveidojot maksājumu. Mēģini vēlreiz.");
@@ -503,6 +391,13 @@ export function CartPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {storageError && <div role="alert" className="mb-4 rounded-xl bg-amber-50 p-4">{storageError} <button onClick={clear} className="underline">Atiestatīt grozu</button></div>}
+      {items.length > 0 && <div aria-live="polite" className="mb-4 rounded-xl bg-gray-50 p-4 text-sm">
+        {promoDirty ? "Pielieto vai noņem ievadīto promo kodu, lai pārbaudītu aprēķinu." : quoteState.signature === signature && quoteState.error ? <><p role="alert">{quoteState.error}</p><button onClick={checkout.refresh} className="underline">Pārbaudīt vēlreiz</button></> : !quote ? "Pārbaudām grozu un piegādi…" : !quote.available ? "Piegāde vēl nav pieejama. Izvēlies derīgu galamērķi un piegādes veidu." : "Groza cenas un piegāde pārbaudītas."}
+        {quoteState.signature === signature && quoteState.issues?.map(issue => <p key={issue.id + issue.code}>{issue.message} <Link href={items.find(item => item.id === issue.id)?.listingId ? `/listing/${items.find(item => item.id === issue.id)!.listingId}` : "/catalog"} className="underline">Izvēlēties preci atkārtoti</Link> <button onClick={() => removeItem(issue.id)} className="underline">Noņemt</button></p>)}
+        {!quote && items.some(item => !item.listingId) && <p>Saglabātās preces tiek pārbaudītas. Neatpazītu variantu noņem un <Link href="/catalog" className="underline">izvēlies atkārtoti katalogā</Link>.</p>}
+      </div>}
+      {payError && <p role="alert" className="mb-4 text-red-700">{payError}</p>}
       {/* Steps */}
       <div className="mb-8 flex flex-wrap items-center gap-2 text-sm">
         {(["cart", "delivery", "confirm"] as Step[]).map((s, i) => {
@@ -582,8 +477,8 @@ export function CartPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white shadow-sm">
-                  {items.map((item) => (
-                    <CartItemRow key={item.id} item={item} updateQty={updateQty} removeItem={removeItem} />
+                  {displayItems.map((item) => (
+                    <CartItemRow key={item.id} item={item} verified={!!quote} updateQty={updateQty} removeItem={removeItem} />
                   ))}
                 </div>
               )}
@@ -621,10 +516,8 @@ export function CartPage() {
                   onSelect={() => setDeliveryMethod("locker")}
                   icon={<Package size={18} />}
                   label="pārtikas pakomāts"
-                  price={sellerGroups.length > 0
-                    ? `${lockerFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : `no ${LOCKER_FEE.toFixed(2)} €`}
-                  hint="24/7 piekļuve · Lētākais"
+                  price={lockerFee === null ? "Izvēlies pakomātu" : formatPrice(lockerFee)}
+                  hint="Piekļuve izvēlētās vietas darba laikā"
                   highlight
                 />
                 <DeliveryMethodCard
@@ -633,9 +526,7 @@ export function CartPage() {
                   onSelect={() => setDeliveryMethod("courier")}
                   icon={<Truck size={18} />}
                   label="Kurjers"
-                  price={zonePricing
-                    ? `${courierFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                    : "no 5.45 €"}
+                  price={courierFee === null ? "Nav pieejams / norādi indeksu" : formatPrice(courierFee)}
                   hint="Mājas durvīs"
                 />
                 {anyItemAllowsExpress && (
@@ -645,10 +536,8 @@ export function CartPage() {
                     onSelect={() => setDeliveryMethod("express")}
                     icon={<Zap size={18} />}
                     label="Eksprespiegāde"
-                    price={zonePricing && expressAvailable
-                      ? `${expressFee.toFixed(2)} €${sellerGroups.length > 1 ? ` (${sellerGroups.length} ražotāji)` : ""}`
-                      : "no 6.66 €"}
-                    hint="2–5h Rīgā"
+                    price={expressFee === null ? "Nav pieejams" : formatPrice(expressFee)}
+                    hint="5h pēc operatora rezervācijas"
                   />
                 )}
               </div>
@@ -658,7 +547,7 @@ export function CartPage() {
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                   <AlertCircle size={14} className="mt-0.5 shrink-0" />
                   <p>Tavs grozs satur <strong>dzesētus un saldētus</strong> produktus —
-                    vajag <strong>2 skapīšus</strong>, tāpēc cena divkāršojas.</p>
+                    temperatūras režīmi ir iekļauti aprēķinā. Pakomāta maksa ir viena katram ražotājam, arī diviem temperatūras režīmiem.</p>
                 </div>
               )}
 
@@ -666,23 +555,15 @@ export function CartPage() {
               {deliveryMethod === "locker" && (() => {
                 // Dynamic locker filtering:
                 // All non-coming_soon lockers are shown by default (logistics distributes to all).
-                // Only pickup_only lockers (e.g. Dundaga) are hidden when no cart seller drops off there.
-                const cartSellerLockerIds = new Set<string>();
-                for (const g of sellerGroups) {
-                  const info = g.sellerInfo;
-                  if (info?.home_locker_ids) {
-                    for (const lid of info.home_locker_ids) cartSellerLockerIds.add(lid);
-                  }
-                }
-                const availableLockers = lockers
-                  .filter(l => !l.coming_soon)
-                  .filter(l => !l.pickup_only || cartSellerLockerIds.has(l.id));
+                // Local-only destinations require permission from every canonical seller.
+                const availableLockers = lockers.filter(l => !l.coming_soon && !isClosedLockerId(l.id))
+                  .filter(l => !l.pickup_only || (sellerGroups.length > 0 && sellerGroups.every(seller => seller.homeLockerIds.includes(l.id))));
                 // Compute distances from buyer to each locker (if postal code is set)
                 const distanceMap = new Map<string, number>();
                 const pc = postalCode.replace(/\D/g, "");
-                if (pc.length === 4) {
+                if (pc.length === 4 && zoneResult.found) {
                   const code = parseInt(pc, 10);
-                  const zone = zoneResult.found ? zoneResult.zone : 0;
+                  const zone = zoneResult.zone;
                   const nearest = nearestLockersForCode(code, zone, 20);
                   for (const nl of nearest) distanceMap.set(nl.id, nl.distanceKm);
                 }
@@ -910,10 +791,10 @@ export function CartPage() {
                       <div>
                         <h4 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                           <Clock size={13} className="text-brand-600" />
-                          Izvēlies laika logu
+                          {deliveryMethod === "express" ? "Vēlamais laiks — apstiprina operators" : "Izvēlies laika logu"}
                         </h4>
                         <p className="mt-0.5 text-xs text-gray-500">
-                          Pasūtījuma rezervēšana iepriekšējā dienā līdz 20:00
+                          {deliveryMethod === "express" ? "Eksprespiegāde 5h laikā pēc operatora rezervācijas." : "Pasūtījuma rezervēšana iepriekšējā dienā līdz 20:00"}
                         </p>
                       </div>
 
@@ -1056,7 +937,7 @@ export function CartPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900">
-                        {deliveryMethod === "courier" ? "Kurjers" : "Eksprespiegāde 2–5h"}
+                        {deliveryMethod === "courier" ? "Kurjers" : "Eksprespiegāde — 5h pēc operatora rezervācijas"}
                         {zonePricing && <span className="text-gray-400 font-normal"> · Zona {zonePricing.zone}</span>}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -1089,17 +970,17 @@ export function CartPage() {
               {/* Items summary */}
               <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
                 <p className="px-4 pt-4 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Preces</p>
-                {items.map((item) => (
+                {displayItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                      <Image src={item.image} alt={item.title} fill className="object-cover" />
+                      <Image src={publicProductImage(item.image)} alt={item.title} fill className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-medium text-gray-900">{item.title}</p>
                       <p className="text-xs text-gray-500">{item.sellerName} · {item.quantity}×</p>
                     </div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {formatPrice(item.price * item.quantity)}
+                      {quote ? formatPrice(item.price * item.quantity) : "Cena tiek pārbaudīta"}
                     </p>
                   </div>
                 ))}
@@ -1109,7 +990,7 @@ export function CartPage() {
               <div className="rounded-xl bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
                 <p className="font-semibold mb-1">Apmaksa ar Paysera</p>
                 <p className="text-xs text-blue-600">
-                  Nospiežot "Maksāt", tiksi novirzīts uz Paysera drošo maksājumu lapu.
+                  Nospiežot &quot;Maksāt&quot;, tiksi novirzīts uz Paysera drošo maksājumu lapu.
                   Pēc veiksmīgas apmaksas saņemsi apstiprinājumu uz e-pastu.
                 </p>
               </div>
@@ -1125,7 +1006,7 @@ export function CartPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Preces ({count})</span>
-                <span>{formatPrice(total)}</span>
+                <span>{total === null ? "Tiek pārbaudīts" : formatPrice(total)}</span>
               </div>
 
               {/* On step "cart", piegāde nav vēl izvēlēts — neuzrādām maksu */}
@@ -1135,74 +1016,16 @@ export function CartPage() {
                 </div>
               ) : (
                 <>
-                  {/* Per-seller breakdown when multiple sellers OR locker delivery */}
-                  {sellerGroups.length > 0 && deliveryFee > 0 ? (
-                    <>
-                      {sellerGroups.length > 1 && (
-                        <div className="text-xs text-gray-400 italic">
-                          Piegāde tiek aprēķināta atsevišķi katram ražotājam:
-                        </div>
-                      )}
-                      {sellerGroups.map((g) => {
-                        const tempLabels = Array.from(new Set(
-                          g.items.map((i) => i.storageType === "frozen" ? "saldēts" : "dzesēts")
-                        )).join(" + ");
-                        return (
-                          <div key={g.key} className="space-y-0.5 pl-1">
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <span className="truncate font-semibold text-gray-700">
-                                {g.sellerName}
-                              </span>
-                              <span className="font-mono text-gray-700">{formatPrice(g.activeFee)}</span>
-                            </div>
-                            {deliveryMethod === "locker" && (
-                              <p className="text-[10px] text-gray-400 leading-tight">
-                                {g.cabinetCount} {g.cabinetCount === 1 ? "skapītis" : "skapīši"}
-                                {" · "}{tempLabels}
-                                {g.cabinetCount > 1 && (
-                                  <span> ({LOCKER_FEE.toFixed(2)} € × {g.cabinetCount})</span>
-                                )}
-                              </p>
-                            )}
-                            {(deliveryMethod === "courier" || deliveryMethod === "express") && (
-                              <p className="text-[10px] text-gray-400 leading-tight">
-                                {g.cabinetCount === 1 ? "1 temp." : "2 temp."}
-                                {" · "}{tempLabels}
-                                {typeof g.effZone === "number" && (
-                                  <span> · Zona {g.effZone}</span>
-                                )}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                      <div className="flex justify-between text-gray-700 font-semibold border-t border-gray-50 pt-1.5">
-                        <span>Piegāde kopā</span>
-                        <span>{formatPrice(deliveryFee)}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between text-gray-600">
-                      <span>
-                        Piegāde
-                        {deliveryMethod === "locker" && cabinetCount > 1 && (
-                          <span className="ml-1 text-xs text-gray-400">
-                            ({cabinetCount} skapīši × {LOCKER_FEE}€)
-                          </span>
-                        )}
-                        {deliveryMethod === "courier" && zonePricing && (
-                          <span className="ml-1 text-xs text-gray-400">(Kurjers · Z{zonePricing.zone})</span>
-                        )}
-                        {deliveryMethod === "express" && zonePricing && (
-                          <span className="ml-1 text-xs text-gray-400">(Ekspres · Z{zonePricing.zone})</span>
-                        )}
-                      </span>
-                      {deliveryFee === 0
-                        ? <span className="text-gray-400 text-xs">norādīt zemāk</span>
-                        : <span>{formatPrice(deliveryFee)}</span>
-                      }
+                  <div className="flex justify-between text-gray-600">
+                    <span>Piegāde</span>
+                    <span>{deliveryFee === null ? "Nav pieejams — izvēlies piegādi" : formatPrice(deliveryFee)}</span>
+                  </div>
+                  {quote?.delivery.ok && quote.delivery.breakdown.map(fee => (
+                    <div key={fee.sellerId} className="flex justify-between text-xs text-gray-500">
+                      <span>{quote.sellers.find(seller => seller.id === fee.sellerId)?.name}</span>
+                      <span>{formatPrice(fee.totalCents / 100)}</span>
                     </div>
-                  )}
+                  ))}
                 </>
               )}
 
@@ -1218,7 +1041,7 @@ export function CartPage() {
 
               <div className="border-t border-gray-100 pt-2 flex justify-between font-extrabold text-gray-900 text-base">
                 <span>Kopā</span>
-                <span>{formatPrice(step === "cart" ? total : grandTotal)}</span>
+                <span>{step === "cart" ? total === null ? "Tiek pārbaudīts" : formatPrice(total) : grandTotal === null ? "Nav aprēķināts" : formatPrice(grandTotal)}</span>
               </div>
             </div>
 
@@ -1239,21 +1062,22 @@ export function CartPage() {
                 <div className="flex gap-2">
                   <input
                     value={promoCode}
-                    onChange={(e) => { setPromoCode(e.target.value); setPromoValid(false); setPromoMsg(""); setPromoDiscount(0); }}
+                    onChange={(e) => setPromoCode(e.target.value)}
                     placeholder="Ievadi promo kodu"
                     className="input flex-1 text-sm font-mono uppercase"
                     disabled={promoValid}
                   />
                   {promoValid ? (
-                    <button onClick={() => { setPromoCode(""); setPromoValid(false); setPromoDiscount(0); setPromoMsg(""); }}
+                    <button onClick={() => { setPromoCode(""); setAppliedPromoCode(""); }}
                       className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100">
                       Noņemt
                     </button>
                   ) : (
-                    <button onClick={checkPromo} disabled={promoChecking || !promoCode.trim()}
+                    <><button onClick={checkPromo} disabled={promoChecking || !promoCode.trim()}
                       className="rounded-lg bg-[#192635] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#243647] disabled:opacity-40">
                       {promoChecking ? <Loader2 size={12} className="animate-spin" /> : "Pielietot"}
                     </button>
+                    {(promoCode || appliedPromoCode) && <button onClick={() => { setPromoCode(""); setAppliedPromoCode(""); }} className="text-xs underline">Notīrīt</button>}</>
                   )}
                 </div>
                 {promoMsg && (
@@ -1277,7 +1101,7 @@ export function CartPage() {
                   </div>
                 )}
                 <button
-                  onClick={() => { setStep("confirm"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  onClick={() => { if (!canConfirm()) return; setReviewedSignature(signature); setReviewedFingerprint(quote!.fingerprint); setStep("confirm"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   disabled={!canConfirm()}
                   className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40"
                 >
@@ -1297,13 +1121,13 @@ export function CartPage() {
                 )}
                 <button
                   onClick={handlePay}
-                  disabled={submitting}
+                  disabled={submitting || !canConfirm() || reviewedSignature !== signature || reviewedFingerprint !== quote?.fingerprint}
                   className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60"
                   style={{ backgroundColor: "#192635" }}
                 >
                   {submitting
                     ? <><Loader2 size={16} className="animate-spin" /> Apstrādā...</>
-                    : <>Maksāt {formatPrice(grandTotal)} →</>
+                    : <>Maksāt {grandTotal === null ? "—" : formatPrice(grandTotal)} →</>
                   }
                 </button>
                 <button onClick={() => { setStep("delivery"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
@@ -1383,29 +1207,31 @@ function DeliveryMethodCard({
 
 function CartItemRow({
   item,
+  verified,
   updateQty,
   removeItem,
 }: {
-  item: { id: string; title: string; price: number; unit: string; image: string; sellerName: string; quantity: number };
+  item: CartItem;
+  verified: boolean;
   updateQty: (id: string, qty: number) => void;
   removeItem: (id: string) => void;
 }) {
   return (
     <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
-      <Link href={`/listing/${item.id}`} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-16 sm:w-16">
-        <Image src={item.image} alt={item.title} fill className="object-cover" />
+      <Link href={item.listingId ? `/listing/${item.listingId}` : "/catalog"} className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-16 sm:w-16">
+        <Image src={publicProductImage(item.image)} alt={item.title} fill className="object-cover" />
       </Link>
       <div className="flex-1 min-w-0">
-        <Link href={`/listing/${item.id}`}
+        <Link href={item.listingId ? `/listing/${item.listingId}` : "/catalog"}
           className="block truncate text-sm font-semibold text-gray-900 hover:text-brand-600">
           {item.title}
         </Link>
         <p className="text-xs text-gray-500">{item.sellerName}</p>
         <p className="mt-0.5 text-sm font-bold text-gray-900">
-          {formatPrice(item.price * item.quantity)}
-          <span className="ml-1 text-xs font-normal text-gray-400">
+          {verified ? formatPrice(item.price * item.quantity) : "Cena tiek pārbaudīta"}
+          {verified && <span className="ml-1 text-xs font-normal text-gray-400">
             ({formatPrice(item.price)} / {item.unit})
-          </span>
+          </span>}
         </p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
@@ -1436,13 +1262,15 @@ function CartItemRow({
 }
 
 function UpsellSection({ title, items }: { title: string; items: Listing[] }) {
-  const { addItem } = useCart();
+  const { addItem, ready, storageError } = useCart();
   const [added, setAdded] = useState<Record<string, boolean>>({});
 
   function handleAdd(item: (typeof items)[0], e: React.MouseEvent) {
+    if (item.variants?.length) return;
     e.preventDefault();
+    if (!ready || storageError) return;
     addItem({
-      id: item.id,
+      ...cartIdentity(item.id),
       title: item.title,
       price: item.price,
       unit: item.unit,
@@ -1464,7 +1292,7 @@ function UpsellSection({ title, items }: { title: string; items: Listing[] }) {
           <Link key={item.id} href={`/listing/${item.id}`}
             className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition">
             <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
-              <Image src={item.image} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              <Image src={publicProductImage(item.image)} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
             </div>
             <div className="p-3 flex-1 flex flex-col justify-between gap-1">
               <p className="text-xs font-semibold text-gray-900 line-clamp-2 leading-snug">{item.title}</p>
@@ -1472,6 +1300,7 @@ function UpsellSection({ title, items }: { title: string; items: Listing[] }) {
                 <p className="text-sm font-bold text-gray-900">{formatPrice(item.price)}</p>
                 <button
                   onClick={(e) => handleAdd(item, e)}
+                  disabled={!ready || !!storageError}
                   className={cn(
                     "flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold transition-all shrink-0",
                     added[item.id]
@@ -1480,7 +1309,7 @@ function UpsellSection({ title, items }: { title: string; items: Listing[] }) {
                   )}
                 >
                   {added[item.id] ? <CheckCircle size={10} /> : "+"}
-                  {added[item.id] ? "Piev." : "Grozā"}
+                  {item.variants?.length ? "Izvēlies variantu" : added[item.id] ? "Piev." : "Grozā"}
                 </button>
               </div>
             </div>
