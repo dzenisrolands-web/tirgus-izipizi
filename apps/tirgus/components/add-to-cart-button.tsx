@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { cartIdentity } from "@/lib/cart-identity";
 
 type Props = {
   id: string;
@@ -17,11 +18,12 @@ type Props = {
 };
 
 export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery }: Props) {
-  const { addItem } = useCart();
+  const { addItem, ready, storageError } = useCart();
   const [added, setAdded] = useState(false);
 
   function handle() {
-    addItem({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery });
+    if (!ready || storageError) return;
+    addItem({ ...cartIdentity(id), title, price, unit, image, sellerName, sellerId, storageType, express_delivery });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
@@ -29,6 +31,7 @@ export function AddToCartButton({ id, title, price, unit, image, sellerName, sel
   return (
     <button
       onClick={handle}
+      disabled={!ready || !!storageError}
       className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-base font-semibold transition-all ${
         added
           ? "bg-green-500 text-white"

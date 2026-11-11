@@ -5,6 +5,7 @@ import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
 import type { Variant } from "@/lib/mock-data";
+import { cartIdentity } from "@/lib/cart-identity";
 
 type Props = {
   listingId: string;
@@ -18,7 +19,7 @@ type Props = {
 };
 
 export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants, express_delivery }: Props) {
-  const { addItem } = useCart();
+  const { addItem, ready, storageError } = useCart();
   const [selected, setSelected] = useState(variants[0].id);
   const [added, setAdded] = useState(false);
 
@@ -26,9 +27,9 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
   const outOfStock = variant.quantity === 0;
 
   function handle() {
-    if (outOfStock) return;
+    if (outOfStock || !ready || storageError) return;
     addItem({
-      id: `${listingId}-${variant.id}`,
+      ...cartIdentity(listingId, variant.id),
       title: `${title} — ${variant.title}`,
       price: variant.price,
       unit: "gab.",
@@ -92,7 +93,7 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
 
       <button
         onClick={handle}
-        disabled={outOfStock}
+        disabled={outOfStock || !ready || !!storageError}
         className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-base font-semibold transition-all ${
           outOfStock
             ? "bg-gray-100 text-gray-400 cursor-not-allowed"
