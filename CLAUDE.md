@@ -78,7 +78,9 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
   and stored in the `email_templates` table
 
 ## Payment Status (Paysera)
-- **Status**: LIVE. Full checkout flow works end to end.
+- **Status**: Published integration. Isolated protocol/quote tests are not a
+  fresh bank-payment or fulfillment certification; controlled full-lifecycle
+  verification remains a separate release step.
 - **Provider**: Paysera (Latvian, SEPA + cards), project under SIA IziPizi
 - **Endpoints**:
   - `/api/checkout/create-session` — builds the Paysera request
