@@ -9,7 +9,7 @@ import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
-type OrderItem = { id?: string; title?: string; price?: number; quantity?: number; unit?: string };
+type OrderItem = { id?: string; cart_item_id?: string; title?: string; price?: number; quantity?: number; unit?: string };
 
 type Order = {
   id: string;
@@ -252,7 +252,7 @@ function CartSuccessContent() {
           </div>
           <ul className="divide-y divide-gray-50">
             {order.items.map((it, idx) => (
-              <li key={`${it.id ?? idx}`} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
+              <li key={it.cart_item_id ?? `${it.id ?? "item"}-${idx}`} className="flex items-baseline justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-gray-900">{it.title ?? "(produkts)"}</p>
                   <p className="text-xs text-gray-400">

@@ -1,185 +1,74 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
 import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
-import { COMMISSION_RATE } from "@/lib/commission";
-import { validatePromoCode } from "@/lib/promo";
-import { isClosedLockerId } from "@/lib/locker-policy";
-
-type CheckoutItem = {
-  id: string;
-  title: string;
-  price: number;
-  quantity: number;
-  unit: string;
-  sellerName: string;
-  sellerId?: string;
-  commission_rate?: number;
-};
+import { CheckoutError, orderItemSnapshot } from "@/lib/checkout-items";
+import {
+  buildCheckoutQuote, checkoutBuyerId, checkoutExpectationsMatch, checkoutFailure,
+  checkoutJson, contactForCheckout, readCheckoutBody,
+} from "@/lib/checkout-quote";
 
 export async function POST(req: Request) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  );
-
-  let body: {
-    items: CheckoutItem[];
-    deliveryType?: "locker" | "courier" | "express";
-    deliveryInfo?: Record<string, unknown>;
-    locker?: { id: string; name: string; address: string; city: string }; // backwards compat
-    contact: { name: string; email: string; phone: string };
-    sellerIds: string[];
-    totalCents: number;
-    deliveryFeeCents?: number;
-    deliveryFeesBySeller?: { sellerId: string | null; sellerName: string; feeCents: number; method: string }[];
-    promoCode?: string;
-  };
-
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Nederīgs request body" }, { status: 400 });
-  }
-
-  // Default to "locker" for backwards compat with old clients
-  const deliveryType = body.deliveryType ?? "locker";
-  if (isClosedLockerId(body.deliveryInfo?.locker_id ?? body.locker?.id)) {
-    return NextResponse.json({ error: "Tukuma pakomāts ir slēgts. Izvēlies citu saņemšanas vietu." }, { status: 400 });
-  }
-
-  if (!body.items?.length) return NextResponse.json({ error: "Tukšs grozs" }, { status: 400 });
-  if (!body.contact?.email) return NextResponse.json({ error: "Trūkst kontaktinfo" }, { status: 400 });
-  if (!body.totalCents || body.totalCents <= 0) return NextResponse.json({ error: "Nederīga summa" }, { status: 400 });
-
-  if (deliveryType === "locker" && !body.locker?.id && !body.deliveryInfo?.locker_id) {
-    return NextResponse.json({ error: "Nav izvēlēts pārtikas pakomāts" }, { status: 400 });
-  }
-  if ((deliveryType === "courier" || deliveryType === "express") &&
-      (!body.deliveryInfo?.address || !body.deliveryInfo?.city)) {
-    return NextResponse.json({ error: "Nav norādīta piegādes adrese" }, { status: 400 });
-  }
-
-  // Optionally identify buyer if logged in (via Authorization header)
-  let buyerId: string | null = null;
-  const auth = req.headers.get("authorization") ?? "";
-  const token = auth.replace("Bearer ", "");
-  if (token) {
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (user) buyerId = user.id;
-  }
-
-  // Enrich items with commission_rate snapshot from listings
-  const listingIds = body.items.map((i) => i.id);
-  const { data: listings } = await supabase
-    .from("listings")
-    .select("id, seller_id, commission_rate")
-    .in("id", listingIds);
-  const lookup = new Map<string, { seller_id: string; commission_rate: number | null }>();
-  for (const l of listings ?? []) lookup.set(l.id, { seller_id: l.seller_id, commission_rate: l.commission_rate });
-
-  const enrichedItems = body.items.map((i) => {
-    const ref = lookup.get(i.id);
-    return {
-      ...i,
-      seller_id: ref?.seller_id ?? i.sellerId ?? null,
-      commission_rate: COMMISSION_RATE, // fixed platform commission
-    };
-  });
-
-  // Generate order number
-  const orderNumber = newOrderNumber("TRG");
-
-  // Build delivery info — accepts both old (body.locker) and new (body.deliveryInfo) formats
-  const finalDeliveryInfo: Record<string, unknown> =
-    body.deliveryInfo
-    ?? (body.locker
-        ? {
-            locker_id: body.locker.id,
-            locker_name: body.locker.name,
-            locker_address: body.locker.address,
-            locker_city: body.locker.city,
-          }
-        : {});
-
-  // Merge delivery fee breakdown into delivery info
-  if (body.deliveryFeeCents !== undefined) {
-    finalDeliveryInfo.delivery_fee_cents = body.deliveryFeeCents;
-  }
-  if (body.deliveryFeesBySeller) {
-    finalDeliveryInfo.delivery_fees_by_seller = body.deliveryFeesBySeller;
-  }
-
-  // Validate and apply promo code
-  let promoDiscountCents = 0;
-  let promoCodeApplied: string | null = null;
-  if (body.promoCode) {
-    const promoResult = await validatePromoCode(
-      body.promoCode,
-      buyerId,
-      body.deliveryFeeCents ?? 0,
-      deliveryType,
-    );
-    if (promoResult.valid && promoResult.discountCents) {
-      promoDiscountCents = promoResult.discountCents;
-      promoCodeApplied = promoResult.code ?? null;
-      finalDeliveryInfo.promo_code = promoCodeApplied;
-      finalDeliveryInfo.promo_discount_cents = promoDiscountCents;
+    const body = await readCheckoutBody(req);
+    const contact = contactForCheckout(body);
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+    const buyerId = await checkoutBuyerId(req, supabase);
+    const quote = await buildCheckoutQuote(supabase, body, buyerId);
+    if (!quote.available || !quote.delivery.ok) {
+      return checkoutJson({ ok: false, code: "DELIVERY_UNAVAILABLE", error: "Precizē saņemšanas vietu vai piegādes veidu.", quote }, 409);
     }
-  }
-
-  // Adjust total with promo discount
-  const finalTotalCents = Math.max(0, body.totalCents - promoDiscountCents);
-
-  // Insert order
-  const { data: order, error: insertErr } = await supabase
-    .from("orders")
-    .insert({
-      order_number: orderNumber,
-      status: "pending",
-      payment_status: "awaiting",
-      payment_provider: "paysera",
-      payment_session_id: orderNumber, // we use order_number as session id
-      buyer_id: buyerId,
-      buyer_name: body.contact.name,
-      buyer_email: body.contact.email,
-      buyer_phone: body.contact.phone,
-      delivery_type: deliveryType,
-      delivery_info: finalDeliveryInfo,
-      items: enrichedItems,
-      total_cents: finalTotalCents,
-      total_amount: finalTotalCents / 100, // legacy decimal column
-      promo_code: promoCodeApplied,
-      promo_discount_cents: promoDiscountCents,
-      seller_ids: body.sellerIds,
-    })
-    .select("id, order_number")
-    .single();
-
-  if (insertErr || !order) {
-    return NextResponse.json({ error: insertErr?.message ?? "Kļūda saglabājot pasūtījumu" }, { status: 500 });
-  }
-
-  // Build Paysera redirect URL
-  let paymentUrl: string;
-  try {
-    paymentUrl = buildPayseraRedirectUrl({
-      orderNumber: order.order_number,
-      amountCents: finalTotalCents,
-      buyerEmail: body.contact.email,
-      buyerName: body.contact.name,
-      buyerPhone: body.contact.phone,
-      baseUrl: trustedPaymentBaseUrl(),
-    });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Paysera konfigurācijas kļūda" },
-      { status: 500 },
-    );
-  }
-
-  // Promo redemption is recorded in the Paysera webhook after successful payment,
-  // not here — so if the user abandons payment, the code remains available.
-
-  return attachOrderCookie(NextResponse.json({ paymentUrl, orderId: order.order_number }), order.order_number);
+    if (quote.deliveryType !== "locker" && (!quote.deliveryInfo.address || !quote.deliveryInfo.city)) {
+      throw new CheckoutError(400, "INVALID_ADDRESS", "Norādi piegādes adresi un pilsētu.");
+    }
+    if (body.expectedTotalCents === undefined && body.quoteFingerprint === undefined
+      && typeof body.promoCode === "string" && body.promoCode.trim()) {
+      return checkoutJson({
+        ok: false, code: "quote_confirmation_required",
+        error: "Pārskati promo atlaidi un apstiprini aktuālo pasūtījuma summu.", quote,
+      }, 409);
+    }
+    if (!Number.isSafeInteger(quote.totalCents) || quote.totalCents! <= 0) {
+      throw new CheckoutError(400, "INVALID_TOTAL", "Pasūtījuma summai jābūt lielākai par nulli.");
+    }
+    if (!checkoutExpectationsMatch(body, quote)) {
+      return checkoutJson({ ok: false, code: "QUOTE_CHANGED", error: "Grozs vai piegādes summa ir mainījusies. Pārskati un apstiprini vēlreiz.", quote }, 409);
+    }
+    const orderNumber = newOrderNumber("TRG");
+    let paymentUrl: string;
+    try {
+      // Validate configuration before inserting; never derive a return URL from Host.
+      paymentUrl = buildPayseraRedirectUrl({
+        orderNumber, amountCents: quote.totalCents!, buyerEmail: contact.email,
+        buyerName: contact.name, buyerPhone: contact.phone, baseUrl: trustedPaymentBaseUrl(),
+      });
+    } catch {
+      throw new CheckoutError(503, "PAYMENT_UNAVAILABLE", "Maksājuma pakalpojums pašlaik nav pieejams.");
+    }
+    const promoCode = quote.promo.valid && quote.discountCents > 0 ? quote.promo.code ?? null : null;
+    const deliveryInfo = {
+      ...quote.deliveryInfo,
+      delivery_fee_cents: quote.deliveryFeeCents,
+      delivery_fees_by_seller: quote.delivery.breakdown.map(fee => ({
+        ...fee, sellerName: quote.sellers.find(seller => seller.id === fee.sellerId)!.name, feeCents: fee.totalCents,
+      })),
+      tariff_version: quote.delivery.breakdown[0]?.tariffVersion,
+      zone_policy: quote.delivery.breakdown[0]?.zonePolicy,
+      ...(promoCode ? { promo_code: promoCode, promo_discount_cents: quote.discountCents } : {}),
+    };
+    const { data: order, error } = await supabase.from("orders").insert({
+      order_number: orderNumber, status: "pending", payment_status: "awaiting",
+      payment_provider: "paysera", payment_session_id: orderNumber, buyer_id: buyerId,
+      buyer_name: contact.name, buyer_email: contact.email, buyer_phone: contact.phone,
+      delivery_type: quote.deliveryType, delivery_info: deliveryInfo,
+      items: quote.items.map(orderItemSnapshot), total_cents: quote.totalCents,
+      total_amount: quote.totalCents! / 100, seller_ids: quote.sellerIds,
+      promo_code: promoCode, promo_discount_cents: quote.discountCents,
+    }).select("id, order_number").single();
+    if (error || !order || order.order_number !== orderNumber) {
+      throw new CheckoutError(503, "ORDER_UNAVAILABLE", "Neizdevās saglabāt pasūtījumu.");
+    }
+    return attachOrderCookie(checkoutJson({
+      ok: true, paymentUrl, orderId: orderNumber, totalCents: quote.totalCents, quoteFingerprint: quote.fingerprint,
+    }), orderNumber);
+  } catch (error) { return checkoutFailure(error); }
 }
