@@ -16,6 +16,21 @@ export async function database() {
       status text,payment_status text,paid_at timestamptz,payment_provider text,payment_session_id text,
       buyer_id uuid,buyer_name text,buyer_email text,buyer_phone text,delivery_type text,delivery_info jsonb,
       items jsonb,total_cents integer,total_amount numeric,seller_ids uuid[],promo_code text,promo_discount_cents integer);
+    CREATE TABLE invoices(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),invoice_number text UNIQUE,
+      seller_id uuid,period_start date,period_end date,total_gross_cents integer,total_commission_cents integer,
+      total_net_cents integer,seller_legal_name text,seller_reg_number text,seller_vat_number text,
+      seller_legal_address text,seller_bank_name text,seller_bank_iban text,status text,
+      UNIQUE(seller_id,period_start,period_end));
+    CREATE TABLE invoice_lines(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),invoice_id uuid REFERENCES invoices(id),
+      order_id uuid REFERENCES orders(id),order_number text,order_date date,product_title text,quantity integer,
+      unit text,unit_price_cents integer,line_gross_cents integer,commission_rate numeric,
+      commission_cents integer,net_cents integer,line_order integer);
+    CREATE SEQUENCE invoice_numbers;
+    CREATE FUNCTION next_invoice_number() RETURNS text LANGUAGE sql AS
+      $$ SELECT 'TEST-'||nextval('invoice_numbers')::text $$;
+    GRANT SELECT,INSERT ON invoices,invoice_lines TO service_role;
+    GRANT USAGE ON SEQUENCE invoice_numbers TO service_role;
+    GRANT SELECT,UPDATE ON orders TO service_role;
   `);
   const root = new URL("../../../../supabase/migrations/", import.meta.url);
   for (const file of readdirSync(root).filter(file => file.startsWith("20261112")).sort()) {
@@ -24,7 +39,7 @@ export async function database() {
   return db;
 }
 export async function seed(db) {
-  await db.exec(`TRUNCATE orders,listings,sellers CASCADE;
+  await db.exec(`TRUNCATE invoices,orders,listings,sellers CASCADE;
     INSERT INTO sellers VALUES('${seller}','approved','locker',true,ARRAY['brivibas']);
     INSERT INTO listings VALUES('${listing}','${seller}','active',5,1,'[]','Maize','chilled',true,true,21);
     INSERT INTO listings VALUES('${second}','${seller}','active',7,3,'[]','Maize','chilled',true,true,12);`);
@@ -34,7 +49,7 @@ export function order(extra = {}) {
     order_number: "TRG-SYNTHETIC", buyer_id: null, buyer_name: "Synthetic Buyer",
     buyer_email: "buyer@example.invalid", buyer_phone: "+37100000000",
     delivery_type: "locker", delivery_info: { locker_id: "brivibas", delivery_fee_cents: 300 },
-    items: [{ id: listing, listing_id: listing, variant_id: null, price: 5, quantity: 1,
+    items: [{ id: listing, listing_id: listing, variant_id: null, title: "Synthetic product", price: 5, quantity: 1,
       seller_id: seller, category: "Maize", storage_type: "chilled" }],
     seller_ids: [seller], total_cents: 800, promo_discount_cents: 0, ...extra,
   };

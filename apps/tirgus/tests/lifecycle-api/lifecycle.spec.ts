@@ -5,6 +5,7 @@ import { POST as quoteApi } from "../../app/api/checkout/quote/route";
 import { GET as webhook } from "../../app/api/webhooks/paysera/route";
 import { POST as retry } from "../../app/api/checkout/retry-payment/route";
 import { createOrderCapability, orderCookieName } from "../../lib/order-access";
+import { marketplaceInvoiceEvidence } from "../../lib/invoice/marketplace-evidence";
 const origin = "https://example.invalid";
 const product = "22222222-2222-4222-8222-222222222222";
 const seller = "11111111-1111-4111-8111-111111111111";
@@ -99,4 +100,21 @@ test("authorized expired reserved payment cannot be restarted", async () => {
   }));
   expect(response.status).toBe(409);
   expect(seen).toEqual(["GET /rest/v1/orders"]);
+});
+
+test("invoice eligibility needs captured operator/tax/pickup and confirmed payment; acknowledgement is not repair", () => {
+  const operator = Object.fromEntries(["name", "regNr", "vatNr", "address", "phone", "email", "bankName", "iban", "bic", "complaintsEmail"].map(k => [k, `synthetic-${k}`]));
+  const valid = {
+    lifecycle_version: "marketplace-v1", status: "paid", payment_status: "paid", paid_at: "2026-11-01T00:00:00Z",
+    financial_snapshot: { version: "marketplace-finance-v1", operator_version: "test", operator, requires_review: false },
+    items: [{ seller_id: seller, commission_rate: 15, vat_rate: 12, seller_delivery_mode: "courier", seller_courier_fee_cents: 350 }],
+  };
+  expect(marketplaceInvoiceEvidence(valid).ok).toBe(true);
+  for (const extra of [
+    { lifecycle_version: null }, { payment_status: "awaiting" }, { paid_at: null }, { status: "cancelled" },
+    { payment_review_reason: "operator_acknowledged_but_unrepaired" }, { financial_snapshot: null },
+    { financial_snapshot: { ...valid.financial_snapshot, requires_review: true } },
+    { items: [{ ...valid.items[0], vat_rate: null }] },
+    { items: [{ ...valid.items[0], seller_courier_fee_cents: null }] },
+  ]) expect(marketplaceInvoiceEvidence({ ...valid, ...extra }).ok).toBe(false);
 });

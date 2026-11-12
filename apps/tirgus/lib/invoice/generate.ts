@@ -8,6 +8,8 @@ import { sendPushToSubscriptions } from "@/lib/push";
 import { COMMISSION_RATE, COMMISSION_SERVICE_VAT, COURIER_FEE, commissionBreakdown, vatAmountFromInclusive, exVatPrice } from "@/lib/commission";
 import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 import type { Period } from "./period";
+import { marketplaceLifecycleEnabled } from "../marketplace-lifecycle";
+import { marketplaceInvoiceEvidence } from "./marketplace-evidence";
 
 type OrderItem = {
   id?: string;
@@ -18,6 +20,8 @@ type OrderItem = {
   seller_id?: string | null;
   commission_rate?: number | null;
   vat_rate?: number | null; // product VAT rate (0/5/12/21)
+  seller_delivery_mode?: string | null;
+  seller_courier_fee_cents?: number | null;
 };
 
 type OrderRow = {
@@ -26,6 +30,11 @@ type OrderRow = {
   paid_at: string | null;
   items: OrderItem[] | null;
   seller_ids: string[] | null;
+  status?: string;
+  payment_status?: string;
+  lifecycle_version?: string | null;
+  payment_review_reason?: string | null;
+  financial_snapshot?: unknown;
 };
 
 type SellerRow = {
@@ -62,15 +71,36 @@ function svc(): SupabaseClient {
  */
 export async function generateInvoicesForPeriod(period: Period): Promise<GenerateResult> {
   const supabase = svc();
+  const strict = marketplaceLifecycleEnabled();
+  if (strict) {
+    const { error } = await supabase.rpc("marketplace_invoice_ready_v1");
+    if (error) throw new Error("Atomic invoicing migration is not ready");
+  }
 
   // Fetch paid orders in period
   const { data: orders, error: ordersErr } = await supabase
     .from("orders")
-    .select("id, order_number, paid_at, items, seller_ids")
+    .select("id, order_number, paid_at, items, seller_ids" + (strict
+      ? ", status, payment_status, lifecycle_version, payment_review_reason, financial_snapshot" : ""))
     .gte("paid_at", period.start.toISOString())
     .lte("paid_at", period.end.toISOString())
-    .eq("payment_status", "paid");
+    .eq("payment_status", "paid").returns<OrderRow[]>();
   if (ordersErr) throw ordersErr;
+  const blocked = new Set<string>();
+  const operatorBySeller = new Map<string, { operator: Record<string, string>; version: string }>();
+  if (strict) {
+    for (const order of (orders ?? []) as OrderRow[]) {
+      if (!order.seller_ids?.length) throw new Error("Unknown seller audience requires period reconciliation");
+      const evidence = marketplaceInvoiceEvidence(order);
+      for (const id of order.seller_ids ?? []) {
+        if (!evidence.ok) { blocked.add(id); continue; }
+        const previous = operatorBySeller.get(id);
+        if (previous && (previous.version !== evidence.version
+          || JSON.stringify(previous.operator) !== JSON.stringify(evidence.operator))) blocked.add(id);
+        operatorBySeller.set(id, evidence);
+      }
+    }
+  }
 
   // Aggregate by seller
   // Collect all listing IDs to batch-fetch their vat_rate
@@ -81,7 +111,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
   }
   const listingVatMap = new Map<string, number>(); // listingId -> vat_rate
-  if (allItemIds.size > 0) {
+  if (!strict && allItemIds.size > 0) {
     const { data: listings } = await supabase
       .from("listings")
       .select("id, vat_rate")
@@ -120,11 +150,12 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
 
   for (const order of (orders ?? []) as OrderRow[]) {
     if (!order.paid_at || !order.items) continue;
+    if (strict && !marketplaceInvoiceEvidence(order).ok) continue;
     const orderDate = order.paid_at.split("T")[0];
 
     for (const item of order.items) {
       const sellerId = item.seller_id;
-      if (!sellerId) continue;
+      if (!sellerId || blocked.has(sellerId)) continue;
       const rate = item.commission_rate ?? COMMISSION_RATE;
       // Product VAT rate: from item (if stored), listing lookup, or fallback
       const vatRate = item.vat_rate ?? (item.id ? listingVatMap.get(item.id) : undefined) ?? 21;
@@ -171,7 +202,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   }
 
   if (bySeller.size === 0) {
-    return { generated: [], skipped: [], totalSellers: 0 };
+    return { generated: [], skipped: [...blocked].map(sellerId => ({ sellerId, reason: "Financial evidence requires reconciliation" })), totalSellers: blocked.size };
   }
 
   // Fetch seller details
@@ -184,7 +215,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   for (const s of (sellers ?? []) as SellerRow[]) sellerMap.set(s.id, s);
 
   const generated: GenerateResult["generated"] = [];
-  const skipped: GenerateResult["skipped"] = [];
+  const skipped: GenerateResult["skipped"] = [...blocked].map(sellerId => ({ sellerId, reason: "Financial evidence requires reconciliation" }));
 
   for (const [sellerId, agg] of bySeller) {
     const seller = sellerMap.get(sellerId);
@@ -227,7 +258,9 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
 
     // Get invoice number
-    const { data: numData, error: numErr } = await supabase.rpc("next_invoice_number");
+    const { data: numData, error: numErr } = strict
+      ? { data: "allocated_atomically", error: null }
+      : await supabase.rpc("next_invoice_number");
     if (numErr || !numData) {
       skipped.push({ sellerId, reason: `numbering failed: ${numErr?.message ?? "no number"}` });
       continue;
@@ -253,13 +286,20 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     // Courier fee: deduct COURIER_FEE once per unique order if seller uses courier mode
     const isCourier = seller.delivery_mode === "courier";
     const uniqueOrderIds = new Set(agg.lines.map((l) => l.order_id));
-    const courierFeeCents = isCourier ? Math.round(COURIER_FEE * 100) * uniqueOrderIds.size : 0;
+    const capturedPickup = new Map<string, number>();
+    if (strict) for (const order of (orders ?? []) as OrderRow[]) {
+      for (const item of order.items ?? []) if (item.seller_id === sellerId) {
+        const amount = item.seller_courier_fee_cents;
+        if (amount !== 0 && amount !== 350) throw new Error("Missing pickup snapshot");
+        if (capturedPickup.has(order.id) && capturedPickup.get(order.id) !== amount) throw new Error("Conflicting pickup snapshot");
+        capturedPickup.set(order.id, amount);
+      }
+    }
+    const courierOrderCount = strict ? [...capturedPickup.values()].filter(value => value === 350).length : isCourier ? uniqueOrderIds.size : 0;
+    const courierFeeCents = strict ? courierOrderCount * 350 : isCourier ? Math.round(COURIER_FEE * 100) * uniqueOrderIds.size : 0;
     const finalNetCents = agg.netCents - courierFeeCents;
 
-    // Insert invoice
-    const { data: invoice, error: invErr } = await supabase
-      .from("invoices")
-      .insert({
+    const header = {
         invoice_number: invoiceNumber,
         seller_id: sellerId,
         period_start: periodStart,
@@ -271,7 +311,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         commission_vat_rate: commissionVatRate,
         commission_vat_cents: agg.commissionVatCents,
         courier_fee_cents: courierFeeCents,
-        courier_order_count: isCourier ? uniqueOrderIds.size : 0,
+        courier_order_count: courierOrderCount,
         total_net_cents: finalNetCents,
         seller_legal_name: seller.legal_name,
         seller_reg_number: seller.registration_number,
@@ -280,9 +320,13 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
         seller_bank_name: seller.bank_name,
         seller_bank_iban: seller.bank_iban,
         status: "draft",
-      })
-      .select("id, invoice_number")
-      .single();
+        ...(strict ? { operator_version: operatorBySeller.get(sellerId)!.version,
+          operator_snapshot: operatorBySeller.get(sellerId)!.operator } : {}),
+      };
+    const linePayload = agg.lines.map((l, i) => ({ ...l, line_order: i }));
+    const { data: invoice, error: invErr } = strict
+      ? await supabase.rpc("marketplace_create_invoice_v1", { p_header: header, p_lines: linePayload })
+      : await supabase.from("invoices").insert(header).select("id, invoice_number").single();
 
     if (invErr || !invoice) {
       skipped.push({ sellerId, reason: `insert failed: ${invErr?.message}` });
@@ -291,7 +335,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
 
     // Insert lines
     const lines = agg.lines.map((l, i) => ({ ...l, invoice_id: invoice.id, line_order: i }));
-    const { error: linesErr } = await supabase.from("invoice_lines").insert(lines);
+    const { error: linesErr } = strict ? { error: null } : await supabase.from("invoice_lines").insert(lines);
     if (linesErr) {
       skipped.push({ sellerId, reason: `lines insert failed: ${linesErr.message}` });
       continue;
@@ -313,5 +357,5 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     }
   }
 
-  return { generated, skipped, totalSellers: bySeller.size };
+  return { generated, skipped, totalSellers: bySeller.size + blocked.size };
 }

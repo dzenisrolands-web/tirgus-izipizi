@@ -5,6 +5,7 @@ ALTER TABLE public.orders ADD COLUMN lifecycle_version text;
 ALTER TABLE public.orders ADD COLUMN reservation_expires_at timestamptz;
 ALTER TABLE public.orders ADD COLUMN payment_review_reason text;
 ALTER TABLE public.orders ADD COLUMN payment_received_cents integer;
+ALTER TABLE public.orders ADD COLUMN financial_snapshot jsonb;
 
 CREATE TABLE public.marketplace_reservations_v1 (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -143,13 +144,13 @@ BEGIN
     order_number,status,payment_status,payment_provider,payment_session_id,
     buyer_id,buyer_name,buyer_email,buyer_phone,delivery_type,delivery_info,
     items,total_cents,total_amount,seller_ids,promo_code,promo_discount_cents,
-    lifecycle_version,reservation_expires_at
+    lifecycle_version,reservation_expires_at,financial_snapshot
   ) VALUES (
     p_order->>'order_number','pending','awaiting','paysera',p_order->>'order_number',
     (p_order->>'buyer_id')::uuid,p_order->>'buyer_name',p_order->>'buyer_email',p_order->>'buyer_phone',
     p_order->>'delivery_type',p_order->'delivery_info',p_order->'items',
     (p_order->>'total_cents')::integer,(p_order->>'total_cents')::numeric/100,seller_keys,
-    p_order->>'promo_code',discount,'marketplace-v1',deadline
+    p_order->>'promo_code',discount,'marketplace-v1',deadline,p_order->'financial_snapshot'
   ) RETURNING * INTO created;
   FOR item IN SELECT value FROM jsonb_array_elements(p_order->'items') LOOP
     INSERT INTO public.marketplace_reservations_v1(order_id,listing_id,variant_id,quantity,expires_at)

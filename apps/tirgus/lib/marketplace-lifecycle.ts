@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckoutError } from "./checkout-items";
+import { invoiceHeader, operatorInfo } from "./operator-info";
 
 export const MARKETPLACE_LIFECYCLE_VERSION = "marketplace-v1";
 /** Default-off rollout boundary. Never expose as a NEXT_PUBLIC setting. */
@@ -19,7 +20,9 @@ export async function settleMarketplaceOrder(sb: SupabaseClient, orderNumber: st
 }
 
 export async function reserveMarketplaceOrder(sb: SupabaseClient, order: Record<string, unknown>) {
-  const { data, error } = await sb.rpc("marketplace_reserve_v1", { p_order: order });
+  const { data, error } = await sb.rpc("marketplace_reserve_v1", { p_order: {
+    ...order, financial_snapshot: { operator: { ...invoiceHeader(), complaintsEmail: operatorInfo.contact.emailComplaints } },
+  } });
   if (error || !data || typeof data.order_id !== "string" || data.order_number !== order.order_number
       || !Number.isFinite(Date.parse(data.reserved_until))) {
     // No direct-insert fallback, DB error text, private records or provider calls.
