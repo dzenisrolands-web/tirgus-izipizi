@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { marketplaceLifecycleEnabled } from "./marketplace-lifecycle";
-type Handoff = { order_id: string; source_key: string; envelope: unknown; claim_token: string };
-type Acknowledgement = {
+import { configuredMarketplaceHttpTransport } from "./marketplace-handoff-http";
+export type Handoff = { order_id: string; source_key: string; envelope: unknown; claim_token: string };
+export type Acknowledgement = {
   sourceKey: string; receiverId: string; intakeVersion: "logistics-intake-v1";
   dispatchAuthorized: false; billingAuthorized: false;
 };
@@ -11,13 +12,14 @@ export async function transferMarketplaceHandoff(
   transport?: (handoff: Handoff) => Promise<Acknowledgement>,
 ) {
   if (!marketplaceLifecycleEnabled() || process.env.MARKETPLACE_LOGISTICS_HANDOFF !== "enabled") return { state: "disabled" };
-  if (!transport) return { state: "receiver_not_configured" };
+  const selectedTransport = transport ?? configuredMarketplaceHttpTransport();
+  if (!selectedTransport) return { state: "receiver_not_configured" };
   const { data: job, error } = await sb.rpc("marketplace_claim_handoff_v1", { p_order_id: orderId });
   if (error) throw new Error("Handoff claim unavailable");
   if (!job) return { state: "not_claimed" };
   let acknowledgement: Acknowledgement | null = null;
   try {
-    const received = await transport(job);
+    const received = await selectedTransport(job);
     if (received.sourceKey === job.source_key && received.intakeVersion === "logistics-intake-v1"
       && received.dispatchAuthorized === false && received.billingAuthorized === false
       && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(received.receiverId)) acknowledgement = received;

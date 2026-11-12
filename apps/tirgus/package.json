@@ -23,6 +23,7 @@
     "test:cart:phase4": "playwright test --config=playwright.cart-phase4.config.ts",
     "test:lifecycle:sql": "node --test --test-concurrency=1 tests/lifecycle/*.test.mjs",
     "test:lifecycle:api": "playwright test --config=playwright.lifecycle.config.ts",
+    "test:rehearsal": "node scripts/rehearse-postgres.mjs",
     "test:isolated": "npm run test:hotfix && npm run test:security:api && npm run test:security:payments && npm run test:catalog:phase3 && npm run test:public:phase3 && npm run test:delivery:phase4 && npm run test:checkout:phase4 && npm run test:cart:phase4 && npm run test:lifecycle:sql && npm run test:lifecycle:api"
   },
   "dependencies": {
