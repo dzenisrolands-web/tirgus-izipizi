@@ -51,12 +51,32 @@ test("self-billing header and lines are atomic, source-locked and repeat-safe",a
     total_ex_vat_cents:413,total_product_vat_cents:87,total_commission_cents:62,
     commission_vat_cents:13,commission_vat_rate:21,courier_fee_cents:0,courier_order_count:0,
     total_net_cents:425,seller_legal_name:"Synthetic seller",seller_bank_iban:"SYNTHETIC-NOT-A-BANK-ACCOUNT",
+    seller_reg_number:"SYNTHETIC-REG",seller_vat_number:"SYNTHETIC-VAT",
+    seller_legal_address:"Synthetic legal address",seller_bank_name:"Synthetic bank",
     operator_version:"izipizi-2026-09-01",operator_snapshot:operator,status:"draft"};
   const lines=[{order_id:hold.order_id,order_number:"TRG-SYNTHETIC",order_date:day,
     product_title:"Synthetic product",quantity:1,unit:"gab.",unit_price_cents:500,line_gross_cents:500,
     vat_rate:21,vat_amount_cents:87,ex_vat_cents:413,commission_rate:15,commission_cents:75,net_cents:425,line_order:0}];
   const sql="SELECT marketplace_create_invoice_v1($1::jsonb,$2::jsonb)";
   const args=[JSON.stringify(header),JSON.stringify(lines)];
+  await db.exec("UPDATE sellers SET legal_name='Different legal entity'; SET ROLE service_role");
+  await assert.rejects(db.query(sql,args),/legal identity/);
+  await db.exec("RESET ROLE; UPDATE sellers SET legal_name='Synthetic seller',self_billing_agreement_version=NULL; SET ROLE service_role");
+  await assert.rejects(db.query(sql,args),/legal identity/);
+  await db.exec("RESET ROLE; UPDATE sellers SET self_billing_agreement_version='2.0'");
+  await db.exec("UPDATE sellers SET is_vat_registered=false,vat_number=NULL; SET ROLE service_role");
+  await assert.rejects(db.query(sql,args),/legal identity/);
+  await db.exec("RESET ROLE; UPDATE sellers SET is_vat_registered=true,vat_number='SYNTHETIC-VAT'");
+  // Published agreement permits a current bank instruction without changing
+  // the historic legal/tax entity. Preserve that distinction.
+  await db.exec("UPDATE sellers SET bank_iban='SYNTHETIC-UPDATED-INSTRUCTION'");
+  header.seller_bank_iban="SYNTHETIC-UPDATED-INSTRUCTION";
+  args[0]=JSON.stringify(header);
+  // The snapshot does not contain private bank data and is inaccessible to buyers.
+  assert.equal(await scalar(db,"SELECT snapshot ? 'bank_iban' FROM marketplace_seller_identity_v1"),false);
+  await db.exec("SET ROLE authenticated");
+  await assert.rejects(db.query("SELECT * FROM marketplace_seller_identity_v1"),/permission denied/);
+  await db.exec("RESET ROLE");
   await db.exec(`CREATE FUNCTION fail_invoice_test() RETURNS trigger LANGUAGE plpgsql AS
     $$ BEGIN RAISE EXCEPTION 'simulated line insert failure'; END $$;
     CREATE TRIGGER fail_invoice_test BEFORE INSERT ON invoice_lines FOR EACH ROW EXECUTE FUNCTION fail_invoice_test();`);
@@ -77,4 +97,5 @@ test("self-billing header and lines are atomic, source-locked and repeat-safe",a
   await assert.rejects(db.exec("UPDATE invoices SET status='paid'"),/Credit reconciliation/);
   await assert.rejects(db.exec("UPDATE invoices SET finance_review_reason=NULL"),/Credit reconciliation/);
   assert.equal(await scalar(db,"SELECT total_net_cents FROM invoices"),425);
+  assert.equal(await scalar(db,"SELECT seller_bank_iban FROM invoices"),"SYNTHETIC-UPDATED-INSTRUCTION");
 });

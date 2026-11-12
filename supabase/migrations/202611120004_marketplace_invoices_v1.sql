@@ -165,6 +165,25 @@ BEGIN
 
   -- Lock source orders before invoice numbering, with the same order as cancellation.
   PERFORM 1 FROM public.orders WHERE id IN (SELECT l.order_id FROM jsonb_populate_recordset(NULL::public.invoice_lines,p_lines) l) ORDER BY id FOR UPDATE;
+  -- Identity is private and captured at purchase. A different entity or unknown
+  -- consent requires reconciliation; never mix historic VAT with a new company.
+  PERFORM 1 FROM public.sellers WHERE id=h.seller_id FOR SHARE;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_populate_recordset(NULL::public.invoice_lines,p_lines) l
+    JOIN public.orders o ON o.id=l.order_id
+    LEFT JOIN public.marketplace_seller_identity_v1 e ON e.order_id=o.id AND e.seller_id=h.seller_id
+    LEFT JOIN public.sellers s ON s.id=h.seller_id
+    WHERE e.snapshot IS DISTINCT FROM public.marketplace_seller_identity_json_v1(s)
+       OR e.snapshot->>'self_billing_agreed' IS DISTINCT FROM 'true'
+       OR e.snapshot->>'self_billing_agreement_version' IS DISTINCT FROM '2.0'
+       OR coalesce(btrim(s.registration_number),'')='' OR coalesce(btrim(s.legal_address),'')=''
+       OR (s.is_vat_registered=true AND coalesce(btrim(s.vat_number),'')='')
+       OR h.seller_legal_name IS DISTINCT FROM s.legal_name
+       OR h.seller_reg_number IS DISTINCT FROM s.registration_number
+       OR h.seller_vat_number IS DISTINCT FROM s.vat_number
+       OR h.seller_legal_address IS DISTINCT FROM s.legal_address
+       OR h.seller_bank_name IS DISTINCT FROM s.bank_name OR h.seller_bank_iban IS DISTINCT FROM s.bank_iban
+  ) THEN RAISE EXCEPTION 'Captured seller legal identity or consent requires reconciliation'; END IF;
   IF EXISTS (SELECT 1 FROM jsonb_populate_recordset(NULL::public.invoice_lines,p_lines) l LEFT JOIN public.orders o ON o.id=l.order_id
     WHERE o.id IS NULL OR o.lifecycle_version IS DISTINCT FROM 'marketplace-v1'
       OR o.payment_status IS DISTINCT FROM 'paid' OR o.paid_at IS NULL OR o.status='cancelled'

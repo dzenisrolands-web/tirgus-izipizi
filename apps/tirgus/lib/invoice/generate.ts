@@ -78,14 +78,15 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
   }
 
   // Fetch paid orders in period
-  const { data: orders, error: ordersErr } = await supabase
+  const { data: orders, error: ordersErr, count } = await supabase
     .from("orders")
     .select("id, order_number, paid_at, items, seller_ids" + (strict
-      ? ", status, payment_status, lifecycle_version, payment_review_reason, financial_snapshot" : ""))
+      ? ", status, payment_status, lifecycle_version, payment_review_reason, financial_snapshot" : ""), strict ? { count: "exact" } : undefined)
     .gte("paid_at", period.start.toISOString())
     .lte("paid_at", period.end.toISOString())
     .eq("payment_status", "paid").returns<OrderRow[]>();
   if (ordersErr) throw ordersErr;
+  if (strict && (!Number.isSafeInteger(count) || count !== orders?.length)) throw new Error("Complete invoice period could not be read");
   const blocked = new Set<string>();
   const operatorBySeller = new Map<string, { operator: Record<string, string>; version: string }>();
   if (strict) {
@@ -230,7 +231,7 @@ export async function generateInvoicesForPeriod(period: Period): Promise<Generat
     // The agreement names a specific operator entity. A consent given to a
     // previous operator does not authorise us to issue invoices in the
     // seller's name, so hold the payout until they accept the new version.
-    if (needsReconsent(seller.self_billing_agreement_version)) {
+    if ((strict && seller.self_billing_agreement_version !== SELF_BILLING_VERSION) || needsReconsent(seller.self_billing_agreement_version)) {
       skipped.push({
         sellerId,
         reason: `self-billing consent is version ${seller.self_billing_agreement_version}, needs ${SELF_BILLING_VERSION}`,

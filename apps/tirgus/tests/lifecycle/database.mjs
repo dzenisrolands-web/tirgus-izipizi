@@ -7,8 +7,13 @@ export const second = "33333333-3333-4333-8333-333333333333";
 export async function database() {
   const db = new PGlite();
   await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
-    CREATE TABLE sellers(id uuid PRIMARY KEY,status text,delivery_mode text,is_vat_registered boolean,home_locker_ids text[]);
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
+    CREATE TABLE sellers(id uuid PRIMARY KEY,status text,delivery_mode text,is_vat_registered boolean,home_locker_ids text[],
+      user_id uuid DEFAULT '44444444-4444-4444-8444-444444444444',
+      legal_name text DEFAULT 'Synthetic seller',registration_number text DEFAULT 'SYNTHETIC-REG',
+      vat_number text DEFAULT 'SYNTHETIC-VAT',legal_address text DEFAULT 'Synthetic legal address',
+      bank_name text DEFAULT 'Synthetic bank',bank_iban text DEFAULT 'SYNTHETIC-NOT-A-BANK-ACCOUNT',
+      self_billing_agreed boolean DEFAULT true,self_billing_agreement_version text DEFAULT '2.0');
     CREATE TABLE listings(id uuid PRIMARY KEY,seller_id uuid REFERENCES sellers(id),status text,
       price numeric,quantity integer,variants jsonb,category text,storage_type text,
       courier_delivery boolean,express_delivery boolean,vat_rate numeric);
@@ -31,6 +36,7 @@ export async function database() {
     GRANT SELECT,INSERT ON invoices,invoice_lines TO service_role;
     GRANT USAGE ON SEQUENCE invoice_numbers TO service_role;
     GRANT SELECT,UPDATE ON orders TO service_role;
+    GRANT SELECT,UPDATE ON sellers TO service_role;
   `);
   const root = new URL("../../../../supabase/migrations/", import.meta.url);
   for (const file of readdirSync(root).filter(file => file.startsWith("20261112")).sort()) {
@@ -40,7 +46,7 @@ export async function database() {
 }
 export async function seed(db) {
   await db.exec(`TRUNCATE invoices,orders,listings,sellers CASCADE;
-    INSERT INTO sellers VALUES('${seller}','approved','locker',true,ARRAY['brivibas']);
+    INSERT INTO sellers(id,status,delivery_mode,is_vat_registered,home_locker_ids) VALUES('${seller}','approved','locker',true,ARRAY['brivibas']);
     INSERT INTO listings VALUES('${listing}','${seller}','active',5,1,'[]','Maize','chilled',true,true,21);
     INSERT INTO listings VALUES('${second}','${seller}','active',7,3,'[]','Maize','chilled',true,true,12);`);
 }
