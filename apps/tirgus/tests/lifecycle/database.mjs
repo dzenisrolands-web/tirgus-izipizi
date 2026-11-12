@@ -13,7 +13,7 @@ export async function database() {
       price numeric,quantity integer,variants jsonb,category text,storage_type text,
       courier_delivery boolean,express_delivery boolean,vat_rate numeric);
     CREATE TABLE orders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_number text UNIQUE NOT NULL,
-      status text,payment_status text,paid_at timestamptz,payment_provider text,payment_session_id text,
+      status text,payment_status text,paid_at timestamptz,created_at timestamptz DEFAULT now(),payment_provider text,payment_session_id text,
       buyer_id uuid,buyer_name text,buyer_email text,buyer_phone text,delivery_type text,delivery_info jsonb,
       items jsonb,total_cents integer,total_amount numeric,seller_ids uuid[],promo_code text,promo_discount_cents integer);
     CREATE TABLE invoices(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),invoice_number text UNIQUE,

@@ -3,6 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 import { generateShipmentNumber, type ShipmentSize, type LabelData } from "@/lib/shipping";
 import { isClosedLockerId } from "@/lib/locker-policy";
 import { bearerToken, orderSellerIds } from "@/lib/security-api";
+import { marketplaceLifecycleEnabled } from "@/lib/marketplace-lifecycle";
+type ShipmentOrder = {
+  id: string; order_number: string; buyer_name: string | null; buyer_email: string | null; buyer_phone: string | null;
+  delivery_type: string; delivery_info: Record<string, unknown> | null; items: Record<string, unknown>[] | null;
+  seller_ids: string[] | null; status: string; payment_status: string; lifecycle_version?: string | null;
+};
 
 /**
  * POST /api/shipments/create-from-order
@@ -38,9 +44,10 @@ export async function POST(req: Request) {
   // Fetch order
   const { data: order, error: orderError } = await sb
     .from("orders")
-    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status, payment_status")
+    .select("id, order_number, buyer_name, buyer_email, buyer_phone, delivery_type, delivery_info, items, seller_ids, status, payment_status"
+      + (marketplaceLifecycleEnabled() ? ", lifecycle_version" : ""))
     .eq("id", orderId)
-    .single();
+    .single<ShipmentOrder>();
 
   if (orderError) return NextResponse.json({ error: "Order query failed" }, { status: 500 });
   if (!order) {
@@ -68,6 +75,10 @@ export async function POST(req: Request) {
   }
   if (order.payment_status !== "paid" || order.status !== "processing") {
     return NextResponse.json({ error: "Order must be paid and processing" }, { status: 409 });
+  }
+  if (order.lifecycle_version === "marketplace-v1") {
+    return NextResponse.json({ error: "Rezervētam pasūtījumam nepieciešama pārbaudīta loģistikas nodošana, nevis vecā etiķetes plūsma.",
+      code: "EXPLICIT_LOGISTICS_HANDOFF_REQUIRED" }, { status: 409 });
   }
 
   const shipmentNumber = generateShipmentNumber();

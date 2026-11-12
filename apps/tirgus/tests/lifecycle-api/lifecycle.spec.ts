@@ -8,6 +8,8 @@ import { createOrderCapability, orderCookieName } from "../../lib/order-access";
 import { marketplaceInvoiceEvidence } from "../../lib/invoice/marketplace-evidence";
 import { processMarketplaceEmail } from "../../lib/marketplace-outbox";
 import { createClient } from "@supabase/supabase-js";
+import { transferMarketplaceHandoff } from "../../lib/marketplace-handoff";
+import { POST as prepareHandoff } from "../../app/api/admin/marketplace-handoff/route";
 const origin = "https://example.invalid";
 const product = "22222222-2222-4222-8222-222222222222";
 const seller = "11111111-1111-4111-8111-111111111111";
@@ -34,6 +36,7 @@ test.afterEach(() => {
   delete process.env.MARKETPLACE_LIFECYCLE_V1;
   delete process.env.MARKETPLACE_RESERVATIONS_ACCEPTING;
   delete process.env.MARKETPLACE_EMAIL_OUTBOX;
+  delete process.env.MARKETPLACE_LOGISTICS_HANDOFF;
 });
 const body = () => ({
   items: [{ id: product, listingId: product, variantId: null, quantity: 1 }],
@@ -141,5 +144,28 @@ for (const throws of [false, true]) {
     };
     expect((await processMarketplaceEmail(createClient(origin, "nonfunctional-service"), transport)).state).toBe(throws ? "uncertain" : "accepted");
     expect(seen).toEqual(["POST /rest/v1/rpc/marketplace_claim_email_v1", "POST /rest/v1/rpc/marketplace_finish_email_v1"]);
+  });
+}
+test("handoff endpoint requires admin; disabled/unconfigured receiver makes zero outbound requests", async () => {
+  expect((await prepareHandoff(request({ orderId: product }))).status).toBe(401);
+  const sb = createClient(origin, "nonfunctional-service");
+  expect((await transferMarketplaceHandoff(sb, product)).state).toBe("disabled");
+  process.env.MARKETPLACE_LOGISTICS_HANDOFF = "enabled";
+  expect((await transferMarketplaceHandoff(sb, product)).state).toBe("receiver_not_configured");
+  expect(seen).toEqual([]);
+});
+for (const valid of [true, false]) {
+  test(`handoff ${valid ? "matching" : "forged"} acknowledgement cannot authorize dispatch`, async () => {
+    process.env.MARKETPLACE_LOGISTICS_HANDOFF = "enabled";
+    backend = url => url.pathname.endsWith("/marketplace_claim_handoff_v1")
+      ? Response.json({ order_id: product, claim_token: seller, source_key: `marketplace/persisted_id/${product}`, envelope: {} })
+      : Response.json(true);
+    const result = await transferMarketplaceHandoff(createClient(origin, "nonfunctional-service"), product, async () => ({
+      sourceKey: valid ? `marketplace/persisted_id/${product}` : "different-source",
+      receiverId: seller, intakeVersion: "logistics-intake-v1", dispatchAuthorized: false, billingAuthorized: false,
+    }));
+    expect(result.state).toBe(valid ? "recorded" : "review");
+    expect(result.dispatchAuthorized).toBe(false);
+    expect(result.billingAuthorized).toBe(false);
   });
 }

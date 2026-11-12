@@ -1,0 +1,22 @@
+import { before,after,beforeEach,test } from "node:test";
+import assert from "node:assert/strict";
+import { database,seed,reserve,scalar,listing } from "./database.mjs";
+let db;
+before(async()=>{db=await database();});after(async()=>{await db?.close();});beforeEach(async()=>{await seed(db);});
+test("handoff needs processing/payment evidence and repeated preparation keeps one full source identity",async()=>{
+  const hold=await reserve(db);
+  const sql="SELECT marketplace_prepare_handoff_v1($1,$2)";
+  await assert.rejects(db.query(sql,[hold.order_id,listing]),/processing/);
+  await db.exec("SELECT marketplace_settle_v1('TRG-SYNTHETIC',800); UPDATE orders SET status='processing'");
+  const first=await scalar(db,sql,[hold.order_id,listing]);
+  assert.equal(first.source_key,`marketplace/persisted_id/${hold.order_id}`);
+  assert.deepEqual(await scalar(db,sql,[hold.order_id,listing]),first);
+  assert.equal(await scalar(db,"SELECT count(*)::int FROM marketplace_handoffs_v1"),1);
+  assert.equal(await scalar(db,"SELECT envelope->>'schema' FROM marketplace_handoffs_v1"),"marketplace-order-v1");
+  const job=await scalar(db,"SELECT marketplace_claim_handoff_v1($1)",[hold.order_id]);
+  assert.equal(await scalar(db,"SELECT marketplace_claim_handoff_v1($1)",[hold.order_id]),null);
+  assert.equal(await scalar(db,"SELECT marketplace_finish_handoff_v1($1,$2,$3,true)",[hold.order_id,job.claim_token,listing]),true);
+  assert.equal(await scalar(db,"SELECT state FROM marketplace_handoffs_v1"),"recorded");
+  assert.equal(await scalar(db,"SELECT status FROM orders"),"processing");
+  assert.equal(await scalar(db,"SELECT marketplace_claim_handoff_v1($1)",[hold.order_id]),null);
+});
