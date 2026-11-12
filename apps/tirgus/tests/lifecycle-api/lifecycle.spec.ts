@@ -6,6 +6,8 @@ import { GET as webhook } from "../../app/api/webhooks/paysera/route";
 import { POST as retry } from "../../app/api/checkout/retry-payment/route";
 import { createOrderCapability, orderCookieName } from "../../lib/order-access";
 import { marketplaceInvoiceEvidence } from "../../lib/invoice/marketplace-evidence";
+import { processMarketplaceEmail } from "../../lib/marketplace-outbox";
+import { createClient } from "@supabase/supabase-js";
 const origin = "https://example.invalid";
 const product = "22222222-2222-4222-8222-222222222222";
 const seller = "11111111-1111-4111-8111-111111111111";
@@ -31,6 +33,7 @@ test.afterEach(() => {
   globalThis.fetch = original;
   delete process.env.MARKETPLACE_LIFECYCLE_V1;
   delete process.env.MARKETPLACE_RESERVATIONS_ACCEPTING;
+  delete process.env.MARKETPLACE_EMAIL_OUTBOX;
 });
 const body = () => ({
   items: [{ id: product, listingId: product, variantId: null, quantity: 1 }],
@@ -118,3 +121,25 @@ test("invoice eligibility needs captured operator/tax/pickup and confirmed payme
     { items: [{ ...valid.items[0], seller_courier_fee_cents: null }] },
   ]) expect(marketplaceInvoiceEvidence({ ...valid, ...extra }).ok).toBe(false);
 });
+
+test("outbox is off by default and missing provider settings do not consume pending jobs", async () => {
+  const sb = createClient(origin, "nonfunctional-service");
+  expect((await processMarketplaceEmail(sb)).state).toBe("disabled");
+  process.env.MARKETPLACE_EMAIL_OUTBOX = "enabled";
+  expect((await processMarketplaceEmail(sb)).state).toBe("not_configured");
+  expect(seen).toEqual([]);
+});
+for (const throws of [false, true]) {
+  test(`outbox transport ${throws ? "unknown" : "accepted"} result is fenced and persisted`, async () => {
+    process.env.MARKETPLACE_EMAIL_OUTBOX = "enabled";
+    backend = url => url.pathname.endsWith("/marketplace_claim_email_v1")
+      ? Response.json({ id: product, order_id: product, claim_token: seller, audience: "buyer", seller_id: null })
+      : Response.json(true);
+    const transport = async () => {
+      if (throws) throw new Error("Unknown provider outcome, do not log private payload");
+      return { outcome: "accepted" as const, reference: "synthetic-provider-id" };
+    };
+    expect((await processMarketplaceEmail(createClient(origin, "nonfunctional-service"), transport)).state).toBe(throws ? "uncertain" : "accepted");
+    expect(seen).toEqual(["POST /rest/v1/rpc/marketplace_claim_email_v1", "POST /rest/v1/rpc/marketplace_finish_email_v1"]);
+  });
+}

@@ -22,6 +22,7 @@ export type SendEmailParams = {
   html: string;
   text?: string;
   replyTo?: string;
+  idempotencyKey?: string;
 };
 
 export type SendEmailResult =
@@ -33,7 +34,7 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
   const from = process.env.EMAIL_FROM;
 
   if (!apiKey || !from) {
-    console.warn("[email] RESEND_API_KEY or EMAIL_FROM not set — skipping send", { to: p.to, subject: p.subject });
+    console.warn("[email] Provider configuration missing — send skipped");
     return { ok: false, error: "RESEND_API_KEY or EMAIL_FROM not set" };
   }
 
@@ -47,7 +48,9 @@ export async function sendEmail(p: SendEmailParams): Promise<SendEmailResult> {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(p.idempotencyKey ? { "Idempotency-Key": p.idempotencyKey } : {}),
       },
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({
         from,
         to: [p.to],
