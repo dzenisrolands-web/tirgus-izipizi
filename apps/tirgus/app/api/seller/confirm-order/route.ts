@@ -58,6 +58,7 @@ export async function POST(req: Request) {
   if (!changed) return NextResponse.json({ error: "Order changed; reload and retry" }, { status: 409 });
   return NextResponse.json({
     ok: true, confirmed: true, allConfirmed, newStatus,
+    transitioned: newStatus !== order.status,
     adminCoordinationRequired: sellerIds.length > 1,
   });
 }

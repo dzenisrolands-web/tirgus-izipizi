@@ -4,6 +4,7 @@ import { verifyPayseraCallback } from "@/lib/paysera";
 import { notifySellersNewOrder } from "@/lib/order-notifications";
 import { redeemPromoCode } from "@/lib/promo";
 import { sendAllOrderEmails } from "@/lib/email";
+import { marketplaceLifecycleEnabled, settleMarketplaceOrder } from "@/lib/marketplace-lifecycle";
 
 export async function POST(req: Request) { return handle(req); }
 export async function GET(req: Request) { return handle(req); }
@@ -23,6 +24,7 @@ type Order = {
   buyer_id: string | null;
   promo_code: string | null;
   promo_discount_cents: number | null;
+  lifecycle_version?: string | null;
 };
 
 async function handle(req: Request) {
@@ -56,7 +58,8 @@ async function handle(req: Request) {
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
     const { data: order, error: readError } = await supabase.from("orders")
-      .select("id, order_number, status, payment_status, paid_at, total_cents, items, buyer_id, promo_code, promo_discount_cents")
+      .select("id, order_number, status, payment_status, paid_at, total_cents, items, buyer_id, promo_code, promo_discount_cents"
+        + (marketplaceLifecycleEnabled() ? ", lifecycle_version" : ""))
       .eq("order_number", result.orderNumber).single<Order>();
     if (readError || !order) return reply("ORDER_UNAVAILABLE", 503);
 
@@ -64,6 +67,16 @@ async function handle(req: Request) {
     // This EUR-only checkout cannot verify another currency's settlement equivalence;
     // discrepant/converted amounts stay unfulfilled for operator reconciliation.
     const payamount = result.params.payamount === undefined ? result.amountCents : Number(result.params.payamount);
+    if (order.lifecycle_version === "marketplace-v1") {
+      if (!Number.isSafeInteger(payamount) || payamount <= 0 || payamount !== result.amountCents
+        || (result.params.paycurrency !== undefined && result.params.paycurrency !== "EUR")) {
+        return reply("AMOUNT_MISMATCH", 400);
+      }
+      // Durable event is committed with payment/stock. No legacy best-effort
+      // notifications or promo writes on this branch, including duplicate callbacks.
+      await settleMarketplaceOrder(supabase, order.order_number, payamount);
+      return reply("OK");
+    }
     if (!Number.isSafeInteger(order.total_cents) || order.total_cents < 0
       || result.amountCents !== order.total_cents || payamount !== order.total_cents
       || (result.params.paycurrency !== undefined && result.params.paycurrency !== "EUR")) {

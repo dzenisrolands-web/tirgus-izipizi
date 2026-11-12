@@ -7,7 +7,8 @@ import { SIZES, type LabelData, type ShipmentSize } from "@/lib/shipping";
 import { supabase } from "@/lib/supabase";
 import { orderSellerIds } from "@/lib/security-api";
 import { formatPrice } from "@/lib/utils";
-import { COMMISSION_RATE, COURIER_FEE, commissionForPrice } from "@/lib/commission";
+import { COMMISSION_RATE, COURIER_FEE, commissionBreakdown } from "@/lib/commission";
+import { sellerOrderAmounts } from "@/lib/seller-order-metrics";
 
 type Order = {
   id: string;
@@ -19,11 +20,13 @@ type Order = {
   buyer_email: string;
   buyer_phone: string;
   delivery_info: { locker_name: string; locker_city: string };
-  items: { title: string; quantity: number; price: number; unit: string; seller_id?: string | null }[];
+  items: { title: string; quantity: number; price: number; unit: string; seller_id?: string | null; vat_rate?: number }[];
   total_cents: number;
   paid_at: string | null;
   created_at: string;
   locker_code: string | null;
+  lifecycle_version?: string | null;
+  payment_review_reason?: string | null;
 };
 
 const statusMap: Record<string, { label: string; cls: string }> = {
@@ -38,7 +41,6 @@ const statusMap: Record<string, { label: string; cls: string }> = {
 
 export default function DashboardPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [deliveryMode, setDeliveryMode] = useState<"locker" | "courier">("locker");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -73,6 +75,26 @@ export default function DashboardPasutijumiPage() {
   }
 
   async function advanceStatus(orderId: string, nextStatus: string) {
+    const existing = orders.find(o => o.id === orderId);
+    if (nextStatus === "processing" && existing) {
+      setUpdating(orderId); setMutationError("");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Nav autorizācijas.");
+        const response = await fetch("/api/seller/confirm-order", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ orderId }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error ?? "Apstiprināšana neizdevās.");
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: result.newStatus } : o));
+        if (result.transitioned === true && result.newStatus === "processing" && existing.lifecycle_version !== "marketplace-v1") {
+          await notifyBuyer(orderId, "processing");
+        }
+      } catch (error) { setMutationError(error instanceof Error ? error.message : "Apstiprināšana neizdevās."); }
+      finally { setUpdating(null); }
+      return;
+    }
     // If marking as shipped, require locker code first
     if (nextStatus === "shipped") {
       const order = orders.find((o) => o.id === orderId);
@@ -138,7 +160,6 @@ export default function DashboardPasutijumiPage() {
       if (!user) { setLoading(false); return; }
       const { data: seller } = await supabase
         .from("sellers").select("id, delivery_mode").eq("user_id", user.id).single();
-      if (seller?.delivery_mode === "courier") setDeliveryMode("courier");
       if (!seller) { setLoading(false); return; }
       setSellerId(seller.id);
       const { data } = await supabase
@@ -273,13 +294,13 @@ export default function DashboardPasutijumiPage() {
 
                     {/* Commission breakdown — only THIS seller's items */}
                     {(() => {
+                      const captured = sellerOrderAmounts(order, sellerId);
+                      if (captured.netCents === null) return <p className="text-xs text-amber-800">Izmaksas jāprecizē pēc saglabātajiem PVN un savākšanas datiem. Pašreizējais profils nepārrēķina vecu pasūtījumu.</p>;
                       // Filter items to show only products belonging to this seller
                       const myItems = sellerId
                         ? order.items.filter((item) => item.seller_id === sellerId)
                         : order.items; // fallback: show all if sellerId unknown
-                      const mySubtotal = myItems.reduce((s, it) => s + it.price * it.quantity, 0);
-                      const myCommission = myItems.reduce((s, it) => s + commissionForPrice(it.price * it.quantity), 0);
-                      const myNet = Math.round((mySubtotal - myCommission - (deliveryMode === "courier" ? COURIER_FEE : 0)) * 100) / 100;
+                      const myNet = captured.netCents / 100;
                       return (
                         <div className="rounded-xl bg-gray-100/60 px-4 py-3 space-y-1.5">
                           <p className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold uppercase tracking-wider">
@@ -288,7 +309,7 @@ export default function DashboardPasutijumiPage() {
                           {/* Commission per item */}
                           {myItems.map((item, i) => {
                             const lineTotal = item.price * item.quantity;
-                            const lineComm = commissionForPrice(lineTotal);
+                            const lineComm = commissionBreakdown(lineTotal, item.vat_rate!).commissionTotal;
                             return (
                               <div key={i} className="flex items-center justify-between text-xs">
                                 <span className="text-gray-500 truncate flex-1 mr-2">
@@ -299,14 +320,14 @@ export default function DashboardPasutijumiPage() {
                             );
                           })}
                           {/* Courier fee — 1x per order regardless of item count */}
-                          {deliveryMode === "courier" && (
+                          {captured.pickupCents === 350 && (
                             <div className="flex items-center justify-between text-xs border-t border-gray-200 pt-1.5">
                               <span className="text-gray-500">Kurjera savakšana <span className="text-gray-400">(1× par pasūtījumu)</span></span>
                               <span className="text-amber-600">−{formatPrice(COURIER_FEE)}</span>
                             </div>
                           )}
                           <div className="flex items-center justify-between border-t border-gray-200 pt-1.5 text-sm">
-                            <span className="font-semibold text-gray-700">Tu saņemsi</span>
+                            <span className="font-semibold text-gray-700">Aprēķins pēc pasūtījuma datiem</span>
                             <span className="font-bold text-green-700">{formatPrice(myNet)}</span>
                           </div>
                         </div>
@@ -322,7 +343,8 @@ export default function DashboardPasutijumiPage() {
                       </div>
                       <p className="font-extrabold text-gray-900">{formatPrice(order.total_cents / 100)}</p>
                     </div>
-                    {NEXT_STATUS[order.status] && order.payment_status === "paid" && orderSellerIds(order).length === 1 && (
+                    {NEXT_STATUS[order.status] && order.payment_status === "paid"
+                      && (order.status === "paid" || (order.lifecycle_version !== "marketplace-v1" && orderSellerIds(order).length === 1)) && (
                       <button
                         onClick={() => advanceStatus(order.id, NEXT_STATUS[order.status].next)}
                         disabled={updating === order.id}

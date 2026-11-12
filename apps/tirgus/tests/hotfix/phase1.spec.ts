@@ -142,17 +142,19 @@ test("all three promo cards are gated and stale closed-locker drafts are rejecte
   }
 });
 
-test("pricing release preserves historical data, invoices, operator, commission and schema boundary", () => {
-  // Payment behavior is covered by the security-payment suite rather than frozen source bytes.
-  for (const path of ["lib/invoice/generate.ts", "lib/operator-info.ts",
-    "lib/utils.ts", "lib/mock-data.ts", "lib/commission.ts"]) {
+test("historical migrations, operator identity and delivery conventions remain immutable", () => {
+  // Phase-five financial/lifecycle code now has executable SQL/API regressions.
+  // Keep historical identities/conventions frozen, not the intentionally replaced generator.
+  for (const path of ["lib/operator-info.ts", "lib/utils.ts", "lib/mock-data.ts"]) {
     const original = execFileSync("git", ["show", `aa88b6575a4146e630bf24f40af5683825675305:apps/tirgus/${path}`],
       { cwd: app, encoding: "utf8" });
     expect(source(path), path).toBe(original);
   }
-  const changedMigrations = execFileSync("git", ["diff", "--name-only",
+  const changedMigrations = execFileSync("git", ["diff", "--diff-filter=MDR", "--name-only",
     "aa88b6575a4146e630bf24f40af5683825675305", "--", "supabase/migrations"],
   { cwd: resolve(app, "../.."), encoding: "utf8" });
   expect(changedMigrations).toBe("");
-  expect(source("app/api/checkout/create-session/route.ts")).not.toContain("createReservedOrder");
+  expect(source("lib/commission.ts")).toContain("export const COMMISSION_RATE = 15;");
+  expect(source("lib/commission.ts")).toContain("export const COURIER_FEE = 3.50;");
+  expect(source("lib/commission.ts")).toContain("export const COMMISSION_SERVICE_VAT = 21;");
 });

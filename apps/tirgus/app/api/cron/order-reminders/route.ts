@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifySellerReminder, notifyOrderAutoCancelled } from "@/lib/order-notifications";
+import { marketplaceLifecycleEnabled } from "@/lib/marketplace-lifecycle";
 
 // Vercel Cron — runs every 15 minutes.
 // Goal: keep sellers from sleeping on a paid order. Three escalating reminder
@@ -37,14 +38,22 @@ export async function GET(req: Request) {
   // 1) AUTO-CANCEL: paid orders older than 72 h that the seller never confirmed.
   const { data: stale, error: staleError } = await supabase
     .from("orders")
-    .select("id")
+    .select("id" + (marketplaceLifecycleEnabled() ? ", lifecycle_version" : ""))
     .eq("status", "paid")
     .eq("payment_status", "paid")
-    .lte("paid_at", cancelCutoffISO);
+    .lte("paid_at", cancelCutoffISO).returns<{ id: string; lifecycle_version?: string }[]>();
 
   if (staleError) return NextResponse.json({ error: "Order query failed" }, { status: 500 });
   let cancelled = 0;
   for (const o of stale ?? []) {
+    if (o.lifecycle_version === "marketplace-v1") {
+      const { error } = await supabase.rpc("marketplace_transition_v1", {
+        p_order_id: o.id, p_expected: "paid", p_status: "cancelled", p_actor_id: null, p_reference: "auto_cancel_unconfirmed_72h",
+      });
+      if (error) return NextResponse.json({ error: "Reserved cancellation requires review" }, { status: 503 });
+      cancelled++;
+      continue;
+    }
     const { data: changed, error } = await supabase
       .from("orders")
       .update({ status: "cancelled", auto_cancelled_at: new Date().toISOString() })

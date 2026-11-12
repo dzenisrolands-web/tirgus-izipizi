@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Printer, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { readInvoiceOperator } from "@/lib/invoice/display-evidence";
 
 type Invoice = {
   id: string;
@@ -27,6 +27,11 @@ type Invoice = {
   seller_legal_address: string | null;
   seller_bank_name: string | null;
   seller_bank_iban: string | null;
+  finance_review_reason?: string | null;
+  operator_version?: string | null;
+  operator_snapshot?: unknown;
+  commission_vat_rate?: number | null;
+  commission_vat_cents?: number | null;
 };
 
 type Line = {
@@ -80,6 +85,9 @@ export default function InvoiceDetailPage() {
     </div>
   );
 
+  const operator = readInvoiceOperator(invoice);
+  const commissionVat = invoice.commission_vat_cents ?? invoice.vat_amount_cents;
+  const commissionVatRate = invoice.commission_vat_rate ?? invoice.vat_rate;
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       {/* Top toolbar — hidden when printing */}
@@ -87,12 +95,13 @@ export default function InvoiceDetailPage() {
         <Link href="/dashboard/rekini" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
           <ArrowLeft size={14} /> Visi rēķini
         </Link>
-        <button onClick={() => window.print()}
+        <button onClick={() => window.print()} disabled={!operator}
           className="flex items-center gap-2 rounded-xl bg-[#192635] px-4 py-2 text-sm font-semibold text-white hover:bg-[#243647]">
           <Printer size={14} /> Drukāt / saglabāt PDF
         </button>
       </div>
 
+      {invoice.finance_review_reason && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Šī rēķina izmaksa ir aizturēta saistīta pasūtījuma pārbaudei. Summa nav pārskatīta vai automātiski koriģēta; sazinies ar administratoru.</p>}
       {/* Invoice card */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm print:rounded-none print:border-0 print:shadow-none">
         {/* Header */}
@@ -118,12 +127,12 @@ export default function InvoiceDetailPage() {
         <div className="grid grid-cols-1 gap-6 border-b border-gray-200 px-8 py-6 sm:grid-cols-2">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Operators (sastādītājs)</p>
-            <p className="mt-1.5 font-bold text-gray-900">{operatorInfo.legalName}</p>
-            <p className="text-xs text-gray-600">Reģ. Nr.: {operatorInfo.registrationNumber}</p>
-            <p className="text-xs text-gray-600">PVN: {operatorInfo.vatNumber}</p>
-            <p className="mt-1 text-xs text-gray-500">{formattedAddress()}</p>
-            <p className="mt-1 text-xs text-gray-500">{operatorInfo.bank.name}</p>
-            <p className="text-xs font-mono text-gray-500">{operatorInfo.bank.iban}</p>
+            <p className="mt-1.5 font-bold text-gray-900">{operator?.name ?? "Vēsturiskie operatora rekvizīti jāapstiprina"}</p>
+            <p className="text-xs text-gray-600">Reģ. Nr.: {operator?.regNr ?? "—"}</p>
+            <p className="text-xs text-gray-600">PVN: {operator?.vatNr ?? "—"}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator?.address ?? "—"}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator?.bankName ?? "—"}</p>
+            <p className="text-xs font-mono text-gray-500">{operator?.iban ?? "—"}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Tirgotājs (saņēmējs)</p>
@@ -181,10 +190,10 @@ export default function InvoiceDetailPage() {
               <span>Komisija 15% (no cenas bez PVN):</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
+            {commissionVat != null && commissionVat > 0 && (
               <div className="flex justify-between text-orange-700 text-xs">
-                <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
-                <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+                <span>PVN {commissionVatRate}% par komisijas pakalpojumu:</span>
+                <span className="font-mono">−{eur(commissionVat)}</span>
               </div>
             )}
             {!!invoice.courier_fee_cents && invoice.courier_fee_cents > 0 && (
@@ -204,7 +213,7 @@ export default function InvoiceDetailPage() {
         <div className="px-8 py-4 text-[10px] leading-relaxed text-gray-500">
           Šis rēķins sastādīts klienta self-billing kārtībā saskaņā ar PVN direktīvas
           224. pantu un Tirgotāja-Operatora vienošanos. Iebildumi: 7 dienu laikā uz{" "}
-          {operatorInfo.contact.emailComplaints}. Samaksa: 5 darba dienu laikā pēc
+          {operator?.complaintsEmail ?? "administratoru pēc vēsturisko rekvizītu apstiprināšanas"}. Samaksa: 5 darba dienu laikā pēc
           klusas pieņemšanas vai iebildumu atrisināšanas.
         </div>
       </div>

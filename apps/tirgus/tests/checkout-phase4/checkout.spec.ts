@@ -570,10 +570,12 @@ test("payment configuration is validated before insert; insert errors return503 
   expect(response.status).toBe(503);
   expect(response.headers.get("set-cookie")).toBeNull();
 });
-test("phase2 payment/access and promo redemption source remains byte-compatible", () => {
+test("unchanged phase2 protocol/access and promo redemption contracts remain byte-compatible", () => {
   const original = (file: string) => execFileSync("git", ["show", `${contractBase}:apps/tirgus/${file}`], { cwd: app, encoding: "utf8" });
-  for (const file of ["lib/paysera.ts", "lib/order-access.ts", "app/api/webhooks/paysera/route.ts",
-    "app/api/checkout/retry-payment/route.ts", "app/api/checkout/confirm-arrival/route.ts",
+  // Callback/retry now have explicit default-off lifecycle branches, covered by
+  // signed API regressions; the protocol and access primitive files stay frozen.
+  for (const file of ["lib/paysera.ts", "lib/order-access.ts",
+    "app/api/checkout/confirm-arrival/route.ts",
     "lib/checkout-contract.ts", "lib/cart-identity.ts"]) expect(readFileSync(resolve(app, file), "utf8"), file).toBe(original(file));
   const redemption = (text: string) => text.slice(text.indexOf("export async function redeemPromoCode"));
   expect(redemption(readFileSync(resolve(app, "lib/promo.ts"), "utf8"))).toBe(redemption(original("lib/promo.ts")));

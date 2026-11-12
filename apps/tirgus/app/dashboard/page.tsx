@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Package, Plus, ArrowRight, Clock, CheckCircle, AlertCircle, User, X, PartyPopper, FileText, Truck, CreditCard, FileSignature } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { recognizedPaidOrder, sellerOrderAmounts } from "@/lib/seller-order-metrics";
 
 type SellerStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -128,6 +129,7 @@ export default function DashboardPage() {
   const [expiringSoon, setExpiringSoon] = useState<ExpiringProduct[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);    // paid, gaida apstiprināšanu
   const [processingCount, setProcessingCount] = useState(0); // apstrādē
+  const [statsIncomplete, setStatsIncomplete] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -176,7 +178,7 @@ export default function DashboardPage() {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const { data: orders } = await supabase
           .from("orders")
-          .select("id, items, paid_at, payment_status, total_cents, created_at")
+          .select("*").contains("seller_ids", [seller.id])
           .or(`paid_at.gte.${thirtyDaysAgo},and(payment_status.eq.paid,created_at.gte.${thirtyDaysAgo}),and(status.in.(paid,processing,shipped,delivered),created_at.gte.${thirtyDaysAgo})`)
           .order("paid_at", { ascending: false });
         const myListingIds = new Set(listingsArr.map((l) => l.id));
@@ -184,19 +186,27 @@ export default function DashboardPage() {
         todayStart.setHours(0, 0, 0, 0);
 
         let monthRev = 0;
+        let unknownLines = 0;
         const monthOrderIds = new Set<string>();
         const todayOrderIds = new Set<string>();
         const productAgg = new Map<string, TopProduct>();
 
         for (const o of orders ?? []) {
-          const orderDate = new Date(o.paid_at ?? o.created_at);
-          const items = (o.items as Array<{ id?: string; title?: string; quantity?: number; price?: number }> | null) ?? [];
+          if (!recognizedPaidOrder(o)) continue;
+          const orderDate = new Date(o.paid_at!);
+          if (orderDate.getTime() < Date.parse(thirtyDaysAgo) || orderDate.getTime() > Date.now()) continue;
+          const items = (o.items as Array<{ id?: string; listing_id?: string; seller_id?: string; sellerId?: string; title?: string; quantity?: number; price?: number }> | null) ?? [];
+          const amounts = sellerOrderAmounts(o, seller.id, myListingIds);
+          monthRev += amounts.goodsCents;
+          unknownLines += amounts.unknownLines;
           let orderHasMyItem = false;
           for (const it of items) {
-            if (!it.id || !myListingIds.has(it.id)) continue;
+            if (!it.id || ((it.seller_id ?? it.sellerId) ? (it.seller_id ?? it.sellerId) !== seller.id : !myListingIds.has(it.listing_id ?? it.id))) continue;
+            if (typeof it.price !== "number" || !Number.isFinite(it.price) || it.price <= 0
+              || !Number.isSafeInteger(it.quantity) || it.quantity! <= 0) continue;
             orderHasMyItem = true;
-            const cents = Math.round((it.price ?? 0) * 100) * (it.quantity ?? 1);
-            monthRev += cents;
+            const cents = sellerOrderAmounts({ items: [it] }, seller.id, myListingIds).goodsCents;
+            if (cents <= 0) continue;
             const cur = productAgg.get(it.id) ?? {
               id: it.id,
               title: it.title ?? listingsArr.find((l) => l.id === it.id)?.title ?? "(nezināms)",
@@ -214,6 +224,7 @@ export default function DashboardPage() {
         }
 
         setMonthRevenueCents(monthRev);
+        setStatsIncomplete(unknownLines > 0);
         setMonthOrderCount(monthOrderIds.size);
         setTodayOrderCount(todayOrderIds.size);
         setTopProducts(
@@ -223,11 +234,11 @@ export default function DashboardPage() {
         // Fetch order statuses for this seller (new + processing)
         const { data: sellerOrders } = await supabase
           .from("orders")
-          .select("status")
+          .select("*")
           .contains("seller_ids", [seller.id])
           .or("payment_status.eq.paid,status.in.(paid,processing)");
-        setNewOrderCount((sellerOrders ?? []).filter(o => o.status === "paid").length);
-        setProcessingCount((sellerOrders ?? []).filter(o => o.status === "processing").length);
+        setNewOrderCount((sellerOrders ?? []).filter(o => recognizedPaidOrder(o) && o.status === "paid").length);
+        setProcessingCount((sellerOrders ?? []).filter(o => recognizedPaidOrder(o) && o.status === "processing").length);
       }
       setLoading(false);
     }
@@ -346,6 +357,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick stats */}
+      {statsIncomplete && <p className="mb-3 text-xs text-amber-800">Daļai vēsturisko pasūtījumu trūkst finanšu datu. Rādām zināmās preču summas; izmaksu aprēķins vēl jāpārbauda.</p>}
       <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Produkti</p>

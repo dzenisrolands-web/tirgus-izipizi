@@ -218,7 +218,7 @@ export async function notifySellerReminder(
 }
 
 /**
- * Notify both buyer and sellers that an order was auto-cancelled (24 h passed
+ * Notify both buyer and sellers that an order was auto-cancelled (72 h passed
  * with no seller confirmation).
  */
 export async function notifyOrderAutoCancelled(
@@ -241,7 +241,7 @@ export async function notifyOrderAutoCancelled(
     if (subs && subs.length > 0) {
       const r = await sendPushToSubscriptions(subs, {
         title: "❌ Pasūtījums atcelts",
-        body: `${order.order_number} tika atcelts, jo ražotājs neapstiprināja 24h laikā. Nauda tiks atgriezta.`,
+        body: `${order.order_number} tika atcelts, jo ražotājs neapstiprināja 72h laikā. Atmaksu pārskata administrators.`,
         url: `/cart/success?order=${encodeURIComponent(order.order_number)}`,
         tag: `order_cancelled_${order.id}`,
         requireInteraction: true,
@@ -264,7 +264,7 @@ export async function notifyOrderAutoCancelled(
         .from("push_subscriptions").select("endpoint, p256dh, auth").in("user_id", userIds);
       if (subs && subs.length > 0) {
         const r = await sendPushToSubscriptions(subs, {
-          title: "❌ Pasūtījums atcelts (neapstiprināts 24h)",
+          title: "❌ Pasūtījums atcelts (neapstiprināts 72h)",
           body: `${order.order_number} tika auto-atcelts. Pievērs uzmanību nākamajiem pasūtījumiem.`,
           url: "/dashboard/pasutijumi",
           tag: `order_cancelled_${order.id}`,

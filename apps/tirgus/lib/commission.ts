@@ -107,8 +107,8 @@ export function exVatPrice(price: number, vatRate: number): number {
 }
 
 /**
- * Commission is calculated on the FULL (VAT-inclusive) price.
- * Seller is responsible for remitting VAT to the tax authority separately.
+ * Product commission uses its explicit VAT rate. Pickup is charged separately
+ * once per seller/order/destination, never once per product in this helper.
  */
 export function sellerNetWithVat(
   price: number,
@@ -117,7 +117,7 @@ export function sellerNetWithVat(
 ): { exVat: number; vatAmount: number; commission: number; net: number } {
   const vatAmount = vatAmountFromInclusive(price, vatRate);
   const exVat = exVatPrice(price, vatRate);
-  const commission = commissionForPrice(price); // on full inc-VAT price
+  const commission = commissionBreakdown(price, vatRate).commissionTotal;
   const net = Math.round((price - commission) * 100) / 100;
   return { exVat, vatAmount, commission, net };
 }
