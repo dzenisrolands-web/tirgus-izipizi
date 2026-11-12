@@ -3,6 +3,7 @@ import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
 import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
 import { CheckoutError, orderItemSnapshot, record } from "@/lib/checkout-items";
 import { isClosedLockerId } from "@/lib/locker-policy";
+import { acceptingMarketplaceReservations, reserveMarketplaceOrder } from "@/lib/marketplace-lifecycle";
 import {
   buildCheckoutQuote, checkoutBuyerId, checkoutExpectationsMatch, checkoutFailure,
   checkoutJson, contactForCheckout, readCheckoutBody,
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       zone_policy: quote.delivery.breakdown[0]?.zonePolicy,
       ...(promoCode ? { promo_code: promoCode, promo_discount_cents: quote.discountCents } : {}),
     };
-    const { data: order, error } = await supabase.from("orders").insert({
+    const payload = {
       order_number: orderNumber, status: "pending", payment_status: "awaiting",
       payment_provider: "paysera", payment_session_id: orderNumber, buyer_id: buyerId,
       buyer_name: contact.name, buyer_email: contact.email, buyer_phone: contact.phone,
@@ -71,7 +72,15 @@ export async function POST(req: Request) {
       items: quote.items.map(orderItemSnapshot), total_cents: quote.totalCents,
       total_amount: quote.totalCents! / 100, seller_ids: quote.sellerIds,
       promo_code: promoCode, promo_discount_cents: quote.discountCents,
-    }).select("id, order_number").single();
+    };
+    if (acceptingMarketplaceReservations()) {
+      const reserved = await reserveMarketplaceOrder(supabase, payload);
+      return attachOrderCookie(checkoutJson({
+        ok: true, paymentUrl, orderId: reserved.order_number, totalCents: quote.totalCents,
+        quoteFingerprint: quote.fingerprint, reservationExpiresAt: reserved.reserved_until,
+      }), reserved.order_number);
+    }
+    const { data: order, error } = await supabase.from("orders").insert(payload).select("id, order_number").single();
     if (error || !order || order.order_number !== orderNumber) {
       throw new CheckoutError(503, "ORDER_UNAVAILABLE", "Neizdevās saglabāt pasūtījumu.");
     }
