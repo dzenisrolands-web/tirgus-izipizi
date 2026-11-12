@@ -30,6 +30,9 @@ test("variant identity is explicit, never inferred from first array element or c
   const result=await reserve(db,payload);
   assert.equal(await scalar(db,"SELECT variants->1->>'quantity' FROM listings WHERE id=$1",[listing]),"0");
   await assert.rejects(db.query("UPDATE listings SET variants='[]' WHERE id=$1",[listing]),/held SKU/);
+  await assert.rejects(db.query("UPDATE listings SET variants=$1 WHERE id=$2",[JSON.stringify([
+    {id:"large",price:8,quantity:1},{id:"large",price:8,quantity:null},
+  ]),listing]),/held SKU/);
   await db.query("SELECT marketplace_release_v1($1,'buyer_cancelled')",[result.order_id]);
   await db.query("SELECT marketplace_release_v1($1,'retry_cancelled')",[result.order_id]);
   assert.equal(await scalar(db,"SELECT variants->1->>'quantity' FROM listings WHERE id=$1",[listing]),"1");
@@ -38,10 +41,13 @@ test("price, duplicate identity, seller and quote fact changes fail atomically",
   for (const mutate of [
     p=>{p.items[0].price=1;},
     p=>{p.items.push({...p.items[0]});},
-    p=>{p.items[0].storage_type="frozen";},
+    p=>{p.items[0].source_storage_type="frozen";},
     p=>{p.items[0].id="cart-key";},
     p=>{p.total_cents=1;},
     p=>{p.items[0].quantity=0.5;},
+    p=>{p.total_cents=800.1;},
+    p=>{p.delivery_info.delivery_fee_cents=300.1;},
+    p=>{p.promo_discount_cents="0";},
   ]) {
     const payload=order(); mutate(payload);
     await assert.rejects(reserve(db,payload));
@@ -57,6 +63,14 @@ test("expired hold is released once; historical order is not changed by release"
   await db.exec("INSERT INTO orders(order_number,status,payment_status) VALUES('LEGACY','pending','awaiting')");
   assert.equal(await scalar(db,"SELECT marketplace_release_v1(id,'historical') FROM orders WHERE order_number='LEGACY'"),false);
   assert.equal(await scalar(db,"SELECT status FROM orders WHERE order_number='LEGACY'"),"pending");
+});
+test("held base inventory cannot be erased and raw nullable storage remains distinct from normalized handling", async () => {
+  await db.query("UPDATE listings SET storage_type=NULL WHERE id=$1",[listing]);
+  const payload=order();payload.items[0].source_storage_type=null;
+  const held=await reserve(db,payload);
+  await assert.rejects(db.query("UPDATE listings SET quantity=NULL WHERE id=$1",[listing]),/held SKU/);
+  await db.query("SELECT marketplace_release_v1($1,'synthetic_cancel')",[held.order_id]);
+  assert.equal(await scalar(db,"SELECT quantity FROM listings WHERE id=$1",[listing]),1);
 });
 test("anonymous and authenticated roles cannot execute inventory RPCs or read reservations", async () => {
   for (const role of ["anon","authenticated"]) {

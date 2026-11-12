@@ -10,6 +10,9 @@ BEGIN
     RETURN NEW;
   END IF;
   op:=NEW.financial_snapshot->'operator';
+  IF NEW.promo_discount_cents IS NULL OR NEW.promo_discount_cents<>0 OR nullif(btrim(NEW.promo_code),'') IS NOT NULL THEN
+    needs_review:=true; -- no invented per-seller discount funding/allocation
+  END IF;
   IF jsonb_typeof(op) IS DISTINCT FROM 'object' OR EXISTS (
     SELECT 1 FROM unnest(ARRAY['name','regNr','vatNr','address','phone','email','bankName','iban','bic','complaintsEmail']) k
       WHERE jsonb_typeof(op->k) IS DISTINCT FROM 'string' OR coalesce(btrim(op->>k),'')=''

@@ -26,6 +26,6 @@ export async function transferMarketplaceHandoff(
     p_order_id: orderId, p_token: job.claim_token, p_receiver_id: acknowledgement?.receiverId ?? null,
     p_accepted: acknowledgement !== null,
   });
-  if (writeError || saved !== true) throw new Error("Handoff requires receiver reconciliation");
-  return { state: acknowledgement ? "recorded" : "review", dispatchAuthorized: false, billingAuthorized: false };
+  if (writeError || !saved || !["recorded", "review"].includes(saved.state)) throw new Error("Handoff requires receiver reconciliation");
+  return { state: saved.state as "recorded" | "review", dispatchAuthorized: false, billingAuthorized: false };
 }

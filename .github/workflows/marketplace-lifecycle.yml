@@ -1,0 +1,30 @@
+name: Marketplace isolated lifecycle checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: nonfunctional-public
+      SUPABASE_SECRET_KEY: nonfunctional-service
+      NEXT_PUBLIC_SITE_URL: https://example.invalid
+      PAYSERA_MODE: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:isolated --workspace=@izipizi/tirgus
+      - run: npm run typecheck
+      - run: npm run build --workspace=@izipizi/tirgus

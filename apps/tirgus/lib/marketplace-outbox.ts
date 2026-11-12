@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { marketplaceLifecycleEnabled } from "./marketplace-lifecycle";
 import { sendEmail, brandedEmailLayout } from "./email";
 import { trustedPaymentBaseUrl } from "./paysera";
-type Job = { id: string; order_id: string; audience: "buyer" | "seller"; seller_id: string | null; claim_token: string };
+type Job = { id: string; event_id: string; order_id: string; audience: "buyer" | "seller"; seller_id: string | null; claim_token: string };
 type DeliveryOutcome = { outcome: "accepted" | "not_sent" | "uncertain"; reference?: string };
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
 
@@ -11,7 +11,12 @@ async function deliverEmail(sb: SupabaseClient, job: Job): Promise<DeliveryOutco
   const { data: order, error } = await sb.from("orders")
     .select("order_number,buyer_email,status,payment_status,payment_review_reason,seller_ids")
     .eq("id", job.order_id).single();
-  if (error || !order || order.payment_status !== "paid" || order.payment_review_reason) return { outcome: "uncertain" };
+  if (error || !order) return { outcome: "uncertain" };
+  const { data: event, error: eventError } = await sb.from("marketplace_events_v1")
+    .select("event_type").eq("id", job.event_id).eq("order_id", job.order_id).single();
+  if (eventError || !event) return { outcome: "uncertain" };
+  const cancellation = event.event_type === "order_cancelled" && job.audience === "buyer" && order.status === "cancelled";
+  if (!cancellation && (order.payment_status !== "paid" || order.payment_review_reason || order.status === "cancelled")) return { outcome: "uncertain" };
   let recipient = order.buyer_email;
   if (job.audience === "seller") {
     if (!job.seller_id || !order.seller_ids?.includes(job.seller_id)) return { outcome: "uncertain" };

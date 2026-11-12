@@ -88,6 +88,9 @@ export default function DashboardPasutijumiPage() {
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error ?? "Apstiprināšana neizdevās.");
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: result.newStatus } : o));
+        if (result.transitioned === true && result.newStatus === "processing" && existing.lifecycle_version !== "marketplace-v1") {
+          await notifyBuyer(orderId, "processing");
+        }
       } catch (error) { setMutationError(error instanceof Error ? error.message : "Apstiprināšana neizdevās."); }
       finally { setUpdating(null); }
       return;

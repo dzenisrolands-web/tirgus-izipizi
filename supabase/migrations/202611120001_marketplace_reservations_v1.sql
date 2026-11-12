@@ -28,15 +28,17 @@ CREATE FUNCTION public.marketplace_guard_skus_v1()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.marketplace_reservations_v1 r WHERE r.listing_id=OLD.id AND r.state='held' AND
-    ((r.variant_id IS NULL AND coalesce(NEW.variants,'[]'::jsonb)<>'[]'::jsonb)
-     OR (r.variant_id IS NOT NULL AND (SELECT count(*) FROM jsonb_array_elements(coalesce(NEW.variants,'[]'::jsonb)) v
-       WHERE v->>'id'=r.variant_id AND jsonb_typeof(v->'quantity')='number'
-       AND (v->>'quantity')::numeric>=0 AND (v->>'quantity')::numeric=trunc((v->>'quantity')::numeric))<>1))) THEN
+    ((r.variant_id IS NULL AND (NEW.quantity IS NULL OR NEW.quantity<0 OR coalesce(NEW.variants,'[]'::jsonb)<>'[]'::jsonb))
+     OR (r.variant_id IS NOT NULL AND (
+       (SELECT count(*) FROM jsonb_array_elements(coalesce(NEW.variants,'[]'::jsonb)) v WHERE v->>'id'=r.variant_id)<>1
+       OR (SELECT count(*) FROM jsonb_array_elements(coalesce(NEW.variants,'[]'::jsonb)) v
+         WHERE v->>'id'=r.variant_id AND jsonb_typeof(v->'quantity')='number'
+         AND (v->>'quantity')::numeric>=0 AND (v->>'quantity')::numeric=trunc((v->>'quantity')::numeric))<>1)))) THEN
     RAISE EXCEPTION 'Cannot remove or corrupt held SKU' USING ERRCODE='22023';
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER marketplace_guard_skus_v1 BEFORE UPDATE OF variants ON public.listings
+CREATE TRIGGER marketplace_guard_skus_v1 BEFORE UPDATE OF variants,quantity ON public.listings
 FOR EACH ROW EXECUTE FUNCTION public.marketplace_guard_skus_v1();
 REVOKE ALL ON FUNCTION public.marketplace_guard_skus_v1() FROM PUBLIC,anon,authenticated,service_role;
 
@@ -90,7 +92,8 @@ BEGIN
        OR (p_order->>'delivery_type'='courier' AND product.courier_delivery IS DISTINCT FROM true)
        OR (p_order->>'delivery_type'='express' AND product.express_delivery IS DISTINCT FROM true)
        OR item->>'category' IS DISTINCT FROM coalesce(product.category::text,'')
-       OR item->>'storage_type' IS DISTINCT FROM product.storage_type::text THEN
+       OR NOT (item ? 'source_storage_type')
+       OR item->>'source_storage_type' IS DISTINCT FROM product.storage_type::text THEN
       RAISE EXCEPTION 'Delivery facts changed' USING ERRCODE='22023';
     END IF;
     IF jsonb_typeof(item->'quantity') IS DISTINCT FROM 'number'
@@ -133,6 +136,14 @@ BEGIN
         to_jsonb((chosen->>'quantity')::integer-qty)) WHERE id=product.id;
     END IF;
   END LOOP;
+  IF jsonb_typeof(p_order->'delivery_info'->'delivery_fee_cents') IS DISTINCT FROM 'number'
+     OR jsonb_typeof(p_order->'promo_discount_cents') IS DISTINCT FROM 'number'
+     OR jsonb_typeof(p_order->'total_cents') IS DISTINCT FROM 'number'
+     OR (p_order->'delivery_info'->>'delivery_fee_cents')::numeric<>trunc((p_order->'delivery_info'->>'delivery_fee_cents')::numeric)
+     OR (p_order->>'promo_discount_cents')::numeric<>trunc((p_order->>'promo_discount_cents')::numeric)
+     OR (p_order->>'total_cents')::numeric<>trunc((p_order->>'total_cents')::numeric) THEN
+    RAISE EXCEPTION 'Integer cents required' USING ERRCODE='22023';
+  END IF;
   fee := (p_order->'delivery_info'->>'delivery_fee_cents')::bigint;
   discount := (p_order->>'promo_discount_cents')::bigint;
   IF fee IS NULL OR fee<0 OR discount IS NULL OR discount<0 OR discount>subtotal+fee

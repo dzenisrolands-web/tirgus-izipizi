@@ -50,7 +50,7 @@ export function order(extra = {}) {
     buyer_email: "buyer@example.invalid", buyer_phone: "+37100000000",
     delivery_type: "locker", delivery_info: { locker_id: "brivibas", delivery_fee_cents: 300 },
     items: [{ id: listing, listing_id: listing, variant_id: null, title: "Synthetic product", price: 5, quantity: 1,
-      seller_id: seller, category: "Maize", storage_type: "chilled" }],
+      seller_id: seller, category: "Maize", storage_type: "chilled", source_storage_type: "chilled" }],
     seller_ids: [seller], total_cents: 800, promo_discount_cents: 0, ...extra,
   };
 }

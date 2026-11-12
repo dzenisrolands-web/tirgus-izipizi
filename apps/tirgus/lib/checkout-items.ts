@@ -189,6 +189,7 @@ export function normalizeCheckoutItems(references: CheckoutItemReference[], list
       unit: variant ? "gab." : listing.unit || "gab.", image: publicProductImage(listing.image_url),
       sellerId: listing.seller_id, sellerName: "",
       storageType: getStorageType({ category: listing.category ?? "", storageType: listing.storage_type ?? undefined }),
+      ...(process.env.MARKETPLACE_LIFECYCLE_V1 === "enabled" ? { sourceStorageType: listing.storage_type ?? null } : {}),
       category: listing.category ?? "", courier_delivery: listing.courier_delivery === true,
       express_delivery: listing.express_delivery === true,
       ...(typeof listing.slug === "string" && listing.slug ? { slug: listing.slug } : {}),
@@ -199,12 +200,13 @@ export function normalizeCheckoutItems(references: CheckoutItemReference[], list
 }
 
 /** Cart keys must never become stock references or replace real listing IDs in orders. */
-export function orderItemSnapshot(item: CanonicalCartItem) {
+export function orderItemSnapshot(item: CanonicalCartItem & { sourceStorageType?: string | null }) {
   return {
     id: item.listingId, listing_id: item.listingId, variant_id: item.variantId, cart_item_id: item.id,
     title: item.title, price: item.price, quantity: item.quantity, unit: item.unit, image: item.image,
     seller_id: item.sellerId, sellerId: item.sellerId, sellerName: item.sellerName,
     commission_rate: COMMISSION_RATE, storage_type: item.storageType, category: item.category,
     courier_delivery: item.courier_delivery, express_delivery: item.express_delivery,
+    ...(item.sourceStorageType !== undefined ? { source_storage_type: item.sourceStorageType } : {}),
   };
 }

@@ -1,6 +1,6 @@
 import { before, after, beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
-import { database, seed, order, reserve, scalar, listing } from "./database.mjs";
+import { database, seed, reserve, scalar, listing } from "./database.mjs";
 let db;
 before(async()=>{db=await database();});
 after(async()=>{await db?.close();});

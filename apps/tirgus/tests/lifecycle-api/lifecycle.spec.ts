@@ -14,6 +14,9 @@ import { POST as adminStatus } from "../../app/api/admin/update-order-status/rou
 import { POST as recordRefund } from "../../app/api/admin/marketplace-finance/route";
 import { recognizedPaidOrder, sellerOrderAmounts } from "../../lib/seller-order-metrics";
 import { sellerNetWithVat, commissionBreakdown } from "../../lib/commission";
+import { readInvoiceOperator } from "../../lib/invoice/display-evidence";
+import { GET as readiness } from "../../app/api/admin/marketplace-readiness/route";
+import { GET as lifecycleCron } from "../../app/api/cron/marketplace-lifecycle/route";
 const origin = "https://example.invalid";
 const product = "22222222-2222-4222-8222-222222222222";
 const seller = "11111111-1111-4111-8111-111111111111";
@@ -41,6 +44,9 @@ test.afterEach(() => {
   delete process.env.MARKETPLACE_RESERVATIONS_ACCEPTING;
   delete process.env.MARKETPLACE_EMAIL_OUTBOX;
   delete process.env.MARKETPLACE_LOGISTICS_HANDOFF;
+  delete process.env.RESEND_API_KEY;
+  delete process.env.EMAIL_FROM;
+  delete process.env.CRON_SECRET;
 });
 const body = () => ({
   items: [{ id: product, listingId: product, variantId: null, quantity: 1 }],
@@ -161,9 +167,9 @@ test("handoff endpoint requires admin; disabled/unconfigured receiver makes zero
 for (const valid of [true, false]) {
   test(`handoff ${valid ? "matching" : "forged"} acknowledgement cannot authorize dispatch`, async () => {
     process.env.MARKETPLACE_LOGISTICS_HANDOFF = "enabled";
-    backend = url => url.pathname.endsWith("/marketplace_claim_handoff_v1")
+    backend = (url, init) => url.pathname.endsWith("/marketplace_claim_handoff_v1")
       ? Response.json({ order_id: product, claim_token: seller, source_key: `marketplace/persisted_id/${product}`, envelope: {} })
-      : Response.json(true);
+      : Response.json({ state: JSON.parse(String(init.body)).p_accepted ? "recorded" : "review" });
     const result = await transferMarketplaceHandoff(createClient(origin, "nonfunctional-service"), product, async () => ({
       sourceKey: valid ? `marketplace/persisted_id/${product}` : "different-source",
       receiverId: seller, intakeVersion: "logistics-intake-v1", dispatchAuthorized: false, billingAuthorized: false,
@@ -209,4 +215,74 @@ test("manual refund endpoint takes actor only from verified admin and requires e
   }));
   expect(response.status).toBe(400);
   expect(seen.filter(call => call.includes("/rpc/"))).toEqual([]);
+});
+
+test("invoice display never substitutes today's operator for unknown historical evidence", () => {
+  expect(readInvoiceOperator({})).toBeNull();
+  expect(readInvoiceOperator({ operator_version: "legacy", operator_snapshot: {} })).toBeNull();
+  const snapshot = Object.fromEntries(["name", "regNr", "vatNr", "address", "phone", "email", "bankName", "iban", "bic", "complaintsEmail"].map(k => [k, `historic-${k}`]));
+  expect(readInvoiceOperator({ operator_version: "historic-v1", operator_snapshot: snapshot })?.name).toBe("historic-name");
+});
+test("a valid receiver acknowledgement racing cancellation returns committed review, not recorded", async () => {
+  process.env.MARKETPLACE_LOGISTICS_HANDOFF = "enabled";
+  backend = url => url.pathname.endsWith("/marketplace_claim_handoff_v1")
+    ? Response.json({ order_id: product, claim_token: seller, source_key: `marketplace/persisted_id/${product}`, envelope: {} })
+    : Response.json({ state: "review" });
+  const result = await transferMarketplaceHandoff(createClient(origin, "nonfunctional-service"), product, async () => ({
+    sourceKey: `marketplace/persisted_id/${product}`, receiverId: seller,
+    intakeVersion: "logistics-intake-v1", dispatchAuthorized: false, billingAuthorized: false,
+  }));
+  expect(result.state).toBe("review");
+});
+test("paused reservation intake never falls back to direct order insertion", async () => {
+  delete process.env.MARKETPLACE_RESERVATIONS_ACCEPTING;
+  expect((await checkout(request(body()))).status).toBe(503);
+  expect(seen).toEqual([]);
+});
+for (const paymentStatus of ["paid", "awaiting"]) {
+  test(`durable ${paymentStatus} cancellation notice is distinct from payment confirmation and uses provider idempotency`, async () => {
+    process.env.MARKETPLACE_EMAIL_OUTBOX = "enabled";
+    process.env.RESEND_API_KEY = "nonfunctional-synthetic-key";
+    process.env.EMAIL_FROM = "fixture@example.invalid";
+    backend = url => {
+      if (url.pathname.endsWith("/marketplace_claim_email_v1")) return Response.json({
+        id: product, event_id: seller, order_id: product, audience: "buyer", seller_id: null, claim_token: seller,
+      });
+      if (url.pathname === "/rest/v1/orders") return Response.json({
+        order_number: number, buyer_email: "buyer@example.invalid", status: "cancelled",
+        payment_status: paymentStatus, payment_review_reason: paymentStatus === "paid" ? "refund_required" : null,
+      });
+      if (url.pathname === "/rest/v1/marketplace_events_v1") return Response.json({ event_type: "order_cancelled" });
+      return Response.json(true);
+    };
+    const dummyDbFetch = globalThis.fetch;
+    let sent = 0;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.origin === "https://api.resend.com") {
+        sent++;
+        expect(new Headers(init?.headers).get("idempotency-key")).toBe(`marketplace-email/${product}`);
+        return Response.json({ id: "synthetic-provider-id" });
+      }
+      return dummyDbFetch(input, init);
+    };
+    expect((await processMarketplaceEmail(createClient(origin, "nonfunctional-service"))).state).toBe("accepted");
+    expect(sent).toBe(1);
+  });
+}
+test("readiness requires verified admin and never echoes provider/schema error details", async () => {
+  expect((await readiness(new Request(origin))).status).toBe(401);
+  backend = url => url.pathname === "/auth/v1/user"
+    ? Response.json({ id: seller, app_metadata: { is_super_admin: true } })
+    : Response.json({ code: "PGRST202", message: "private database details" }, { status: 404 });
+  const result = await readiness(new Request(origin, { headers: { authorization: "Bearer synthetic" } }));
+  expect(result.status).toBe(503);
+  expect(JSON.stringify(await result.json())).not.toContain("private database details");
+});
+test("new cron rejects missing secret and stays inactive when lifecycle is off", async () => {
+  expect((await lifecycleCron(new Request(origin))).status).toBe(401);
+  process.env.CRON_SECRET = "nonfunctional-cron";
+  delete process.env.MARKETPLACE_LIFECYCLE_V1;
+  expect((await lifecycleCron(new Request(origin, { headers: { authorization: "Bearer nonfunctional-cron" } }))).status).toBe(200);
+  expect(seen).toEqual([]);
 });

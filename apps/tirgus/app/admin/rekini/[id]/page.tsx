@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, FileText, CheckCircle, Send, XCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { readInvoiceOperator } from "@/lib/invoice/display-evidence";
 
 type Invoice = {
   id: string;
@@ -29,6 +29,11 @@ type Invoice = {
   seller_legal_address: string | null;
   seller_bank_name: string | null;
   seller_bank_iban: string | null;
+  finance_review_reason?: string | null;
+  operator_version?: string | null;
+  operator_snapshot?: unknown;
+  commission_vat_rate?: number | null;
+  commission_vat_cents?: number | null;
 };
 
 type Line = {
@@ -98,6 +103,9 @@ export default function AdminInvoiceDetailPage() {
 
   async function updateStatus(newStatus: string) {
     if (!invoice) return;
+    if (invoice.finance_review_reason && !["disputed", "cancelled"].includes(newStatus)) {
+      setMsg("Saistītam pasūtījumam nepieciešama kredītrēķina/finanšu pārbaude."); return;
+    }
     setUpdating(true);
     setMsg("");
     const updates: Record<string, unknown> = { status: newStatus };
@@ -126,7 +134,10 @@ export default function AdminInvoiceDetailPage() {
   );
 
   const st = statusMap[invoice.status] ?? statusMap.draft;
-  const transitions = TRANSITIONS[invoice.status] ?? [];
+  const operator = readInvoiceOperator(invoice);
+  const commissionVat = invoice.commission_vat_cents ?? invoice.vat_amount_cents;
+  const commissionVatRate = invoice.commission_vat_rate ?? invoice.vat_rate;
+  const transitions = (TRANSITIONS[invoice.status] ?? []).filter(t => !invoice.finance_review_reason || ["disputed", "cancelled"].includes(t.to));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
@@ -153,6 +164,7 @@ export default function AdminInvoiceDetailPage() {
         </div>
       )}
 
+      {invoice.finance_review_reason && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Izmaksa un nosūtīšana bloķēta: saistīts pasūtījums ir atcelts vai prasa finanšu pārbaudi. Saglabātās summas nav mainītas; nepieciešams kredītrēķins vai grāmatveža saskaņojums.</p>}
       {/* Invoice card */}
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         {/* Header */}
@@ -181,12 +193,12 @@ export default function AdminInvoiceDetailPage() {
         <div className="grid grid-cols-1 gap-6 border-b border-gray-200 px-8 py-6 sm:grid-cols-2">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Operators (sastādītājs)</p>
-            <p className="mt-1.5 font-bold text-gray-900">{operatorInfo.legalName}</p>
-            <p className="text-xs text-gray-600">Reģ. Nr.: {operatorInfo.registrationNumber}</p>
-            <p className="text-xs text-gray-600">PVN: {operatorInfo.vatNumber}</p>
-            <p className="mt-1 text-xs text-gray-500">{formattedAddress()}</p>
-            <p className="mt-1 text-xs text-gray-500">{operatorInfo.bank.name}</p>
-            <p className="text-xs font-mono text-gray-500">{operatorInfo.bank.iban}</p>
+            <p className="mt-1.5 font-bold text-gray-900">{operator?.name ?? "Vēsturiskie operatora rekvizīti jāapstiprina"}</p>
+            <p className="text-xs text-gray-600">Reģ. Nr.: {operator?.regNr ?? "—"}</p>
+            <p className="text-xs text-gray-600">PVN: {operator?.vatNr ?? "—"}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator?.address ?? "—"}</p>
+            <p className="mt-1 text-xs text-gray-500">{operator?.bankName ?? "—"}</p>
+            <p className="text-xs font-mono text-gray-500">{operator?.iban ?? "—"}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Tirgotājs (saņēmējs)</p>
@@ -247,10 +259,10 @@ export default function AdminInvoiceDetailPage() {
               <span>Komisija 15% (no cenas bez PVN):</span>
               <span className="font-mono">−{eur(invoice.total_commission_cents)}</span>
             </div>
-            {invoice.vat_amount_cents !== null && invoice.vat_amount_cents > 0 && (
+            {commissionVat != null && commissionVat > 0 && (
               <div className="flex justify-between text-orange-700 text-xs">
-                <span>PVN {invoice.vat_rate}% par komisijas pakalpojumu:</span>
-                <span className="font-mono">−{eur(invoice.vat_amount_cents)}</span>
+                <span>PVN {commissionVatRate}% par komisijas pakalpojumu:</span>
+                <span className="font-mono">−{eur(commissionVat)}</span>
               </div>
             )}
             {!!invoice.courier_fee_cents && invoice.courier_fee_cents > 0 && (

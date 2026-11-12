@@ -71,4 +71,10 @@ test("self-billing header and lines are atomic, source-locked and repeat-safe",a
   await db.exec("RESET ROLE");
   assert.equal(await scalar(db,"SELECT count(*)::int FROM invoices"),1);
   assert.equal(await scalar(db,"SELECT count(*)::int FROM invoice_lines"),1);
+  await db.query("SELECT marketplace_transition_v1($1,'paid','cancelled',$2,'Synthetic post-invoice cancellation')",[hold.order_id,listing]);
+  assert.equal(await scalar(db,"SELECT finance_review_reason FROM invoices"),"source_order_requires_credit_review");
+  await assert.rejects(db.exec("UPDATE invoices SET status='sent'"),/Credit reconciliation/);
+  await assert.rejects(db.exec("UPDATE invoices SET status='paid'"),/Credit reconciliation/);
+  await assert.rejects(db.exec("UPDATE invoices SET finance_review_reason=NULL"),/Credit reconciliation/);
+  assert.equal(await scalar(db,"SELECT total_net_cents FROM invoices"),425);
 });

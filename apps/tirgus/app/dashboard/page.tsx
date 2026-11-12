@@ -129,6 +129,7 @@ export default function DashboardPage() {
   const [expiringSoon, setExpiringSoon] = useState<ExpiringProduct[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);    // paid, gaida apstiprināšanu
   const [processingCount, setProcessingCount] = useState(0); // apstrādē
+  const [statsIncomplete, setStatsIncomplete] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -185,6 +186,7 @@ export default function DashboardPage() {
         todayStart.setHours(0, 0, 0, 0);
 
         let monthRev = 0;
+        let unknownLines = 0;
         const monthOrderIds = new Set<string>();
         const todayOrderIds = new Set<string>();
         const productAgg = new Map<string, TopProduct>();
@@ -194,14 +196,17 @@ export default function DashboardPage() {
           const orderDate = new Date(o.paid_at!);
           if (orderDate.getTime() < Date.parse(thirtyDaysAgo) || orderDate.getTime() > Date.now()) continue;
           const items = (o.items as Array<{ id?: string; listing_id?: string; seller_id?: string; sellerId?: string; title?: string; quantity?: number; price?: number }> | null) ?? [];
-          monthRev += sellerOrderAmounts(o, seller.id, myListingIds).goodsCents;
+          const amounts = sellerOrderAmounts(o, seller.id, myListingIds);
+          monthRev += amounts.goodsCents;
+          unknownLines += amounts.unknownLines;
           let orderHasMyItem = false;
           for (const it of items) {
             if (!it.id || ((it.seller_id ?? it.sellerId) ? (it.seller_id ?? it.sellerId) !== seller.id : !myListingIds.has(it.listing_id ?? it.id))) continue;
             if (typeof it.price !== "number" || !Number.isFinite(it.price) || it.price <= 0
               || !Number.isSafeInteger(it.quantity) || it.quantity! <= 0) continue;
             orderHasMyItem = true;
-            const cents = Math.round((it.price ?? 0) * 100) * (it.quantity ?? 1);
+            const cents = sellerOrderAmounts({ items: [it] }, seller.id, myListingIds).goodsCents;
+            if (cents <= 0) continue;
             const cur = productAgg.get(it.id) ?? {
               id: it.id,
               title: it.title ?? listingsArr.find((l) => l.id === it.id)?.title ?? "(nezināms)",
@@ -219,6 +224,7 @@ export default function DashboardPage() {
         }
 
         setMonthRevenueCents(monthRev);
+        setStatsIncomplete(unknownLines > 0);
         setMonthOrderCount(monthOrderIds.size);
         setTodayOrderCount(todayOrderIds.size);
         setTopProducts(
@@ -351,6 +357,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick stats */}
+      {statsIncomplete && <p className="mb-3 text-xs text-amber-800">Daļai vēsturisko pasūtījumu trūkst finanšu datu. Rādām zināmās preču summas; izmaksu aprēķins vēl jāpārbauda.</p>}
       <div className="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Produkti</p>

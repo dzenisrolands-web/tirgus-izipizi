@@ -56,19 +56,20 @@ BEGIN
   RETURN to_jsonb(job);
 END $$;
 CREATE FUNCTION public.marketplace_finish_handoff_v1(p_order_id uuid,p_token uuid,p_receiver_id uuid,p_accepted boolean)
-RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
-DECLARE ord public.orders%ROWTYPE;
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE ord public.orders%ROWTYPE; committed text;
 BEGIN
   SELECT * INTO ord FROM public.orders WHERE id=p_order_id FOR UPDATE;
-  IF NOT FOUND THEN RETURN false; END IF;
+  IF NOT FOUND THEN RETURN NULL; END IF;
   UPDATE public.marketplace_handoffs_v1 SET state=CASE WHEN p_accepted IS TRUE AND p_receiver_id IS NOT NULL
     AND ord.status='processing' AND ord.payment_status='paid' AND ord.payment_review_reason IS NULL
     THEN 'recorded' ELSE 'review' END,
     receiver_id=CASE WHEN p_accepted IS TRUE THEN p_receiver_id ELSE NULL END,
     outcome_code=CASE WHEN p_accepted IS TRUE THEN 'receiver_acknowledged' ELSE 'receiver_outcome_unknown' END,
     claim_token=NULL,lease_until=NULL
-    WHERE order_id=p_order_id AND state='in_flight' AND claim_token=p_token AND lease_until>clock_timestamp();
-  RETURN FOUND;
+    WHERE order_id=p_order_id AND state='in_flight' AND claim_token=p_token AND lease_until>clock_timestamp()
+    RETURNING state INTO committed;
+  RETURN CASE WHEN FOUND THEN jsonb_build_object('state',committed) ELSE NULL END;
 END $$;
 REVOKE ALL ON FUNCTION public.marketplace_prepare_handoff_v1(uuid,uuid),public.marketplace_claim_handoff_v1(uuid),
   public.marketplace_finish_handoff_v1(uuid,uuid,uuid,boolean) FROM PUBLIC,anon,authenticated;
