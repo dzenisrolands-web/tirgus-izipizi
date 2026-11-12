@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { ShoppingBag, Clock, CheckCircle, Search, Package, RefreshCw, CreditCard, AlertTriangle, Loader2, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
+import { recognizedPaidOrder } from "@/lib/seller-order-metrics";
 
 type OrderItem = {
   title: string;
@@ -38,6 +39,8 @@ type Order = {
   total_cents: number;
   paid_at: string | null;
   created_at: string;
+  lifecycle_version?: string | null;
+  payment_review_reason?: string | null;
 };
 
 const statusMap: Record<string, { label: string; cls: string }> = {
@@ -57,7 +60,6 @@ const paymentStatusMap: Record<string, { label: string; cls: string }> = {
 };
 
 const STATUS_OPTIONS = ["all", "pending", "paid", "processing", "shipped", "delivered", "cancelled"] as const;
-const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
 export default function AdminPasutijumiPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -101,11 +103,13 @@ export default function AdminPasutijumiPage() {
     try {
       const token = await getToken();
       if (!token) { alert("Nav sesijas — pārlogojies."); return; }
-
+      const evidence = current.lifecycle_version === "marketplace-v1"
+        ? window.prompt("Norādi darbības pamatojumu vai piegādes apliecinājuma atsauci (vismaz 10 rakstzīmes):") : undefined;
+      if (current.lifecycle_version === "marketplace-v1" && (!evidence || evidence.trim().length < 10)) return;
       const res = await fetch("/api/admin/update-order-status", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId: id, status }),
+        body: JSON.stringify({ orderId: id, status, evidence }),
       });
       const json = await res.json();
 
@@ -202,7 +206,7 @@ export default function AdminPasutijumiPage() {
 
   const pendingCount = orders.filter((o) => o.status === "pending" && o.payment_status !== "paid").length;
   const totalRevenue = orders
-    .filter((o) => o.payment_status === "paid" || !!o.paid_at || PAID_FLOW_STATUSES.has(o.status))
+    .filter(recognizedPaidOrder)
     .reduce((s, o) => s + o.total_cents, 0);
 
   if (loading) return (
@@ -383,7 +387,7 @@ export default function AdminPasutijumiPage() {
                     </div>
 
                     {/* Payment status + Mark as Paid */}
-                    {order.status === "pending" && order.payment_status !== "paid" && (
+                    {order.status === "pending" && order.payment_status !== "paid" && order.lifecycle_version !== "marketplace-v1" && (
                       <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-3">
                         <AlertTriangle size={16} className="shrink-0 text-amber-600" />
                         <div className="flex-1 min-w-0">
@@ -404,7 +408,7 @@ export default function AdminPasutijumiPage() {
                     )}
 
                     {/* Resend notifications for already-paid orders */}
-                    {order.payment_status === "paid" && (
+                    {order.payment_status === "paid" && order.lifecycle_version !== "marketplace-v1" && (
                       <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
                         <Send size={14} className="shrink-0 text-blue-600" />
                         <div className="flex-1 min-w-0">

@@ -3,7 +3,7 @@ import { buildPayseraRedirectUrl, trustedPaymentBaseUrl } from "@/lib/paysera";
 import { attachOrderCookie, newOrderNumber } from "@/lib/order-access";
 import { CheckoutError, orderItemSnapshot, record } from "@/lib/checkout-items";
 import { isClosedLockerId } from "@/lib/locker-policy";
-import { acceptingMarketplaceReservations, reserveMarketplaceOrder } from "@/lib/marketplace-lifecycle";
+import { acceptingMarketplaceReservations, marketplaceLifecycleEnabled, reserveMarketplaceOrder } from "@/lib/marketplace-lifecycle";
 import {
   buildCheckoutQuote, checkoutBuyerId, checkoutExpectationsMatch, checkoutFailure,
   checkoutJson, contactForCheckout, readCheckoutBody,
@@ -12,6 +12,9 @@ import {
 export async function POST(req: Request) {
   try {
     const body = await readCheckoutBody(req);
+    if (marketplaceLifecycleEnabled() && !acceptingMarketplaceReservations()) {
+      throw new CheckoutError(503, "CHECKOUT_PAUSED", "Jaunu pasūtījumu pieņemšana īslaicīgi apturēta.");
+    }
     if ((body.deliveryType ?? "locker") === "locker") {
       const info = record(body.deliveryInfo) ? body.deliveryInfo : {};
       const legacy = record(body.locker) ? body.locker : {};
@@ -54,6 +57,9 @@ export async function POST(req: Request) {
       throw new CheckoutError(503, "PAYMENT_UNAVAILABLE", "Maksājuma pakalpojums pašlaik nav pieejams.");
     }
     const promoCode = quote.promo.valid && quote.discountCents > 0 ? quote.promo.code ?? null : null;
+    if (marketplaceLifecycleEnabled() && promoCode) {
+      throw new CheckoutError(409, "PROMO_LIFECYCLE_REQUIRES_REVIEW", "Šim piedāvājumam nepieciešams atsevišķs promo rezervācijas apstiprinājums.");
+    }
     const deliveryInfo = {
       ...quote.deliveryInfo,
       delivery_fee_cents: quote.deliveryFeeCents,

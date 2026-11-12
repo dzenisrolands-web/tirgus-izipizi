@@ -10,6 +10,10 @@ import { processMarketplaceEmail } from "../../lib/marketplace-outbox";
 import { createClient } from "@supabase/supabase-js";
 import { transferMarketplaceHandoff } from "../../lib/marketplace-handoff";
 import { POST as prepareHandoff } from "../../app/api/admin/marketplace-handoff/route";
+import { POST as adminStatus } from "../../app/api/admin/update-order-status/route";
+import { POST as recordRefund } from "../../app/api/admin/marketplace-finance/route";
+import { recognizedPaidOrder, sellerOrderAmounts } from "../../lib/seller-order-metrics";
+import { sellerNetWithVat, commissionBreakdown } from "../../lib/commission";
 const origin = "https://example.invalid";
 const product = "22222222-2222-4222-8222-222222222222";
 const seller = "11111111-1111-4111-8111-111111111111";
@@ -169,3 +173,40 @@ for (const valid of [true, false]) {
     expect(result.billingAuthorized).toBe(false);
   });
 }
+test("statistics never infer money from status alone or include cancelled/refunded/review orders", () => {
+  const paid = { status: "paid", payment_status: "paid", paid_at: "2026-11-01T00:00:00Z" };
+  expect(recognizedPaidOrder(paid)).toBe(true);
+  for (const extra of [{ status: "cancelled" }, { payment_status: "refunded" }, { payment_status: "awaiting" },
+    { paid_at: null }, { payment_review_reason: "refund_required" }]) expect(recognizedPaidOrder({ ...paid, ...extra })).toBe(false);
+});
+test("seller payout preview uses captured VAT and one pickup charge, not today's profile or other sellers", () => {
+  const item = { seller_id: seller, price: 10, quantity: 1, vat_rate: 12, commission_rate: 15, seller_courier_fee_cents: 350 };
+  const result = sellerOrderAmounts({ items: [item, item, { ...item, seller_id: product }] }, seller);
+  expect(result.goodsCents).toBe(2000);
+  expect(result.pickupCents).toBe(350);
+  expect(result.commissionCents).toBe(Math.round(commissionBreakdown(10, 12).commissionTotal * 200));
+  expect(sellerOrderAmounts({ items: [{ ...item, vat_rate: null }] }, seller).netCents).toBeNull();
+  expect(sellerOrderAmounts({ items: [{ ...item, price: Number.MAX_VALUE }] }, seller).netCents).toBeNull();
+  for (const vat of [0, 5, 12, 21]) expect(sellerNetWithVat(10, vat).commission).toBe(commissionBreakdown(10, vat).commissionTotal);
+});
+for (const isAdmin of [false, true]) {
+  test(`reserved admin status with ${isAdmin ? "real" : "forged"} authority cannot mark a payment paid manually`, async () => {
+    backend = url => url.pathname === "/auth/v1/user" ? Response.json({
+      id: seller, app_metadata: { is_super_admin: isAdmin }, user_metadata: { is_super_admin: true },
+    }) : Response.json({ id: product, status: "pending", lifecycle_version: "marketplace-v1", payment_status: "awaiting" });
+    const response = await adminStatus(new Request(origin, { method: "POST", headers: { authorization: "Bearer synthetic" },
+      body: JSON.stringify({ orderId: product, status: "paid" }),
+    }));
+    expect(response.status).toBe(isAdmin ? 409 : 403);
+    expect(seen.some(call => call.startsWith("PATCH") || call.includes("/rpc/"))).toBe(false);
+  });
+}
+test("manual refund endpoint takes actor only from verified admin and requires external-refund acknowledgement", async () => {
+  expect((await recordRefund(request({ orderId: product }))).status).toBe(401);
+  backend = () => Response.json({ id: seller, app_metadata: { is_super_admin: true } });
+  const response = await recordRefund(new Request(origin, { method: "POST", headers: { authorization: "Bearer synthetic" },
+    body: JSON.stringify({ orderId: product, actorId: product, amountCents: 800 }),
+  }));
+  expect(response.status).toBe(400);
+  expect(seen.filter(call => call.includes("/rpc/"))).toEqual([]);
+});

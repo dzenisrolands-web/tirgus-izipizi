@@ -3,6 +3,7 @@ import { assertSuperAdmin } from "@/lib/admin-auth";
 import { notifySellersNewOrder, notifyBuyerOrderStatus } from "@/lib/order-notifications";
 import { sendAllOrderEmails, sendEmail, brandedEmailLayout } from "@/lib/email";
 import { loadAndRender } from "@/lib/email-templates";
+import { marketplaceLifecycleEnabled } from "@/lib/marketplace-lifecycle";
 
 const PAID_FLOW_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
@@ -16,22 +17,32 @@ export async function POST(req: Request) {
   if ("error" in ctx) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
   const { supabase } = ctx;
 
-  const { orderId, status, resendNotifications } = await req.json().catch(() => ({})) as {
-    orderId?: string; status?: string; resendNotifications?: boolean;
+  const { orderId, status, resendNotifications, evidence } = await req.json().catch(() => ({})) as {
+    orderId?: string; status?: string; resendNotifications?: boolean; evidence?: string;
   };
-  if (!orderId || !status) {
+  if (typeof orderId !== "string" || !orderId || !status || !["pending", "paid", "processing", "shipped", "delivered", "cancelled"].includes(status)) {
     return NextResponse.json({ error: "Missing orderId or status" }, { status: 400 });
   }
 
   // Fetch current order
   const { data: order } = await supabase
     .from("orders")
-    .select("id, status, payment_status, paid_at")
+    .select("id, status, payment_status, paid_at" + (marketplaceLifecycleEnabled() ? ", lifecycle_version" : ""))
     .eq("id", orderId)
-    .single();
+    .single<{ id: string; status: string; payment_status: string; paid_at: string | null; lifecycle_version?: string }>();
 
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+  if (order.lifecycle_version === "marketplace-v1") {
+    if (status === "paid" || status === "pending" || resendNotifications || typeof evidence !== "string" || evidence.trim().length < 10) {
+      return NextResponse.json({ error: "Maksājumu apstiprina verificēts callback; statusa maiņai vajadzīgs dokumentēts pamatojums. Paziņojumus pārvalda outbox." }, { status: 409 });
+    }
+    const { data, error } = await supabase.rpc("marketplace_transition_v1", {
+      p_order_id: order.id, p_expected: order.status, p_status: status, p_actor_id: ctx.user.id, p_reference: evidence.trim(),
+    });
+    if (error || !data) return NextResponse.json({ error: "Statusa maiņa bloķēta; pārbaudi pierādījumus un aktuālo stāvokli." }, { status: 409 });
+    return NextResponse.json({ ok: true, updates: data, sideEffects: ["durable_event_recorded"] }, { headers: { "Cache-Control": "private, no-store" } });
   }
 
   const previousStatus = order.status;

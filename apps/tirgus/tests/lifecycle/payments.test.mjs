@@ -42,8 +42,9 @@ test("direct paid/cancelled changes cannot bypass holds, and fulfillment cannot 
   await assert.rejects(db.exec("UPDATE orders SET status='paid',payment_status='paid',paid_at=now()"),/evidence/);
   await assert.rejects(db.exec("UPDATE orders SET status='cancelled'"),/Release/);
   await pay();
-  await assert.rejects(db.exec("UPDATE orders SET status='shipped'"),/sequential/);
-  await db.exec("UPDATE orders SET status='processing'; UPDATE orders SET status='shipped'; UPDATE orders SET status='delivered'");
+  await assert.rejects(db.exec("UPDATE orders SET status='shipped'"),/evidence|sequential/);
+  await db.exec("UPDATE orders SET status='processing'");
+  await assert.rejects(db.exec("UPDATE orders SET status='shipped'"),/evidence/);
   await assert.rejects(db.exec("UPDATE orders SET total_cents=1"),/immutable/);
 });
 test("settlement never invents reservation evidence for a historical order",async()=>{

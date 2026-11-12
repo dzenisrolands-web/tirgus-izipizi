@@ -14,7 +14,9 @@ GRANT SELECT ON public.marketplace_events_v1 TO service_role;
 CREATE FUNCTION public.marketplace_guard_order_v1()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN
+  IF OLD.lifecycle_version IS DISTINCT FROM NEW.lifecycle_version THEN RAISE EXCEPTION 'Lifecycle identity is immutable'; END IF;
   IF OLD.lifecycle_version IS DISTINCT FROM 'marketplace-v1' THEN RETURN NEW; END IF;
+  IF current_setting('role',true) IN ('anon','authenticated') THEN RAISE EXCEPTION 'Authorized server transition required'; END IF;
   IF NEW.lifecycle_version IS DISTINCT FROM OLD.lifecycle_version
      OR NEW.items IS DISTINCT FROM OLD.items OR NEW.total_cents IS DISTINCT FROM OLD.total_cents
      OR NEW.seller_ids IS DISTINCT FROM OLD.seller_ids OR NEW.delivery_info IS DISTINCT FROM OLD.delivery_info
