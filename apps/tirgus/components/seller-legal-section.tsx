@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Building2, FileText, CreditCard, ExternalLink, AlertTriangle } from "lucide-react";
-import { operatorInfo } from "@/lib/operator-info";
+import { legacySelfBillingOperatorInfo as operatorInfo } from "@/lib/legal/legacy-self-billing-operator";
 import { SELF_BILLING_VERSION, needsReconsent } from "@/lib/legal/self-billing";
 
 export type LegalData = {

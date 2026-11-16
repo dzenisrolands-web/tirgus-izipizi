@@ -24,6 +24,7 @@ import { lookupPostalCode, nearestLockersForCode } from "@/lib/postal-zones";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 import { useSavedAddresses, QUICK_LABELS, type SavedAddress } from "@/lib/saved-addresses";
 import { publicProductImage } from "@/lib/product-image";
+import { operatorInfo } from "@/lib/operator-info";
 
 type DeliveryMethod = "locker" | "courier" | "express";
 type Step = "cart" | "delivery" | "confirm";
@@ -1166,6 +1167,9 @@ export function CartPage() {
 
             <p className="text-center text-xs text-gray-400">
               🔒 Droša apmaksa ar Paysera
+            </p>
+            <p className="text-center text-xs text-gray-500">
+              Maksājumu saņēmējs: {operatorInfo.shortName}
             </p>
           </div>
         </div>

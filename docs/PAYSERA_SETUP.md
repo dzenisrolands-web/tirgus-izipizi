@@ -7,8 +7,10 @@ Soli pa solim, kas jākonfigurē Paysera merchant panelī, lai checkout strādā
 ## 1. Reģistrēt projektu Paysera
 
 1. Atver: https://bank.paysera.com
-2. Pieslēdzies ar **SIA IziPizi** kontu — to pašu, ar kuru jau tiek pieņemti
-   maksājumi par piegādēm
+2. Izmanto **SIA Svaigi** merchant kontu/projektu, kura juridiskais maksājumu
+   saņēmējs ir SIA Svaigi (reģ. Nr. 40103915568). IziPizi ir zīmols; neizmanto
+   cita uzņēmuma piegāžu projektu tikai kopīgā zīmola dēļ. Pirms publicēšanas
+   Paysera panelī pārbaudi projekta juridisko personu un norēķinu saņēmēju.
 3. Kreisajā izvēlnē: **Projekti un darbības** → **Mani projekti** → **Jauns projekts**
 4. Aizpildi:
    - **Projekta nosaukums**: `tirgus.izipizi.lv`
@@ -37,6 +39,16 @@ maksājumi. (`operatorInfo.paysera.projectId` faktiski vairs netiek izmantots
 kodā — Quality Sign nozīmītes skripts `app/layout.tsx` tika noņemts, jo
 traucēja mobilo izvēlni. Lauks palicis `lib/operator-info.ts` tikai kā
 dokumentācijai/atsaucei.)
+
+**Rekvizītu labojums kodā nepārslēdz maksājumu saņēmēju.** Šajā labojumā
+esošais servera projekta ID, parole un Paysera protokols nav mainīti, un
+merchant konta īpašnieks nav ārēji pārbaudīts. Ja pašreizējais projekts nepieder
+SIA Svaigi, vajadzīgs apstiprināts Svaigi projekts un tā konfigurēšana Vercel
+ārpus šī rekvizītu PR. Nesūti projekta paroli čatā vai Git.
+
+Esošais self-billing v2 līgums un rēķinu attēlojums saglabā iepriekšējo
+operatoru; to pāreja uz Svaigi ar dokumenta izdevēja vēstures saglabāšanu
+ir atsevišķs darbs. Vecos rēķinus un piekrišanas nedrīkst pārrakstīt.
 
 ---
 

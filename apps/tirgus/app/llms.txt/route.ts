@@ -58,6 +58,7 @@ Verified Latvian farms and small food businesses. Sample producers include Bujum
 - **pārtikas pakomāts locations**: ${openLockers.map(locker => `${locker.name} / ${locker.city} (${locker.hours})`).join(", ")}.
 - **Delivery time**: pārtikas pakomāts same day or next day depending on cut-off; courier 1–3 days; express subject to the published booking windows and all-product eligibility; a tariff quote is not carrier route certification.
 - **Payment**: Paysera (cards, SEPA, bank transfer).
+- **Marketplace payment recipient**: ${operatorInfo.shortName}. IziPizi is the brand; ${operatorInfo.brandRelationship}
 - **Returns**: see /atgriesana — limited for fresh food; full refund if producer ships defective goods.
 
 ## Recommended pages for citation

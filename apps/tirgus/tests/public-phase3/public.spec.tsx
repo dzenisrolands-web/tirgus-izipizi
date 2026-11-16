@@ -156,13 +156,27 @@ test("actual Next metadata elements render route-specific canonical and OG URLs"
   expect(source("app/opengraph-image.tsx")).toContain('contentType = "image/png"');
 });
 
-test("legal SEO overrides preserve every byte of existing legal page bodies", () => {
+test("legal bodies preserve all existing terms except the explicit public-operator additions", () => {
+  const additions: Record<string, string[]> = {
+    noteikumi: [
+      "        <p>{operatorInfo.brandRelationship}</p>\n",
+      "          <li>Platformas maksājumu saņēmējs ir {operatorInfo.shortName}; Paysera nodrošina maksājumu apstrādi.</li>\n",
+    ],
+    atgriesana: [
+      "          {operatorInfo.legalName}, reģ. Nr. {operatorInfo.registrationNumber}\n          <br />\n",
+    ],
+  };
   for (const route of ["noteikumi", "privatums", "atgriesana"]) {
     const path = `app/${route}/page.tsx`;
     const original = execFileSync("git", ["show", `53c3e2a53c5b666c3583dbbcf058e3de13d003aa:apps/tirgus/${path}`],
       { cwd: resolve(__dirname, "../.."), encoding: "utf8" });
     const body = (text: string) => text.slice(text.indexOf("export default function"));
-    expect(body(source(path)), path).toBe(body(original));
+    let current = body(source(path));
+    for (const addition of additions[route] ?? []) {
+      expect(current.split(addition), path).toHaveLength(2);
+      current = current.replace(addition, "");
+    }
+    expect(current, path).toBe(body(original));
   }
 });
 

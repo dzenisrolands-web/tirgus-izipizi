@@ -109,6 +109,7 @@ const organizationJsonLd = {
     "Latvijas ražotāju tirgus vieta — svaiga pārtika no fermas līdz pārtikas pakomātam.",
   inLanguage: "lv-LV",
   areaServed: { "@type": "Country", name: "Latvia" },
+  brand: { "@type": "Brand", name: operatorInfo.brandName },
   parentOrganization: {
     "@type": "Organization",
     name: operatorInfo.legalName,
