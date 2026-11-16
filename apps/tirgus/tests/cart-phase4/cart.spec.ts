@@ -471,6 +471,7 @@ test("upsells wait for verified sellers and keep same/other seller audiences sep
       return new Promise(resolve => { resolveQuote = resolve; });
     }
     if (url.pathname === "/api/best-sellers") return Response.json({ "same-extra": 9, "other-extra": 8 });
+    if (url.pathname === "/rest/v1/reviews") return Response.json([], { headers: { "content-range": "*/0" } });
     if (url.pathname === "/rest/v1/listings") return Response.json([
       { id: "listing-a", title: "Existing", seller_id: "seller-a", price: 4 },
       { id: "same-extra", title: "Same", seller_id: "seller-a", price: 5 },

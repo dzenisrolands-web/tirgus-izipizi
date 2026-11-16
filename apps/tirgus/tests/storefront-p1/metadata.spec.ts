@@ -25,6 +25,7 @@ test.beforeEach(() => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     expect(url.origin).toBe("https://example.invalid");
     expect(init?.method ?? "GET").toBe("GET");
+    if (url.pathname === "/rest/v1/reviews") return Response.json([], { headers: { "content-range": "*/0" } });
     const columns = url.searchParams.get("select") ?? "";
     if (url.pathname === "/rest/v1/listings") return Response.json(columns.includes("updated_at") || url.searchParams.has("seller_id") ? [product] : product);
     if (url.pathname === "/rest/v1/sellers_public") return Response.json(columns.includes("updated_at") ? [seller] : seller);

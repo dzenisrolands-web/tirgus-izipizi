@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, Loader2, Send, CheckCircle, Lock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isReviewStars } from "@/lib/seller-reviews";
 
 type DbReview = {
   id: string;
@@ -36,6 +37,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 export function ReviewsSectionDb({ listingId }: { listingId: string }) {
   const [reviews, setReviews] = useState<DbReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewsUnavailable, setReviewsUnavailable] = useState(false);
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -51,13 +53,25 @@ export function ReviewsSectionDb({ listingId }: { listingId: string }) {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   async function loadReviews() {
-    const { data } = await supabase
-      .from("reviews")
-      .select("id, listing_id, buyer_id, buyer_name, stars, comment, verified_purchase, created_at")
-      .eq("listing_id", listingId)
-      .order("created_at", { ascending: false });
-    setReviews((data as DbReview[] | null) ?? []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("id, listing_id, buyer_id, buyer_name, stars, comment, verified_purchase, created_at")
+        .eq("listing_id", listingId)
+        .order("created_at", { ascending: false });
+      if (error || !Array.isArray(data) || data.some(review => !review || !isReviewStars(review.stars))) {
+        setReviewsUnavailable(true);
+        setReviews([]);
+      } else {
+        setReviews(data as DbReview[]);
+        setReviewsUnavailable(false);
+      }
+    } catch {
+      setReviewsUnavailable(true);
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadAuthState() {
@@ -149,6 +163,12 @@ export function ReviewsSectionDb({ listingId }: { listingId: string }) {
 
   if (loading) return (
     <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-gray-400" /></div>
+  );
+
+  if (reviewsUnavailable) return (
+    <div className="rounded-xl border border-gray-100 p-6 text-center text-sm text-gray-400">
+      Atsauksmes pašlaik nav pieejamas
+    </div>
   );
 
   const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.stars, 0) / reviews.length : 0;

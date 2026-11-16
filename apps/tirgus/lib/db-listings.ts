@@ -4,8 +4,11 @@ import type { Listing, Seller, Variant } from "./mock-data";
 import type { SellerMeta } from "./sellers-meta";
 import { isPublicReady, normalizeUrl } from "./utils";
 import { publicProductImage } from "./product-image";
+import { fetchSellerReviews, unavailableSellerReviews, type SellerReviews } from "./seller-reviews";
 
 const LISTING_COLS = "id, title, description, price, unit, category, image_url, locker_id, seller_id, quantity, created_at, variants, storage_type, express_delivery, courier_delivery, dispatch_days, slug";
+type PublicSeller = Seller & SellerReviews;
+type PublicListing = Omit<Listing, "seller"> & { seller: PublicSeller };
 
 function isPublicListing(listing: Listing): boolean {
   return Number.isFinite(listing.price) && isPublicReady(listing);
@@ -62,7 +65,7 @@ function mapVariants(raw: unknown): Variant[] | undefined {
   return out.length > 0 ? out : undefined;
 }
 
-function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null): Listing & { slug?: string } {
+function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null, reviews: SellerReviews = unavailableSellerReviews): PublicListing {
   const locker = lockers.find((l) => l.id === item.locker_id) ?? lockers[0];
   return {
     id: item.id as string,
@@ -81,10 +84,9 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
       farmName: (s?.farm_name as string) ?? (s?.name as string) ?? "",
       avatar: (s?.logo_url as string) || (s?.avatar_url as string) || "",
       verified: s?.status === "approved",
-      rating: 5.0,
-      reviewCount: 0,
+      ...reviews,
       location: (s?.location as string) ?? "",
-    } as Seller,
+    },
     quantity: (item.quantity as number) ?? 1,
     // Required legacy presentation type; no verified shelf-life column is queried.
     freshnessDate: "",
@@ -99,7 +101,7 @@ function mapRow(item: Record<string, unknown>, s: Record<string, unknown> | null
   };
 }
 
-export async function fetchActiveListings(): Promise<Listing[]> {
+export async function fetchActiveListings(): Promise<PublicListing[]> {
   const { data: rows, error } = await supabase
     .from("listings")
     .select(LISTING_COLS)
@@ -116,9 +118,10 @@ export async function fetchActiveListings(): Promise<Listing[]> {
     .in("id", sellerIds);
 
   const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
+  const reviews = await fetchSellerReviews(sellerIds);
 
   return rows
-    .map((item) => mapRow(item, sellersMap[item.seller_id] ?? null))
+    .map((item) => mapRow(item, sellersMap[item.seller_id] ?? null, reviews.get(item.seller_id)))
     .filter(isPublicListing);
 }
 
@@ -155,7 +158,7 @@ async function fetchSalesCounts(): Promise<SalesCounts> {
 export async function fetchBestSellers(
   limit = 6,
   counts?: SalesCounts,
-): Promise<Listing[]> {
+): Promise<PublicListing[]> {
   const sales = counts ?? (typeof window === "undefined" ? {} : await fetchSalesCounts());
 
   const all = await fetchActiveListings();
@@ -172,7 +175,7 @@ export async function fetchBestSellers(
 /**
  * Newest listings — most recently added active products.
  */
-export async function fetchNewestListings(limit = 6): Promise<Listing[]> {
+export async function fetchNewestListings(limit = 6): Promise<PublicListing[]> {
   const all = await fetchActiveListings();
   // fetchActiveListings already orders by created_at desc
   return all.slice(0, limit);
@@ -181,7 +184,7 @@ export async function fetchNewestListings(limit = 6): Promise<Listing[]> {
 /**
  * Weekly featured — listings selected for current week's spotlight.
  */
-export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
+export async function fetchWeeklyFeatured(limit = 7): Promise<PublicListing[]> {
   const today = new Date().toISOString().split("T")[0];
   const { data: featured } = await supabase
     .from("weekly_featured")
@@ -212,14 +215,15 @@ export async function fetchWeeklyFeatured(limit = 7): Promise<Listing[]> {
   const sellersMap = Object.fromEntries((sellersData ?? []).map((s) => [s.id, s]));
 
   // Order by featured position
+  const reviews = await fetchSellerReviews(sellerIds);
   const positionMap = new Map(featured.map((f) => [f.listing_id, f.position]));
-  const mapped = rows.map((item) => mapRow(item, sellersMap[item.seller_id] ?? null)).filter(isPublicListing);
+  const mapped = rows.map((item) => mapRow(item, sellersMap[item.seller_id] ?? null, reviews.get(item.seller_id))).filter(isPublicListing);
   return mapped.sort((a, b) =>
     (positionMap.get(a.id) ?? 99) - (positionMap.get(b.id) ?? 99)
   );
 }
 
-export async function fetchListingById(id: string): Promise<Listing | null> {
+export async function fetchListingById(id: string): Promise<PublicListing | null> {
   const { data: item, error } = await supabase
     .from("listings")
     .select(LISTING_COLS)
@@ -230,11 +234,12 @@ export async function fetchListingById(id: string): Promise<Listing | null> {
   if (error || !item) return null;
   const { data: s } = await supabase
     .from("sellers_public").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
-  const listing = mapRow(item, s);
+  const reviews = await fetchSellerReviews([item.seller_id]);
+  const listing = mapRow(item, s, reviews.get(item.seller_id));
   return isPublicListing(listing) ? listing : null;
 }
 
-export async function fetchListingBySlug(slug: string): Promise<Listing | null> {
+export async function fetchListingBySlug(slug: string): Promise<PublicListing | null> {
   const { data: item, error } = await supabase
     .from("listings")
     .select(LISTING_COLS)
@@ -245,12 +250,13 @@ export async function fetchListingBySlug(slug: string): Promise<Listing | null> 
   if (error || !item) return null;
   const { data: s } = await supabase
     .from("sellers_public").select("id, name, farm_name, avatar_url, logo_url, status, location").eq("id", item.seller_id).single();
-  const listing = mapRow(item, s);
+  const reviews = await fetchSellerReviews([item.seller_id]);
+  const listing = mapRow(item, s, reviews.get(item.seller_id));
   return isPublicListing(listing) ? listing : null;
 }
 
 export type DbSellerProfile = {
-  seller: Seller;
+  seller: PublicSeller;
   meta: SellerMeta;
   listings: Listing[];
 };
@@ -276,15 +282,14 @@ function mapSellerMeta(s: Record<string, unknown>): SellerMeta {
   };
 }
 
-function mapSellerRecord(s: Record<string, unknown>): Seller {
+function mapSellerRecord(s: Record<string, unknown>, reviews: SellerReviews = unavailableSellerReviews): PublicSeller {
   return {
     id: s.id as string,
     name: (s.name as string) ?? "",
     farmName: (s.farm_name as string) ?? (s.name as string) ?? "",
     avatar: (s.logo_url as string) || (s.avatar_url as string) || "",
     verified: s.status === "approved",
-    rating: 5.0,
-    reviewCount: 0,
+    ...reviews,
     location: (s.location as string) ?? "",
   };
 }
@@ -302,10 +307,11 @@ export async function fetchDbSellerProfile(id: string): Promise<DbSellerProfile 
     .select(LISTING_COLS)
     .eq("seller_id", id).eq("status", "active").gt("price", 0);
 
+  const reviews = (await fetchSellerReviews([id])).get(id);
   return {
-    seller: mapSellerRecord(s),
+    seller: mapSellerRecord(s, reviews),
     meta: mapSellerMeta(s),
-    listings: (listingsRows ?? []).map((item) => mapRow(item, s)).filter(isPublicListing),
+    listings: (listingsRows ?? []).map((item) => mapRow(item, s, reviews)).filter(isPublicListing),
   };
 }
 
@@ -319,6 +325,7 @@ export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   if (!rows || rows.length === 0) return [];
 
   const sellerIds = rows.map((s) => s.id);
+  const reviews = await fetchSellerReviews(sellerIds);
   const { data: listingsRows } = await supabase
     .from("listings")
     .select(LISTING_COLS)
@@ -329,14 +336,14 @@ export async function fetchApprovedSellers(): Promise<DbSellerProfile[]> {
   const byId: Record<string, Listing[]> = {};
   (listingsRows ?? []).forEach((item) => {
     const sellerRow = rows.find((r) => r.id === item.seller_id) ?? null;
-    const mapped = mapRow(item, sellerRow);
+    const mapped = mapRow(item, sellerRow, reviews.get(item.seller_id));
     if (!isPublicListing(mapped)) return;
     if (!byId[item.seller_id]) byId[item.seller_id] = [];
     byId[item.seller_id].push(mapped);
   });
 
   return rows.map((s) => ({
-    seller: mapSellerRecord(s),
+    seller: mapSellerRecord(s, reviews.get(s.id)),
     meta: mapSellerMeta(s),
     listings: byId[s.id] ?? [],
   }));

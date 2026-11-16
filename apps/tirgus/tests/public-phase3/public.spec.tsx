@@ -36,6 +36,7 @@ async function backend(handler: Handler, run: () => Promise<void>) {
     const url = new URL(input instanceof Request ? input.url : String(input));
     if (url.origin !== "https://example.invalid") throw new Error("Non-dummy network forbidden");
     expect(init?.method ?? "GET").toBe("GET");
+    if (url.pathname === "/rest/v1/reviews") return Response.json([], { headers: { "content-range": "*/0" } });
     return handler(url, init);
   };
   try { await run(); } finally { globalThis.fetch = original; }

@@ -211,10 +211,18 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
                   {listing.seller.verified && <CheckCircle size={13} className="text-brand-600" />}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Star size={11} fill="currentColor" className="text-amber-400" />
-                  <span>{listing.seller.rating}</span>
-                  <span className="text-gray-300">·</span>
-                  <span>{listing.seller.reviewCount} atsauksmes</span>
+                  {!listing.seller.reviewsAvailable ? (
+                    <span>Atsauksmes pašlaik nav pieejamas</span>
+                  ) : listing.seller.reviewCount > 0 ? (
+                    <>
+                      <Star size={11} fill="currentColor" className="text-amber-400" />
+                      <span>{listing.seller.rating.toFixed(1)}</span>
+                      <span className="text-gray-300">·</span>
+                      <span>{listing.seller.reviewCount} atsauksmes</span>
+                    </>
+                  ) : (
+                    <span>Vēl nav atsauksmju</span>
+                  )}
                 </div>
               </div>
               <span className="text-xs text-brand-600">Skatīt →</span>

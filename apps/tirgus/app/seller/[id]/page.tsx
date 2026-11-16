@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  CheckCircle, MapPin, Package,
+  CheckCircle, MapPin, Package, Star,
   Calendar, Award, Quote,
 } from "lucide-react";
 import { fetchDbSellerProfile } from "@/lib/db-listings";
@@ -55,7 +55,7 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
     name: seller.name, description: meta?.shortDesc,
     image: meta?.cover || seller.avatar, url: meta?.website ?? `https://tirgus.izipizi.lv/seller/${id}`,
     address: { "@type": "PostalAddress", addressLocality: seller.location, addressCountry: "LV" },
-    aggregateRating: seller.reviewCount > 0
+    aggregateRating: seller.reviewsAvailable && seller.reviewCount > 0
       ? { "@type": "AggregateRating", ratingValue: seller.rating, reviewCount: seller.reviewCount, bestRating: 5, worstRating: 1 }
       : undefined,
     sameAs: [meta?.facebook, meta?.instagram, meta?.website].filter(Boolean),
@@ -103,7 +103,14 @@ export default async function SellerPage({ params }: { params: Promise<{ id: str
                 <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80">
                   <span className="flex items-center gap-1"><MapPin size={13} /> {seller.location}</span>
                   <span className="flex items-center gap-1"><Package size={13} /> {sellerListings.length} produkti</span>
-                  {/* Reitings + atsauksmju skaits paslēpts pirms launch — atgriezts, kad būs atsauksmju lapa */}
+                  {!seller.reviewsAvailable ? (
+                    <span>Atsauksmes pašlaik nav pieejamas</span>
+                  ) : seller.reviewCount > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <Star size={13} fill="currentColor" className="text-amber-400" />
+                      {seller.rating.toFixed(1)} ({seller.reviewCount} atsauksmes)
+                    </span>
+                  ) : <span>Vēl nav atsauksmju</span>}
                 </div>
               </div>
             </div>
