@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { LoginForm } from "@/components/login-form";
 
 export const metadata = {
-  title: "Pieslēgties — tirgus.izipizi.lv",
+  title: "Pieslēgties",
   description: "Pieslēdzies savam tirgus.izipizi.lv kontam — pircējiem un ražotājiem.",
   alternates: { canonical: "/login" },
 };

@@ -8,7 +8,7 @@ export const metadata = {
   title: "Sludinājumu dēlis",
   description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pārtikas pakomātā. Abonē un saņem paziņojumu uzreiz.",
   openGraph: {
-    title: "🔥 Sludinājumu dēlis — tirgus.izipizi.lv",
+    title: "🔥 Sludinājumu dēlis",
     description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pārtikas pakomātā.",
     url: "https://tirgus.izipizi.lv/keriens",
     images: [
@@ -22,7 +22,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image" as const,
-    title: "🔥 Sludinājumu dēlis — tirgus.izipizi.lv",
+    title: "🔥 Sludinājumu dēlis",
     description: "Tieši no Latvijas ražotāja — svaigi sludinājumi par produktiem, kas pieejami tavā pārtikas pakomātā.",
   },
 };

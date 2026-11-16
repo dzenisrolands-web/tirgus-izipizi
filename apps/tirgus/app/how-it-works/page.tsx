@@ -9,11 +9,11 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Kā tas strādā | tirgus.izipizi.lv",
+  title: "Kā tas strādā",
   description: "Uzzini kā darbojas tirgus.izipizi.lv — no reģistrācijas līdz pasūtījuma saņemšanai.",
   alternates: { canonical: "/how-it-works" },
   openGraph: {
-    title: "Kā tas strādā | tirgus.izipizi.lv",
+    title: "Kā tas strādā",
     description: "Uzzini kā darbojas tirgus.izipizi.lv — no reģistrācijas līdz pasūtījuma saņemšanai.",
     url: "https://tirgus.izipizi.lv/how-it-works",
     type: "website",

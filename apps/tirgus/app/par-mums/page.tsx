@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika. tirgus.izipizi.lv savieno Latvijas ražotājus ar pircējiem un atbalsta zaļāku Latviju.",
   alternates: { canonical: "/par-mums" },
   openGraph: {
-    title: "Par mums un mūsu misija | tirgus.izipizi.lv",
+    title: "Par mums un mūsu misija",
     description: "Mēs ticam, ka labākā pārtika ir tava kaimiņa pārtika.",
     url: "https://tirgus.izipizi.lv/par-mums",
     type: "website",

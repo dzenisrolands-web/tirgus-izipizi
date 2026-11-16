@@ -8,7 +8,7 @@ import {
 } from "@/lib/legal/self-billing";
 
 export const metadata: Metadata = {
-  title: "Self-billing vienošanās — tirgus.izipizi.lv",
+  title: "Self-billing vienošanās",
   description: `Vienošanās par klienta sastādītiem rēķiniem (self-billing) starp ${operatorInfo.shortName} un tirgotājiem.`,
   robots: { index: false, follow: false },
 };

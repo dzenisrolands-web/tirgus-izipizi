@@ -4,7 +4,7 @@ import { openLockers as lockers } from "@/lib/locker-policy";
 export const metadata = {
   alternates: { canonical: "/lockers" },
   openGraph: { url: "https://tirgus.izipizi.lv/lockers" },
-  title: "Pārtikas pakomātu vietas — tirgus.izipizi.lv",
+  title: "Pārtikas pakomātu vietas",
 };
 
 export default function LockersPage() {

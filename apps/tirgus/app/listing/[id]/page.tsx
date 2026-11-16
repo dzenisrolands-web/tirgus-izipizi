@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!listing) return {};
   const canonicalUrl = productUrl(listing);
   const shareImage = listing.image === PRODUCT_IMAGE_PLACEHOLDER ? "/opengraph-image" : listing.image;
-  const title = `${listing.title} — ${listing.seller.farmName} | tirgus.izipizi.lv`;
+  const title = `${listing.title} — ${listing.seller.farmName}`;
   const description = listing.description
     ? `${listing.description.slice(0, 140)}…`
     : `${listing.title} no ${listing.seller.farmName}. ${formatPrice(listing.price)} / ${listing.unit}. Saņem izipizi pārtikas pakomātā.`;

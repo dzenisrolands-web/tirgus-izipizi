@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const profile = await fetchDbSellerProfile(id);
   if (!profile) return { robots: { index: false, follow: false } };
   const { seller, meta } = profile;
-  const title = `${seller.name} | tirgus.izipizi.lv`;
+  const title = `${seller.name}`;
   const description = meta?.shortDesc ?? `${seller.name} produkti IziPizi tirgū.`;
   const ogImage = meta?.cover || seller.avatar || "/opengraph-image";
   return {

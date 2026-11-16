@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AdminShell } from "./admin-shell";
 
 export const metadata: Metadata = {
-  title: "Admin — tirgus.izipizi.lv",
+  title: "Admin",
   robots: { index: false, follow: false },
 };
 
