@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     status: 302,
     headers: {
       Location: url,
-      "Referrer-Policy": "unsafe-url",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
       "Cache-Control": "no-store",
     },
   });
