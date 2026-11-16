@@ -127,6 +127,8 @@ export default function AtgriesanaPage() {
 
         <h2>8. Kontakti atgriešanai</h2>
         <p>
+          {operatorInfo.legalName}, reģ. Nr. {operatorInfo.registrationNumber}
+          <br />
           E-pasts: <strong>{operatorInfo.contact.emailComplaints}</strong>
           <br />
           Tālrunis: <strong>{operatorInfo.contact.phone}</strong> (darba dienās 9:00–18:00)

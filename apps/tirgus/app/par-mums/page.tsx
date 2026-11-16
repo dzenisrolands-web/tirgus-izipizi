@@ -101,9 +101,10 @@ export default function ParMumsPage() {
           <h2 className="text-xl font-extrabold text-gray-900">Mūsu stāsts</h2>
           <div className="mt-4 space-y-4 text-sm leading-relaxed text-gray-600">
             <p>
-              <strong>{operatorInfo.shortName}</strong> operē Latvijas pārtikas pakomātu
-              tīklu — skapjīšus ar temperatūras kontroli, kas ļauj saņemt
-              svaigu pārtiku izvēlētās vietas norādītajā darba laikā.
+              {operatorInfo.brandRelationship} Platformas operators un maksājumu
+              saņēmējs ir <strong>{operatorInfo.shortName}</strong>. Piegādei izmantojam
+              IziPizi pārtikas pakomātu tīklu — skapjīšus ar temperatūras kontroli,
+              kas ļauj saņemt svaigu pārtiku izvēlētās vietas norādītajā darba laikā.
             </p>
             <p>
               Pakomātu tīkls atrisināja piegādi, bet neatbildēts palika galvenais jautājums:

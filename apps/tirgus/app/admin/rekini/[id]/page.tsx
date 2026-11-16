@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, FileText, CheckCircle, Send, XCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { legacySelfBillingOperatorInfo as operatorInfo, legacySelfBillingFormattedAddress as formattedAddress } from "@/lib/legal/legacy-self-billing-operator";
 
 type Invoice = {
   id: string;

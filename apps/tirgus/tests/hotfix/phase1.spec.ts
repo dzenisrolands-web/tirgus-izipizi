@@ -142,9 +142,11 @@ test("all three promo cards are gated and stale closed-locker drafts are rejecte
   }
 });
 
-test("pricing release preserves historical data, invoices, operator, commission and schema boundary", () => {
+test("pricing release preserves historical data, invoices, commission and schema boundary", () => {
   // Payment behavior is covered by the security-payment suite rather than frozen source bytes.
-  for (const path of ["lib/invoice/generate.ts", "lib/operator-info.ts",
+  // Public operator details now have dedicated Svaigi/legacy-identity coverage
+  // in storefront-p1/operator-info.spec.tsx; invoice generation stays frozen.
+  for (const path of ["lib/invoice/generate.ts",
     "lib/utils.ts", "lib/mock-data.ts", "lib/commission.ts"]) {
     const original = execFileSync("git", ["show", `aa88b6575a4146e630bf24f40af5683825675305:apps/tirgus/${path}`],
       { cwd: app, encoding: "utf8" });

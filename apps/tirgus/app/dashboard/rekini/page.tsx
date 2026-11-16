@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FileText, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
-import { operatorInfo } from "@/lib/operator-info";
+import { legacySelfBillingOperatorInfo as operatorInfo } from "@/lib/legal/legacy-self-billing-operator";
 
 type Invoice = {
   id: string;

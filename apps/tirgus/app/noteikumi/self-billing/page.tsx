@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { operatorInfo, formattedAddress } from "@/lib/operator-info";
+import { legacySelfBillingOperatorInfo as operatorInfo, legacySelfBillingFormattedAddress as formattedAddress } from "@/lib/legal/legacy-self-billing-operator";
 import {
   SELF_BILLING_VERSION,
   SELF_BILLING_EFFECTIVE_DATE,

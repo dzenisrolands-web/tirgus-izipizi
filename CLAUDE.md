@@ -81,7 +81,9 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 - **Status**: Published integration. Isolated protocol/quote tests are not a
   fresh bank-payment or fulfillment certification; controlled full-lifecycle
   verification remains a separate release step.
-- **Provider**: Paysera (Latvian, SEPA + cards), project under SIA IziPizi
+- **Provider**: Paysera (Latvian, SEPA + cards). The intended marketplace
+  payment recipient is SIA Svaigi. Merchant ownership must be verified in
+  Paysera; public operator constants do not switch the server merchant account.
 - **Endpoints**:
   - `/api/checkout/create-session` — builds the Paysera request
   - `/api/webhooks/paysera` — payment confirmation callback
@@ -105,7 +107,13 @@ Originally planned no DB for MVP, but Supabase has been fully integrated. Mock d
 - Seller approval: admin manual approval (`/admin/razotaji`), but new products
   go live immediately without waiting for review
 - Revenue: fixed 15% commission on all products (`lib/commission.ts`)
-- Operator: SIA IziPizi (migrated from SIA Svaigi 2026-08, migration 0023)
+- Public marketplace operator and intended payment recipient: SIA Svaigi,
+  reg. 40103915568, restored by owner request. Svaigi is an IziPizi company
+  serving the IziPizi-branded tirgus.izipizi.lv project. IziPizi remains the brand.
+- Existing self-billing v2 and invoice views retain their previous IziPizi
+  identity via `lib/legal/legacy-self-billing-operator.ts`. This public-details
+  correction does not migrate invoice issuers, old documents, consents, or
+  Paysera ownership. A separate consent/issuer-provenance transition is needed.
 - Buyer delivery: parcel locker 3.00 EUR once per seller/destination, including
   mixed chilled/frozen products. Courier/express use the published destination
   postcode cold-chain tariffs plus the existing 21% delivery-service VAT.

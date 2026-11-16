@@ -37,6 +37,7 @@ export default function NoteikumiPage() {
           juridiskā adrese: {formattedAddress()}.
           Kontakti: {operatorInfo.contact.emailGeneral}, {operatorInfo.contact.phone}.
         </p>
+        <p>{operatorInfo.brandRelationship}</p>
 
         <h2>2. Pakalpojuma apraksts</h2>
         <p>
@@ -57,6 +58,7 @@ export default function NoteikumiPage() {
         <h2>4. Pasūtīšana un samaksa</h2>
         <ul>
           <li>Pasūtījums tiek noformēts, izvēloties produktus, pārtikas pakomātu un veicot apmaksu caur Paysera</li>
+          <li>Platformas maksājumu saņēmējs ir {operatorInfo.shortName}; Paysera nodrošina maksājumu apstrādi.</li>
           <li>Cenas norādītas eiro (€), iekļauj 21% PVN, ja vien nav norādīts citādi</li>
           <li>Piegādes maksa tiek aprēķināta atsevišķi un norādīta pirms apmaksas</li>
           <li>Pasūtījums uzskatāms par noslēgtu pēc veiksmīgas Paysera apmaksas un mūsu apstiprinājuma</li>
