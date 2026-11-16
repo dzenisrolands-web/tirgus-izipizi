@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/razotaji" },
   openGraph: {
-    title: "Ražotāji — Vietējie pārtikas ražotāji | tirgus.izipizi.lv",
+    title: "Ražotāji — Vietējie pārtikas ražotāji",
     description: "Iepazīsties ar vietējiem Latvijas pārtikas ražotājiem.",
     url: "https://tirgus.izipizi.lv/razotaji",
     type: "website",

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Pārtikas pakomāts norādītajā darba laikā, kurjera tarifs pēc publicētā galamērķa pasta indeksa vai ekspres, ja visi produkti un galamērķa zona to atļauj.",
   alternates: { canonical: "/piegade" },
   openGraph: {
-    title: "Piegāde | tirgus.izipizi.lv",
+    title: "Piegāde",
     description: "Pakomāts vai piegāde uz adresi — cena pēc galamērķa pasta indeksa un temperatūrām, pieejamība pēc visu produktu atļautajiem veidiem.",
     url: "https://tirgus.izipizi.lv/piegade",
     type: "website" as const,

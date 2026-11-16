@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ShoppingBag, Store, ArrowRight, CheckCircle } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Reģistrēties — tirgus.izipizi.lv",
+  title: "Reģistrēties",
   description:
     "Izvēlies konta tipu — pircējs vai ražotājs. tirgus.izipizi.lv savieno Latvijas ražotājus ar pircējiem.",
   alternates: { canonical: "/register" },

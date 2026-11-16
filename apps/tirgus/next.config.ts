@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import { storefrontSecurityHeaders } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -11,12 +13,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Set Referrer-Policy on cart page so browser sends full Referer to Paysera
-        // This is required for Paysera 0x13 fix when using Edge PWA standalone mode
-        source: "/cart",
-        headers: [
-          { key: "Referrer-Policy", value: "unsafe-url" },
-        ],
+        source: "/:path*",
+        headers: storefrontSecurityHeaders(),
       },
     ];
   },

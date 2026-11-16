@@ -14,7 +14,7 @@ export const metadata = {
   // un noindexēts. Atjaunot, kad teksti, bildes un produktu saites būs pareizi.
   robots: { index: false, follow: false },
   openGraph: {
-    title: "IziPizi RECEPTE — tirgus.izipizi.lv",
+    title: "IziPizi RECEPTE",
     description: "Receptes ar Latvijas ražotāju produktiem. Iegādājies ingredienti tieši no fermas.",
     url: "https://tirgus.izipizi.lv/receptes",
     type: "website" as const,

@@ -5,12 +5,12 @@ import { catalogSellerOptions, catalogQuery } from "./catalog-state";
 import { createServerClient } from "@/lib/supabase";
 
 export const metadata = {
-  title: "Produktu katalogs — tirgus.izipizi.lv",
+  title: "Produktu katalogs",
   description: "Pārlūko svaigus produktus no Latvijas ražotājiem. Filtrē pēc kategorijas, pilsētas un uzglabāšanas veida. Saņem pasūtījumu izipizi pārtikas pakomātā.",
   keywords: ["latvijas ražotāji", "svaigi produkti", "pārtikas pakomāts", "bioloģiski", "vietējā pārtika"],
   alternates: { canonical: "/catalog" },
   openGraph: {
-    title: "Produktu katalogs — tirgus.izipizi.lv",
+    title: "Produktu katalogs",
     description: "Pārlūko svaigus produktus no Latvijas ražotājiem.",
     url: "https://tirgus.izipizi.lv/catalog",
     type: "website" as const,

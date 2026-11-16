@@ -4,7 +4,7 @@ import { Mail, Phone, Clock, MapPin, MessageSquare } from "lucide-react";
 export const metadata: Metadata = {
   alternates: { canonical: "/contact" },
   openGraph: { url: "https://tirgus.izipizi.lv/contact" },
-  title: "Sazināties | tirgus.izipizi.lv",
+  title: "Sazināties",
   description: "Sazinies ar tirgus.izipizi.lv komandu — jautājumi, ieteikumi, kļūdas ziņojumi.",
 };
 

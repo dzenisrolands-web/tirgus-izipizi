@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DashboardShell } from "./dashboard-shell";
 
 export const metadata: Metadata = {
-  title: "Mans veikals — tirgus.izipizi.lv",
+  title: "Mans veikals",
   robots: { index: false, follow: false },
 };
 
