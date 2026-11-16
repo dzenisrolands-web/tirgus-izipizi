@@ -11,7 +11,7 @@ import { cartIdentity } from "@/lib/cart-identity";
 import { cartReferences, type CartItem } from "@/lib/cart-state";
 import { useCheckoutQuote, payableQuote, currentQuote } from "@/lib/use-checkout-quote";
 import type { CheckoutQuoteRequest, CheckoutQuoteResponse } from "@/lib/checkout-contract";
-import { calculateDeliveryQuote } from "@/lib/delivery-policy";
+import { BUYER_LOCKER_FEE_CENTS, calculateDeliveryQuote } from "@/lib/delivery-policy";
 import { useCart } from "@/lib/cart-context";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
 import { type Listing } from "@/lib/mock-data";
@@ -50,6 +50,11 @@ type CheckoutDraft = {
 
 const CHECKOUT_KEY = "checkout_draft";
 
+function itemCountLabel(count: number) {
+  const plural = new Intl.PluralRules("lv").select(count);
+  return `${count} ${plural === "one" ? "prece" : plural === "zero" ? "preču" : "preces"}`;
+}
+
 function loadDraft(): Partial<CheckoutDraft> {
   try {
     const raw = localStorage.getItem(CHECKOUT_KEY);
@@ -77,6 +82,7 @@ export function CartPage() {
   const { address: buyerCtxAddress } = useBuyerAddress();
 
   const [step, setStep] = useState<Step>("cart");
+  const [deliveryAttempted, setDeliveryAttempted] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("locker");
   const [lockerId, setLockerId] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -110,7 +116,7 @@ export function CartPage() {
       if (!active) return;
       const d = loadDraft();
       if (Object.keys(d).length > 0) {
-        if (d.step) setStep(d.step === "confirm" || (!getOpenLocker(d.lockerId) && (d.deliveryMethod ?? "locker") === "locker") ? "delivery" : d.step);
+        if (d.step) setStep(d.step === "confirm" || (d.lockerId && !getOpenLocker(d.lockerId) && (d.deliveryMethod ?? "locker") === "locker") ? "delivery" : d.step);
         if (d.deliveryMethod) setDeliveryMethod(d.deliveryMethod);
         if (d.lockerId && getOpenLocker(d.lockerId)) setLockerId(d.lockerId);
         if (d.postalCode) setPostalCode(d.postalCode);
@@ -262,8 +268,8 @@ export function CartPage() {
     })();
   }, []);
 
-  const cartItemIds = useMemo(() => new Set(items.map(i => i.listingId ?? i.id)), [items]);
-  const sellerIds = useMemo(() => new Set(items.map(i => i.sellerId).filter(Boolean) as string[]), [items]);
+  const cartItemIds = useMemo(() => new Set((quote?.items ?? items).map(i => i.listingId ?? i.id)), [items, quote]);
+  const sellerIds = useMemo(() => new Set(quote?.sellers.map(seller => seller.id) ?? []), [quote]);
 
   // "No tiem pašiem ražotājiem" — other real products from sellers already in the cart.
   const upsells = useMemo(() =>
@@ -277,6 +283,7 @@ export function CartPage() {
   // in the last 7 days), from OTHER sellers for diversity. Falls back to filling
   // remaining slots with newest real listings if there isn't enough order data yet.
   const popularUpsells = useMemo(() => {
+    if (!quote) return [];
     const fromOrders = bestSellerListings.filter(
       (l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId)
     );
@@ -286,7 +293,7 @@ export function CartPage() {
       (l) => !cartItemIds.has(l.id) && !sellerIds.has(l.sellerId) && !seen.has(l.id)
     );
     return [...fromOrders, ...fallback].slice(0, 4);
-  }, [bestSellerListings, dbListings, cartItemIds, sellerIds]);
+  }, [bestSellerListings, dbListings, cartItemIds, sellerIds, quote]);
 
   function setField(k: keyof typeof form, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -393,7 +400,7 @@ export function CartPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {storageError && <div role="alert" className="mb-4 rounded-xl bg-amber-50 p-4">{storageError} <button onClick={clear} className="underline">Atiestatīt grozu</button></div>}
       {items.length > 0 && <div aria-live="polite" className="mb-4 rounded-xl bg-gray-50 p-4 text-sm">
-        {promoDirty ? "Pielieto vai noņem ievadīto promo kodu, lai pārbaudītu aprēķinu." : quoteState.signature === signature && quoteState.error ? <><p role="alert">{quoteState.error}</p><button onClick={checkout.refresh} className="underline">Pārbaudīt vēlreiz</button></> : !quote ? "Pārbaudām grozu un piegādi…" : !quote.available ? "Piegāde vēl nav pieejama. Izvēlies derīgu galamērķi un piegādes veidu." : "Groza cenas un piegāde pārbaudītas."}
+        {promoDirty ? "Pielieto vai noņem ievadīto promo kodu, lai pārbaudītu aprēķinu." : quoteState.signature === signature && quoteState.error ? <><p role="alert">{quoteState.error}</p><button onClick={checkout.refresh} className="underline">Pārbaudīt vēlreiz</button></> : !quote ? "Pārbaudām grozu un piegādi…" : !quote.available ? deliveryAttempted ? "Piegāde vēl nav pieejama. Izvēlies derīgu galamērķi un piegādes veidu." : "Groza preces pārbaudītas. Izvēlies piegādi, lai pabeigtu aprēķinu." : "Groza cenas un piegāde pārbaudītas."}
         {quoteState.signature === signature && quoteState.issues?.map(issue => <p key={issue.id + issue.code}>{issue.message} <Link href={items.find(item => item.id === issue.id)?.listingId ? `/listing/${items.find(item => item.id === issue.id)!.listingId}` : "/catalog"} className="underline">Izvēlēties preci atkārtoti</Link> <button onClick={() => removeItem(issue.id)} className="underline">Noņemt</button></p>)}
         {!quote && items.some(item => !item.listingId) && <p>Saglabātās preces tiek pārbaudītas. Neatpazītu variantu noņem un <Link href="/catalog" className="underline">izvēlies atkārtoti katalogā</Link>.</p>}
       </div>}
@@ -444,7 +451,7 @@ export function CartPage() {
           {step === "cart" && (
             <>
               <h1 className="text-xl font-extrabold text-gray-900">
-                Tavs grozs {count > 0 && <span className="text-gray-400 font-normal text-base">({count} preces)</span>}
+                Tavs grozs {count > 0 && <span className="text-gray-400 font-normal text-base">({itemCountLabel(count)})</span>}
               </h1>
 
               {items.length === 0 ? (
@@ -476,10 +483,27 @@ export function CartPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white shadow-sm">
-                  {displayItems.map((item) => (
-                    <CartItemRow key={item.id} item={item} verified={!!quote} updateQty={updateQty} removeItem={removeItem} />
-                  ))}
+                <div className="space-y-4">
+                  {quote ? sellerGroups.map(seller => {
+                    const sellerItems = quote.items.filter(item => item.sellerId === seller.id);
+                    return (
+                      <section key={seller.id} aria-label={seller.name} className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                          <h2 className="text-sm font-bold text-gray-900">{seller.name}</h2>
+                          <span className="text-xs text-gray-500">{itemCountLabel(sellerItems.reduce((sum, item) => sum + item.quantity, 0))}</span>
+                        </div>
+                        {sellerItems.map(item => (
+                          <CartItemRow key={item.id} item={item} verified updateQty={updateQty} removeItem={removeItem} />
+                        ))}
+                      </section>
+                    );
+                  }) : (
+                    <div className="divide-y divide-gray-100 rounded-2xl border border-gray-100 bg-white shadow-sm">
+                      {displayItems.map(item => (
+                        <CartItemRow key={item.id} item={item} verified={false} updateQty={updateQty} removeItem={removeItem} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -539,6 +563,9 @@ export function CartPage() {
                     price={expressFee === null ? "Nav pieejams" : formatPrice(expressFee)}
                     hint="5h pēc operatora rezervācijas"
                   />
+                )}
+                {deliveryAttempted && !canConfirm() && missingFields().length === 0 && (
+                  <p role="alert" className="text-xs text-amber-800">Pirms apstiprināšanas sagaidi derīgu groza un piegādes aprēķinu.</p>
                 )}
               </div>
 
@@ -1009,10 +1036,10 @@ export function CartPage() {
                 <span>{total === null ? "Tiek pārbaudīts" : formatPrice(total)}</span>
               </div>
 
-              {/* On step "cart", piegāde nav vēl izvēlēts — neuzrādām maksu */}
+              {/* Informational estimate only; payable totals still require a canonical destination quote. */}
               {step === "cart" ? (
                 <div className="flex justify-between text-gray-400 text-xs italic">
-                  <span>Piegādes maksu redzēsi nākamajā solī</span>
+                  <span>Pakomāts no {formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} par ražotāju. Precīzu piegādes maksu redzēsi nākamajā solī.</span>
                 </div>
               ) : (
                 <>
@@ -1090,8 +1117,8 @@ export function CartPage() {
 
             {step === "delivery" && (
               <div className="space-y-2">
-                {!canConfirm() && missingFields().length > 0 && (
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                {deliveryAttempted && !canConfirm() && missingFields().length > 0 && (
+                  <div role="alert" className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
                     <p className="font-semibold mb-1">Lai turpinātu, jāaizpilda:</p>
                     <ul className="list-disc list-inside space-y-0.5">
                       {missingFields().map((m) => (
@@ -1101,8 +1128,8 @@ export function CartPage() {
                   </div>
                 )}
                 <button
-                  onClick={() => { if (!canConfirm()) return; setReviewedSignature(signature); setReviewedFingerprint(quote!.fingerprint); setStep("confirm"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  disabled={!canConfirm()}
+                  onClick={() => { setDeliveryAttempted(true); if (!canConfirm()) return; setReviewedSignature(signature); setReviewedFingerprint(quote!.fingerprint); setStep("confirm"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  disabled={!canProceedToDelivery()}
                   className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40"
                 >
                   Apstiprināt <ChevronRight size={16} />
