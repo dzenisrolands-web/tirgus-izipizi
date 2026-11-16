@@ -120,13 +120,13 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
     <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd).replace(/</g, "\\u003c") }} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c") }} />
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/catalog" className="mb-6 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+    <div className="product-page mx-auto max-w-7xl px-4 pt-4 md:pt-8 sm:px-6 lg:px-8">
+      <Link href="/catalog" className="mb-3 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 md:mb-6">
         <ArrowLeft size={16} /> Atpakaļ uz katalogu
       </Link>
 
-      <div className="grid gap-6 lg:gap-10 lg:grid-cols-2">
-        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-gray-100">
+      <div className="grid gap-4 md:gap-6 lg:gap-10 lg:grid-cols-2">
+        <div className="product-photo-frame relative w-full overflow-hidden rounded-2xl bg-gray-100">
           <ProductPhoto src={listing.image} title={listing.title} />
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-gray-700 backdrop-blur-sm">
             {listing.category}
@@ -152,6 +152,33 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
+          {listing.variants && listing.variants.length > 0 ? (
+          <VariantSelector
+              stickyMobile
+              listingId={listing.id}
+              title={listing.title}
+              image={listing.image}
+              sellerName={listing.seller.farmName}
+              sellerId={listing.sellerId}
+              storageType={getStorageType(listing)}
+              variants={listing.variants}
+              express_delivery={listing.express_delivery ?? false}
+            />
+          ) : (
+          <AddToCartButton
+              stickyMobile
+              id={listing.id}
+              title={listing.title}
+              price={listing.price}
+              unit={listing.unit}
+              image={listing.image}
+              sellerName={listing.seller.farmName}
+              sellerId={listing.sellerId}
+              storageType={getStorageType(listing)}
+              express_delivery={listing.express_delivery ?? false}
+            />
+          )}
+
           <div className="flex flex-col gap-2 sm:flex-row">
             <div className={`flex items-center gap-2 rounded-xl px-4 py-3 ${storage.cls}`}>
               <div>
@@ -172,31 +199,6 @@ export default async function ListingPage({ params }: { params: Promise<{ id: st
           </div>
 
           <DeliveryChoice locker={listing.locker} price={listing.price} isHomeLocker={isHomeLocker} expressAvailable={expressAvailable} courierAvailable={listing.courier_delivery ?? true} />
-
-          {listing.variants && listing.variants.length > 0 ? (
-          <VariantSelector
-              listingId={listing.id}
-              title={listing.title}
-              image={listing.image}
-              sellerName={listing.seller.farmName}
-              sellerId={listing.sellerId}
-              storageType={getStorageType(listing)}
-              variants={listing.variants}
-              express_delivery={listing.express_delivery ?? false}
-            />
-          ) : (
-          <AddToCartButton
-              id={listing.id}
-              title={listing.title}
-              price={listing.price}
-              unit={listing.unit}
-              image={listing.image}
-              sellerName={listing.seller.farmName}
-              sellerId={listing.sellerId}
-              storageType={getStorageType(listing)}
-              express_delivery={listing.express_delivery ?? false}
-            />
-          )}
 
           <div className="rounded-xl border border-gray-100 p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Pārdevējs</p>

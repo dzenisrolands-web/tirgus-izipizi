@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Mail, Check, X } from "lucide-react";
 
 const DISMISS_KEY = "email_subscribe_dismissed_v1";
@@ -11,6 +12,7 @@ const SUBSCRIBED_KEY = "email_subscribed_v1";
  * Shows at the bottom of the page. Dismissible + remembers subscription.
  */
 export function EmailSubscribeBanner() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
@@ -59,7 +61,7 @@ export function EmailSubscribeBanner() {
     }
   }
 
-  if (!visible) return null;
+  if (!visible || pathname.startsWith("/listing/")) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-40 mx-auto max-w-lg md:bottom-6">

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { cartIdentity } from "@/lib/cart-identity";
+import { formatPrice } from "@/lib/utils";
+import { ProductPurchaseAction } from "@/components/product-purchase-action";
 
 type Props = {
   id: string;
@@ -15,9 +17,10 @@ type Props = {
   sellerId?: string;
   storageType: "frozen" | "chilled";
   express_delivery?: boolean;
+  stickyMobile?: boolean;
 };
 
-export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery }: Props) {
+export function AddToCartButton({ id, title, price, unit, image, sellerName, sellerId, storageType, express_delivery, stickyMobile }: Props) {
   const { addItem, ready, storageError } = useCart();
   const [added, setAdded] = useState(false);
 
@@ -29,6 +32,7 @@ export function AddToCartButton({ id, title, price, unit, image, sellerName, sel
   }
 
   return (
+    <ProductPurchaseAction stickyMobile={stickyMobile}>
     <button
       onClick={handle}
       disabled={!ready || !!storageError}
@@ -39,7 +43,9 @@ export function AddToCartButton({ id, title, price, unit, image, sellerName, sel
       }`}
     >
       {added ? <Check size={18} /> : <ShoppingCart size={18} />}
+      {stickyMobile && !added && <span className="md:hidden">{formatPrice(price)} ·</span>}
       {added ? "Pievienots grozam!" : "Pievienot grozam"}
     </button>
+    </ProductPurchaseAction>
   );
 }

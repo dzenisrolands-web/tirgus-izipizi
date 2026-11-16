@@ -31,8 +31,8 @@ export function MobileBottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-sm md:hidden">
-      <div className="grid grid-cols-5 items-end pb-1">
+    <nav className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-sm md:hidden">
+      <div className="mobile-nav-content grid grid-cols-5 items-center">
         {leftItems.map(({ href, icon: Icon, label }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
