@@ -79,6 +79,7 @@ test.beforeEach(() => {
       throw new Error("Forbidden: all network requests must target example.invalid");
     }
     calls.push({ url, method: init?.method ?? "GET" });
+    if (url.pathname === "/rest/v1/reviews") return Response.json([], { headers: { "content-range": "*/0" } });
     return route(url, init ?? {});
   };
 });

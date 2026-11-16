@@ -5,6 +5,7 @@
 @layer base {
   :root {
     --font-inter: "Inter", system-ui, sans-serif;
+    --mobile-nav-height: 4.75rem;
     /* Force light mode at the document level. Without this, Android Chrome
        applies "Auto Dark Theme" on devices with system dark mode and ours
        turns into a black/grey site that doesn't match the brand. */
@@ -27,6 +28,43 @@
 }
 
 @layer components {
+  .mobile-bottom-nav {
+    height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-nav-content {
+    height: var(--mobile-nav-height);
+  }
+
+  .product-purchase-action {
+    @apply fixed inset-x-0 z-40 border-t border-gray-200 bg-white p-3 shadow-lg;
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-page {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .product-photo-frame {
+    height: min(32svh, 18rem);
+  }
+
+  @media (min-width: 768px) {
+    .product-purchase-action {
+      @apply static border-0 bg-transparent p-0 shadow-none;
+    }
+
+    .product-page {
+      padding-bottom: 2rem;
+    }
+
+    .product-photo-frame {
+      height: auto;
+      aspect-ratio: 3 / 4;
+    }
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-[#192635] transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2;
     background: linear-gradient(90deg, #53F3A4, #AD47FF);

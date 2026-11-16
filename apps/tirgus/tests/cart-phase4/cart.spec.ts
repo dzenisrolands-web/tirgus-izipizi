@@ -11,7 +11,8 @@ import { cartIdentity, canonicalCartId } from "../../lib/cart-identity";
 import { cartReferences, hydrateCart, parseCart, type CartItem } from "../../lib/cart-state";
 import { currentQuote, payableQuote, QUOTE_MAX_AGE_MS, QUOTE_DEBOUNCE_MS, useCheckoutQuote } from "../../lib/use-checkout-quote";
 import type { CanonicalCartItem, CheckoutQuote, CheckoutQuoteRequest } from "../../lib/checkout-contract";
-import { calculateDeliveryQuote } from "../../lib/delivery-policy";
+import { BUYER_LOCKER_FEE_CENTS, calculateDeliveryQuote } from "../../lib/delivery-policy";
+import { formatPrice } from "../../lib/utils";
 import { supabase } from "../../lib/supabase";
 import { ListingCard } from "../../components/listing-card";
 import { VariantSelector } from "../../components/variant-selector";
@@ -363,7 +364,9 @@ test("cart source uses readonly quotes, canonical previews and after-discount pa
   expect(page).toContain("calculateDeliveryQuote");
   expect(page).toContain("expectedTotalCents: current.totalCents");
   expect(page).toContain("quoteFingerprint: current.fingerprint");
-  expect(page).not.toMatch(/courier_pickup_address|effectiveCourierZone|LOCKER_FEE|\/api\/promo\/validate/);
+  expect(page).not.toMatch(/courier_pickup_address|effectiveCourierZone|\/api\/promo\/validate/);
+  expect(page).not.toMatch(/import\s*\{[^}]*\bLOCKER_FEE\b/);
+  expect(page).toContain("BUYER_LOCKER_FEE_CENTS");
   expect(page).toContain("sellerGroups.every");
   expect(page).toContain("useState(false)");
   expect(source("components/ai-search-dialog.tsx")).not.toContain("addItem(");
@@ -386,6 +389,112 @@ async function cartPage(draft: Record<string, unknown> = {}, saved = [item()]) {
   await sync(); await sync();
   return { cart, page, sync };
 }
+test("cart draft without a locker stays on cart and shows only the policy estimate", async () => {
+  backend = (url, init) => url.pathname === "/api/checkout/quote"
+    ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body))) })
+    : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
+  const { page, sync } = await cartPage({ step: "cart", lockerId: "", form: { name: "", email: "", phone: "" } });
+  expect(text(page.output)).toContain("Tavs grozs");
+  expect(text(page.output)).toContain(`Pakomāts no ${formatPrice(BUYER_LOCKER_FEE_CENTS / 100)} par ražotāju`);
+  expect(text(page.output)).not.toContain("Piegāde vēl nav pieejama");
+  click(page.output, "Uz piegādi"); await sync();
+  expect(text(page.output)).not.toContain("Lai turpinātu, jāaizpilda:");
+  click(page.output, "Apstiprināt"); await sync();
+  expect(text(page.output)).toContain("Lai turpinātu, jāaizpilda:");
+  expect(text(page.output)).toContain("Piegāde vēl nav pieejama");
+  expect(text(page.output)).not.toContain("Pārskats un apmaksa");
+  expect(requests.some(call => call.url.pathname === "/api/checkout/create-session")).toBe(false);
+  for (const [id, value] of [["cart-name", "Buyer"], ["cart-email", "buyer@example.invalid"], ["cart-phone", "+37120000000"]]) {
+    const input = elements(page.output).find(element => element.props.id === id)!;
+    (input.props.onChange as (event: unknown) => void)({ target: { value } });
+  }
+  const locker = elements(page.output).find(element => element.type === "input" && element.props.name === "locker" && element.props.value === "brivibas")!;
+  (locker.props.onChange as () => void)();
+  await sync(); await sync();
+  expect(text(page.output)).not.toContain("Lai turpinātu, jāaizpilda:");
+  click(page.output, "Apstiprināt"); await sync();
+  expect(text(page.output)).toContain("Pārskats un apmaksa");
+});
+test("cart draft with an explicitly closed locker returns to delivery instead of preserving an invalid destination", async () => {
+  backend = (url, init) => url.pathname === "/api/checkout/quote"
+    ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body))) })
+    : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
+  const { page } = await cartPage({ step: "cart", lockerId: "tukums" });
+  expect(text(page.output)).toContain("Piegādes veids");
+  expect(text(page.output)).not.toContain("Lai turpinātu, jāaizpilda:");
+  expect(elements(page.output).some(element => element.props.name === "locker" && element.props.checked)).toBe(false);
+});
+test("complete delivery fields cannot bypass an unavailable canonical quote", async () => {
+  backend = (url, init) => url.pathname === "/api/checkout/quote"
+    ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body)), { available: false, totalCents: null }) })
+    : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
+  const { page, sync } = await cartPage();
+  click(page.output, "Apstiprināt"); await sync();
+  expect(text(page.output)).toContain("Pirms apstiprināšanas sagaidi derīgu groza un piegādes aprēķinu.");
+  expect(text(page.output)).not.toContain("Pārskats un apmaksa");
+  expect(requests.some(call => call.url.pathname === "/api/checkout/create-session")).toBe(false);
+});
+test("verified quote groups canonical sellers rather than local seller metadata", async () => {
+  backend = (url, init) => {
+    if (url.pathname !== "/api/checkout/quote") return Response.json(url.pathname === "/api/best-sellers" ? {} : []);
+    const result = quoted(JSON.parse(String(init.body)));
+    result.items[1].sellerId = "seller-b";
+    result.items[1].sellerName = "Farm B";
+    result.sellers = [{ id: "seller-a", name: "Farm A", homeLockerIds: [] }, { id: "seller-b", name: "Farm B", homeLockerIds: [] }];
+    return Response.json({ ok: true, quote: result });
+  };
+  const saved = [item({ quantity: 2 }), item({ ...cartIdentity("listing-b", "v1"), quantity: 1 }), item({ ...cartIdentity("listing-c", "v2"), quantity: 8 })];
+  const { page } = await cartPage({ step: "cart" }, saved);
+  const groups = elements(page.output).filter(element => element.type === "section");
+  expect(groups.map(group => group.props["aria-label"])).toEqual(["Farm A", "Farm B"]);
+  expect(text(groups[0])).toContain("10 preču");
+  expect(text(groups[1])).toContain("1 prece");
+  expect(elements(groups[0]).filter(element => element.props.verified === true).map(element => (element.props.item as CartItem).listingId)).toEqual(["listing-a", "listing-c"]);
+  expect(text(page.output)).not.toContain("Saved seller");
+});
+for (const [count, label] of [[1, "prece"], [2, "preces"], [9, "preces"], [10, "preču"], [11, "preču"], [12, "preču"], [19, "preču"], [20, "preču"], [21, "prece"], [22, "preces"], [111, "preču"]] as const) {
+  test(`Latvian cart quantity ${count} uses ${label}`, async () => {
+    backend = (url, init) => url.pathname === "/api/checkout/quote"
+      ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body))) })
+      : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
+    const { page } = await cartPage({ step: "cart", lockerId: "" }, [item({ quantity: count })]);
+    const heading = elements(page.output).find(element => element.type === "h1")!;
+    expect(text(heading)).toBe(`Tavs grozs (${count} ${label})`);
+  });
+}
+test("upsells wait for verified sellers and keep same/other seller audiences separate", async () => {
+  let resolveQuote: (response: Response) => void = () => {};
+  let input: CheckoutQuoteRequest;
+  backend = (url, init) => {
+    if (url.pathname === "/api/checkout/quote") {
+      input = JSON.parse(String(init.body));
+      return new Promise(resolve => { resolveQuote = resolve; });
+    }
+    if (url.pathname === "/api/best-sellers") return Response.json({ "same-extra": 9, "other-extra": 8 });
+    if (url.pathname === "/rest/v1/reviews") return Response.json([], { headers: { "content-range": "*/0" } });
+    if (url.pathname === "/rest/v1/listings") return Response.json([
+      { id: "listing-a", title: "Existing", seller_id: "seller-a", price: 4 },
+      { id: "same-extra", title: "Same", seller_id: "seller-a", price: 5 },
+      { id: "other-extra", title: "Other", seller_id: "untrusted", price: 6 },
+    ].map(row => ({ ...row, image_url: "/images/product-placeholder.svg", category: "Maize", unit: "gab.", quantity: 10 })));
+    if (url.pathname === "/rest/v1/sellers_public") return Response.json([
+      { id: "seller-a", farm_name: "Farm A", status: "approved" }, { id: "untrusted", farm_name: "Other", status: "approved" },
+    ]);
+    throw new Error(`Unexpected request: ${url.pathname}`);
+  };
+  const { page, cart, sync } = await cartPage({ step: "cart" });
+  const upsells = () => elements(page.output).filter(element => Array.isArray(element.props.items) && typeof element.props.title === "string");
+  expect(upsells()).toEqual([]);
+  resolveQuote(Response.json({ ok: true, quote: quoted(input!) }));
+  await sync();
+  const sections = upsells();
+  expect(sections.map(section => section.props.title)).toEqual(["No tiem pašiem ražotājiem", "Pircēji bieži pievieno arī"]);
+  expect((sections[0].props.items as Listing[]).map(listing => listing.id)).toEqual(["same-extra"]);
+  expect((sections[1].props.items as Listing[]).map(listing => listing.id)).toEqual(["other-extra"]);
+  contextValue(cart).updateQty(item().id, 2);
+  await sync();
+  expect(upsells()).toEqual([]);
+});
 test("full cart requires fresh quote and explicit review; 409 never auto-retries or subscribes", async () => {
   let paid = 0;
   backend = (url, init) => {
@@ -417,19 +526,24 @@ test("closed Tukums/future/unknown drafts reset destination and cannot confirm",
     ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body))) })
     : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
   for (const lockerId of ["tukums", "saga", "unknown"]) {
-    const { page } = await cartPage({ step: "confirm", lockerId });
+    const { page, sync } = await cartPage({ step: "confirm", lockerId });
     expect(text(page.output)).toContain("Piegādes veids");
-    expect(button(page.output, "Apstiprināt").props.disabled).toBe(true);
+    click(page.output, "Apstiprināt"); await sync();
+    expect(text(page.output)).toContain("Lai turpinātu, jāaizpilda:");
+    expect(text(page.output)).not.toContain("Pārskats un apmaksa");
     expect(elements(page.output).filter(element => element.type === "input" && element.props.name === "locker" && element.props.checked)).toEqual([]);
   }
 });
-test("courier confirmation is disabled for an unknown destination postcode", async () => {
+test("courier confirmation attempt is guarded for an unknown destination postcode", async () => {
   backend = (url, init) => url.pathname === "/api/checkout/quote"
     ? Response.json({ ok: true, quote: quoted(JSON.parse(String(init.body))) })
     : Response.json(url.pathname === "/api/best-sellers" ? {} : []);
-  const { page } = await cartPage({ deliveryMethod: "courier", postalCode: "9999", address: "Example 1", city: "Example", timeSlot: "09:00–12:00" });
+  const { page, sync } = await cartPage({ deliveryMethod: "courier", postalCode: "9999", address: "Example 1", city: "Example", timeSlot: "09:00–12:00" });
   expect(text(page.output)).toContain("Nav aprēķināts");
-  expect(button(page.output, "Apstiprināt").props.disabled).toBe(true);
+  expect(text(page.output)).not.toContain("Lai turpinātu, jāaizpilda:");
+  click(page.output, "Apstiprināt"); await sync();
+  expect(text(page.output)).toContain("Pasta indekss (derīgā zonā)");
+  expect(text(page.output)).not.toContain("Pārskats un apmaksa");
   expect(text(page.output)).not.toContain("Eksprespiegāde");
 });
 test("locker preview charges dual temperatures once and pickup-only requires all canonical sellers", async () => {

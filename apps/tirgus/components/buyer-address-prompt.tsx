@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, X, Edit3, CheckCircle, ChevronDown } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { MapPin, X, Edit3, ChevronDown } from "lucide-react";
 import { useBuyerAddress } from "@/lib/buyer-address-context";
 import { LvAddressAutocomplete, type ParsedAddress } from "@/components/lv-address-autocomplete";
 
 /**
- * Floating buyer address prompt — shows on top of pages until user enters or dismisses.
+ * Full buyer address prompt on the homepage; compact entry on other pages.
  * Once an address is set, becomes a small persistent indicator chip.
  */
 export function BuyerAddressPrompt() {
+  const pathname = usePathname();
   const { address, setAddress, clear, promptDismissed, dismissPrompt } = useBuyerAddress();
   const [open, setOpen] = useState(false);
   const [addressText, setAddressText] = useState("");
@@ -36,18 +38,18 @@ export function BuyerAddressPrompt() {
     return (
       <div className="border-b border-gray-100 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-xs">
-            <MapPin size={12} className="text-brand-600" />
-            <span className="text-gray-500">Tava adrese:</span>
+          <div className="flex min-w-0 items-center gap-2 whitespace-nowrap text-xs">
+            <MapPin size={12} className="shrink-0 text-brand-600" />
+            <span className="shrink-0 text-gray-500">Tava adrese:</span>
             <span className="font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-none">
               {address.city || `LV-${address.postalCode}`}
             </span>
             <span className="text-gray-300">·</span>
-            <span className={`text-[11px] font-semibold ${address.outsideZones ? "text-gray-500" : "text-brand-700"}`}>
+            <span className={`hidden truncate text-[11px] font-semibold sm:inline ${address.outsideZones ? "text-gray-500" : "text-brand-700"}`}>
               {zoneLabel}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <button
               onClick={() => setOpen(true)}
               className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-gray-500 hover:bg-gray-100"
@@ -91,18 +93,19 @@ export function BuyerAddressPrompt() {
     );
   }
 
-  // ─── Initial prompt — collapsed by default if dismissed ───────
-  if (promptDismissed && !open) {
+  // ─── Compact entry away from home or after dismissal ──────────
+  if (pathname !== "/" || promptDismissed) {
     return (
       <div className="border-b border-gray-100 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
           <button
-            onClick={() => setOpen(true)}
-            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className="flex min-w-0 items-center gap-2 text-xs text-gray-500 hover:text-gray-900"
           >
-            <MapPin size={12} className="text-gray-400" />
-            <span>Kur tev ērtāk saņemt? Ievadi adresi</span>
-            <ChevronDown size={11} />
+            <MapPin size={12} className="shrink-0 text-gray-400" />
+            <span className="truncate">Kur tev ērtāk saņemt? Ievadi adresi</span>
+            <ChevronDown size={11} className="shrink-0" />
           </button>
         </div>
         {open && (
@@ -114,6 +117,12 @@ export function BuyerAddressPrompt() {
                 onSelect={handleSelect}
                 placeholder="Piem., Brīvības iela 100, Rīga"
               />
+              <button
+                onClick={() => setOpen(false)}
+                className="mt-2 text-[11px] text-gray-500 hover:text-gray-900"
+              >
+                Aizvērt
+              </button>
             </div>
           </div>
         )}

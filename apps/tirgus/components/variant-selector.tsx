@@ -6,6 +6,7 @@ import { useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/utils";
 import type { Variant } from "@/lib/mock-data";
 import { cartIdentity } from "@/lib/cart-identity";
+import { ProductPurchaseAction } from "@/components/product-purchase-action";
 
 type Props = {
   listingId: string;
@@ -16,9 +17,10 @@ type Props = {
   storageType: "frozen" | "chilled";
   variants: Variant[];
   express_delivery?: boolean;
+  stickyMobile?: boolean;
 };
 
-export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants, express_delivery }: Props) {
+export function VariantSelector({ listingId, title, image, sellerName, sellerId, storageType, variants, express_delivery, stickyMobile }: Props) {
   const { addItem, ready, storageError } = useCart();
   const [selected, setSelected] = useState(variants[0].id);
   const [added, setAdded] = useState(false);
@@ -45,6 +47,15 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="text-2xl font-extrabold text-gray-900 sm:text-3xl">{formatPrice(variant.price)}</span>
+        <span className="text-sm text-gray-400">/ {variant.title}</span>
+        {variant.quantity > 0 && variant.quantity <= 5 && (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+            Atlikumā {variant.quantity} gab.
+          </span>
+        )}
+      </div>
       <div>
         <p className="mb-2 text-sm font-semibold text-gray-700">Izvēlies apjomu</p>
         <div className="flex flex-wrap gap-2">
@@ -81,16 +92,7 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
         </div>
       </div>
 
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-extrabold text-gray-900 sm:text-3xl">{formatPrice(variant.price)}</span>
-        <span className="text-sm text-gray-400">/ {variant.title}</span>
-        {variant.quantity > 0 && variant.quantity <= 5 && (
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-            Atlikumā {variant.quantity} gab.
-          </span>
-        )}
-      </div>
-
+      <ProductPurchaseAction stickyMobile={stickyMobile}>
       <button
         onClick={handle}
         disabled={outOfStock || !ready || !!storageError}
@@ -102,8 +104,9 @@ export function VariantSelector({ listingId, title, image, sellerName, sellerId,
               : "bg-[#192635] text-white hover:bg-[#243647]"
         }`}
       >
-        {outOfStock ? <>❌ Izpārdots</> : added ? <><Check size={18} /> Pievienots grozam!</> : <><ShoppingCart size={18} /> Pievienot grozam</>}
+        {outOfStock ? <>❌ Izpārdots</> : added ? <><Check size={18} /> Pievienots grozam!</> : <><ShoppingCart size={18} />{stickyMobile && <span className="md:hidden">{formatPrice(variant.price)} ·</span>} Pievienot grozam</>}
       </button>
+      </ProductPurchaseAction>
     </div>
   );
 }

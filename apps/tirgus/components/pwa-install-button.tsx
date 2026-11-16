@@ -2,6 +2,7 @@
 
 import { Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 // Captures the browser's beforeinstallprompt event and exposes a button.
 // Hidden when:
@@ -36,6 +37,7 @@ function saveDismiss() {
 }
 
 export function PWAInstallButton() {
+  const pathname = usePathname();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [iosHint, setIosHint] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -113,7 +115,7 @@ export function PWAInstallButton() {
     }
   }
 
-  if (hidden) return null;
+  if (hidden || pathname.startsWith("/listing/")) return null;
 
   // Shared card style — bottom-LEFT to avoid Paysera badge + feedback widget (both right)
   const cardCls = "fixed bottom-20 left-3 z-40 w-[300px] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-gray-200 bg-white p-3 shadow-lg md:bottom-5";
